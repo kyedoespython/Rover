@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}
+    <title>Rover ~ Local_Assistant</title>
+{% endblock %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/Home/Home.css') }}">
+<script src="{{ url_for('static', filename='scripts/Home/Home.js') }}"></script>
+
+{% block content %}
+
+    <h2>Rover ~ Dashboard</h2>
+
+    <form id="chatForm">
+        <input type="text" id="userInput" name="userInput" placeholder="Type your message here...">
+        <button type="submit" id="Send_Message">Send Message</button>
+    </form>
+
+    <div id="output"></div>
+
+    <a href="{{ url_for('About_Page') }}">About</a>
+
+{% endblock %}
