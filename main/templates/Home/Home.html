@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-    <title>Rover ~ Local_Assistant</title>
+    <title>Rover ~ Local Assistant</title>
 {% endblock %}
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/Home/Home.css') }}">
@@ -9,15 +9,13 @@
 
 {% block content %}
 
-    <h2>Rover ~ Dashboard</h2>
+<div class="Welcome_">
+    
+    <h2>Welcome to Rover</h2>
 
-    <form id="chatForm">
-        <input type="text" id="userInput" name="userInput" placeholder="Type your message here...">
-        <button type="submit" id="Send_Message">Send Message</button>
-    </form>
+    <h3></h3>
+</div>
 
-    <div id="output"></div>
 
-    <a href="{{ url_for('About_Page') }}">About</a>
 
-{% endblock %}
+    {% endblock %}
