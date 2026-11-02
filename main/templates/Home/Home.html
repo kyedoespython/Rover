@@ -32,7 +32,9 @@
 
         <div class="Contact_link">
             <a href="{{ url_for('auth.Contact') }}">
-                Contact
+                <button class="Support">
+                    Contact Support
+                </button>
             </a>
         </div>
 
@@ -47,6 +49,12 @@
             What is Rover?
         </h3>
 
+        <a href="Design_Preview_Test">
+            <button class="Design_Preview_Button">
+                Design Now
+            </button>
+        </a>
+
         <ul class="Rover_description_list">
             <li>Your personalised local assistant</li>
             <li>Designed to run on your network</li>
@@ -58,7 +66,7 @@
     </div>
 
     <img src="{{ url_for('static', filename='images/Rover_Logo.png') }}"  class="Rover_Logo" alt="Rover Logo">
-    
+
 </div>
 
 {% endblock %}

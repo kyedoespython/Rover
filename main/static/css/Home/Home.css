@@ -18,24 +18,8 @@ h2.Welcome_text {
 
 .top_nav {
     display: flex;
-    height: 20px;
-    gap: 0.9rem;
     align-items: center;
-
-    padding: 0.3rem;
-}
-
-.Contact_link {
-  display: flex;
-  align-items: center;
-  margin-left: auto; /* pushes it to the right side of the flex parent */
-}
-
-a {
-    font-family: Josefin Sans, sans-serif;
-    font-size: 1rem;
-    text-decoration: none;
-    color: rgb(0, 0, 0);
+    padding-right: 40px;
 }
 
 img {
@@ -46,9 +30,42 @@ img {
 }
 
 .What_is_Rover_text {
+    display: flex;
+    font-family: Josefin Sans, sans-serif;
     color: black;
+    margin-left: 70px;
+    margin-top: 90px;
 }
 
 .Rover_description_list {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     color: black;
+}
+
+/* Design button leading to design page for demo */
+.Design_Preview_Button {
+    display: flex;
+    justify-content: center;
+    margin-left: 720px;
+    margin-top: 50px;
+}
+
+.Contact_link {
+    margin-left: auto;
+}
+
+.Signup_link {
+    margin-left: 14px;
+}
+
+.Login_link {
+    margin-left: 20px;
+}
+
+a {
+    color: black;
+    font-size: 1rem;
+    text-decoration: none;
 }
