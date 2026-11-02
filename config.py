@@ -10,8 +10,7 @@ class Config:
 class DevelopmentConfig(Config):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URL",
-        "postgresql://postgres:password@localhost:5432/myapp_dev"
+        "DATABASE_URI"
     )
 
 class TestingConfig(Config):

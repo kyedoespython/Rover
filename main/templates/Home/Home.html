@@ -4,18 +4,61 @@
     <title>Rover ~ Local Assistant</title>
 {% endblock %}
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/Home/Home.css') }}">
-<script src="{{ url_for('static', filename='scripts/Home/Home.js') }}"></script>
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Home/Home.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{{ url_for('static', filename='scripts/Home/Home.js') }}"></script>
+{% endblock %}
 
 {% block content %}
 
-<div class="Welcome_">
+<div class="Welcome_Page">
     
-    <h2>Welcome to Rover</h2>
+    <div class="top_nav">
+        
+        <div class="Signup_link">
+            <a href="{{ url_for('auth.Signup') }}">
+                Sign Up
+            </a>
+        </div>
 
-    <h3></h3>
+        <div class="Login_link">
+            <a href="{{ url_for('auth.Login') }}">
+                Login
+            </a>
+        </div>
+
+        <div class="Contact_link">
+            <a href="{{ url_for('auth.Contact') }}">
+                Contact
+            </a>
+        </div>
+
+    </div>
+
+    <h2 class="Welcome_text">
+        Welcome to Rover
+    </h2>
+
+    <div class="Rover_description">
+        <h3 class="What_is_Rover_text">
+            What is Rover?
+        </h3>
+
+        <ul class="Rover_description_list">
+            <li>Your personalised local assistant</li>
+            <li>Designed to run on your network</li>
+            <li>Can run multiple tasks simultaneously</li>
+            <li>Is easy to use and navigate the Control Menu</li>
+            <li>Can be used on a device such as a raspberry pi</li>
+            <li>Provided with open source software to use for setup</li>
+        </ul>
+    </div>
+
+    <img src="{{ url_for('static', filename='images/Rover_Logo.png') }}"  class="Rover_Logo" alt="Rover Logo">
+    
 </div>
 
-
-
-    {% endblock %}
+{% endblock %}

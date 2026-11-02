@@ -1,0 +1,54 @@
+html {
+  height: 100%;
+}
+
+body {
+    color: white;
+}
+
+h2.Welcome_text {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    font-family: Josefin Sans, sans-serif;
+    font-size: 2rem;
+    color: rgb(0, 0, 0);
+}
+
+.top_nav {
+    display: flex;
+    height: 20px;
+    gap: 0.9rem;
+    align-items: center;
+
+    padding: 0.3rem;
+}
+
+.Contact_link {
+  display: flex;
+  align-items: center;
+  margin-left: auto; /* pushes it to the right side of the flex parent */
+}
+
+a {
+    font-family: Josefin Sans, sans-serif;
+    font-size: 1rem;
+    text-decoration: none;
+    color: rgb(0, 0, 0);
+}
+
+img {
+    margin-left: 100px;
+    color: black;
+    max-width: 30%;
+    height: auto;
+}
+
+.What_is_Rover_text {
+    color: black;
+}
+
+.Rover_description_list {
+    color: black;
+}
