@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# 3rd party packages CSS
+static/node_modules/
+
 # Distribution / packaging
 .Python
 build/

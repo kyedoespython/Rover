@@ -5,7 +5,11 @@
 {% endblock %}
 
 {% block extra_css %}
+    <!-- Home page regular CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Home/Home.css') }}">
+    
+    <!-- Bulma implementation -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='node_modules/bulma/css/bulma.min.css') }}">
 {% endblock %}
 
 {% block extra_js %}
