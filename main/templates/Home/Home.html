@@ -14,59 +14,42 @@
 
 {% block content %}
 
-<div class="Welcome_Page">
+<nav class="top_nav">
+    <div class="auth_links">
+        <a href="{{ url_for('auth.Signup') }}" class="Signup">Sign Up</a>
+        <a href="{{ url_for('auth.Login') }}" class="Login">Login</a>
+    </div>
     
-    <div class="top_nav">
-        
-        <div class="Signup_link">
-            <a href="{{ url_for('auth.Signup') }}">
-                Sign Up
-            </a>
-        </div>
+    <a href="{{ url_for('auth.Contact') }}" class="Contact">
+        <button class="Support">
+            Contact Support
+        </button>
+    </a>
+</nav>
 
-        <div class="Login_link">
-            <a href="{{ url_for('auth.Login') }}">
-                Login
-            </a>
-        </div>
+<h2 class="Welcome_text">Welcome to Rover</h2>
 
-        <div class="Contact_link">
-            <a href="{{ url_for('auth.Contact') }}">
-                <button class="Support">
-                    Contact Support
-                </button>
-            </a>
-        </div>
+<section class="Rover_description">
+    <h3 class="What_is_Rover_text">What is Rover?</h3>
+    <ul class="Rover_description_list">
+        <li>Your personalised local assistant</li>
+        <li>Designed to run on your network</li>
+        <li>Can run multiple tasks simultaneously</li>
+        <li>Is easy to use and navigate the Control Menu</li>
+        <li>Can be used on a device such as a raspberry pi</li>
+        <li>Provided with open source software to use for setup</li>
+    </ul>
+</section>
 
+<!-- WRAPPER (We keep this here at the bottom) -->
+<div class="action_section">
+    <div class="Rover_Logo">
+        <img src="{{ url_for('static', filename='images/Rover_Logo.png') }}" alt="Rover Logo">
     </div>
 
-    <h2 class="Welcome_text">
-        Welcome to Rover
-    </h2>
-
-    <div class="Rover_description">
-        <h3 class="What_is_Rover_text">
-            What is Rover?
-        </h3>
-
-        <a href="Design_Preview_Test">
-            <button class="Design_Preview_Button">
-                Design Now
-            </button>
-        </a>
-
-        <ul class="Rover_description_list">
-            <li>Your personalised local assistant</li>
-            <li>Designed to run on your network</li>
-            <li>Can run multiple tasks simultaneously</li>
-            <li>Is easy to use and navigate the Control Menu</li>
-            <li>Can be used on a device such as a raspberry pi</li>
-            <li>Provided with open source software to use for setup</li>
-        </ul>
-    </div>
-
-    <img src="{{ url_for('static', filename='images/Rover_Logo.png') }}"  class="Rover_Logo" alt="Rover Logo">
-
+    <a href="Design_Preview_Test" class="Design_Preview_Button">
+        <button>Design Now</button>
+    </a>
 </div>
 
 {% endblock %}

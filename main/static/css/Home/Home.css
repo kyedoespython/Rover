@@ -1,71 +1,102 @@
-html {
-  height: 100%;
+* {
+    box-sizing: border-box;
 }
 
 body {
-    color: white;
-}
-
-h2.Welcome_text {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    font-family: Josefin Sans, sans-serif;
-    font-size: 2rem;
-    color: rgb(0, 0, 0);
-}
-
-.top_nav {
-    display: flex;
-    align-items: center;
-    padding-right: 40px;
-}
-
-img {
-    margin-left: 100px;
+    margin: 0;
     color: black;
-    max-width: 30%;
-    height: auto;
-}
-
-.What_is_Rover_text {
-    display: flex;
-    font-family: Josefin Sans, sans-serif;
-    color: black;
-    margin-left: 70px;
-    margin-top: 90px;
-}
-
-.Rover_description_list {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    color: black;
-}
-
-/* Design button leading to design page for demo */
-.Design_Preview_Button {
-    display: flex;
-    justify-content: center;
-    margin-left: 720px;
-    margin-top: 50px;
-}
-
-.Contact_link {
-    margin-left: auto;
-}
-
-.Signup_link {
-    margin-left: 14px;
-}
-
-.Login_link {
-    margin-left: 20px;
 }
 
 a {
     color: black;
     font-size: 1rem;
     text-decoration: none;
+}
+
+/* =========================================
+   NAVIGATION
+   ========================================= */
+.top_nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 40px;
+}
+
+.auth_links {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+.Support {
+    background-color: transparent;
+    padding: 5px;
+    border: 1px solid black;
+    cursor: pointer;
+}
+
+/* =========================================
+   HERO / WELCOME SECTION
+   ========================================= */
+.Welcome_text {
+    text-align: center;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: 2rem;
+}
+
+/* =========================================
+   DESCRIPTION SECTION
+   ========================================= */
+.What_is_Rover_text {
+    font-family: 'Josefin Sans', sans-serif;
+    margin-left: 70px;
+    margin-top: 90px;
+}
+
+/* =========================================
+   ACTION SECTION (FLOATING IN THE MIDDLE)
+   ========================================= */
+.action_section {
+    display: flex;
+    flex-direction: column; 
+    align-items: center;    
+    
+    /* THIS FLOATS IT TO THE MIDDLE OF THE SCREEN */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    
+    gap: 30px;              
+}
+
+/* --- LOGO --- */
+.Rover_Logo {
+    width: 300px;
+    height: 300px;
+    margin-top: -100px;
+}
+
+.Rover_Logo img {
+    width: 100%;
+    height: 100%;
+    color: black;
+    object-fit: cover;
+}
+
+/* --- DESIGN BUTTON --- */
+.Design_Preview_Button button {
+    padding: 17px;
+    font-size: 1rem;
+    background-color: transparent;
+    border: 1px solid black; 
+    transition: background-color 0.3s, color 0.3s; 
+    cursor: pointer;
+}
+
+.Design_Preview_Button button:hover {
+    background-color: rgb(38, 98, 189);
+    color: white;
+    border-color: rgb(38, 98, 189);
 }

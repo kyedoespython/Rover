@@ -11,4 +11,4 @@ def load_user(user_id):
 
     from main.models.user import Accounts
 
-    return Accounts.qery.get(int(user_id))
+    return Accounts.query.get(int(user_id))
