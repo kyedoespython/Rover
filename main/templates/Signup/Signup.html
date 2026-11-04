@@ -8,7 +8,7 @@
 
     <h2>Sign Up</h2>
 
-    <form method="POST" action="{{ url_for('auth.Signup') }}">
+    <form action="{{ url_for('auth.Handle_Signup') }}", method="POST">
 
         <div>
             <input type="email" id="email" name="email" placeholder="Enter your email" required>
@@ -20,6 +20,20 @@
 
         <div>
             <input type="password" id="password" name="password" placeholder="Enter your password" required>
+        </div>
+
+        <div>
+            <input type="tel", id="telephone", name="telephone", placeholder="Enter your phone number">
+        </div>
+
+        <div>
+            <select name="country">
+                <option value="">Select a country</option>
+                <option value="UK">United Kingdom</option>
+                <option value="US">United States</option>
+                <option value="DE">Germany</option>
+                <option value="FR">France</option>
+            </select>
         </div>
 
         <button type="submit">Sign Up</button>
