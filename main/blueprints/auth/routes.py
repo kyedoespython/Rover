@@ -37,6 +37,13 @@ def Handle_Signup():
 
         password_hash = generate_password_hash(password, method="scrypt:32768:16:1", salt_length=16)
 
+@auth_bp.route("/Rover/Auth")
+def Authenticate_User():
+    return render_template("Auth/Auth.html")
+
+@auth_bp.route("/HandleAuth")
+def Handle_Auth():
+    auth_code = request.form.get("authCode")
 
 @auth_bp.route("/Rover/Login")
 def Login():
@@ -47,8 +54,6 @@ def Handle_Login():
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
-
-    
 
 @auth_bp.route("/Rover/Contact")
 def Contact():

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}  <title>Rover Auth</title> {% endblock %}
+
+<!-- CSS link -->
+{% block extra_css %}
+
+{% endblock %}
+
+<!-- JS link -->
+{% block extra_js %}
+    <script src="{{ url_for('static', filename='scripts/Auth/Auth.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+
+<!-- Get the authentication code from the user -->
+<form action="{{ url_for('auth.Handle_Auth') }}", method="POST">
+    <div class="auth_code">
+        <input type="text" name="authCode" id="authCode" placeholder="Enter your authentication code" style="width: 300px; height: 50px;">
+    </div>
+
+    <button>Auth code bugged? Generate a new one</button>
+</form>
+
+{% endblock %}
