@@ -2,6 +2,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_session import Session
+from flask_mail import Mail
+
 from dotenv import load_dotenv
 
 import os
@@ -18,6 +20,7 @@ redis_client = redis.from_url(redis_url)
 
 # create a session instance with redis client arg
 sess = Session()
+mail = Mail()
 
 @login_manager.user_loader
 def load_user(user_id):
