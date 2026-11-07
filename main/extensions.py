@@ -15,7 +15,7 @@ db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 
-redis_url = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")
+redis_url = os.environ.get("REDIS_URL")
 redis_client = redis.from_url(redis_url)
 
 # create a session instance with redis client arg

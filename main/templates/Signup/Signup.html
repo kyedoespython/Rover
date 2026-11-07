@@ -1,4 +1,4 @@
-{%- extends "base.html" -%}
+{% extends "base.html" %}
 
 {% block title %}
     <title>Sign Up</title>
@@ -6,10 +6,45 @@
 
 {% block content %}
 
+    <!-- Move the styling into a style block -->
+    <style>
+        .alert {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+    </style>
+
+    <a href="{{ url_for('home.Rover_Home_Page') }}">
+        <button>Home</button>
+    </a>
+
     <h2>Sign Up</h2>
 
-    <form action="{{ url_for('auth.Handle_Signup') }}", method="POST">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <!-- Jinja just adds the class name, no curly braces mixed with CSS -->
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
 
+    <form action="{{ url_for('auth.Handle_Signup') }}" method="POST">
         <div>
             <input type="email" id="email" name="email" placeholder="Enter your email" required>
         </div>
@@ -23,22 +58,21 @@
         </div>
 
         <div>
-            <input type="tel", id="telephone", name="telephone", placeholder="Enter your phone number">
+            <input type="tel" id="telephone" name="telephone" placeholder="Enter your phone number">
         </div>
 
         <div>
             <select name="country">
                 <option value="">Select a country</option>
-                <option value="UK">United Kingdom</option>
-                <option value="US">United States</option>
-                <option value="DE">Germany</option>
-                <option value="FR">France</option>
+                <option value="United Kingdom">United Kingdom +44</option>
+                <option value="United States">United States +1</option>
+                <option value="Germany">Germany +49</option>
+                <option value="France">France +33</option>
             </select>
         </div>
 
         <button type="submit">Sign Up</button>
         <p>Already have an account? <a href="{{ url_for('auth.Login') }}">Login</a></p>
-
     </form>
     
 {% endblock %}

@@ -1,13 +1,13 @@
 from main.extensions import db
-
-from datetime import datetime
-from datetime import timezone
+from flask_login import UserMixin
 from sqlalchemy import func, ForeignKey
 
-class Accounts(db.Model):
+class Accounts(db.Model, UserMixin):
+    
     __tablename__ = "accounts"
 
     user_id = db.Column(db.Integer, primary_key=True)
+    authentication_data = db.relationship('Authentication', backref='user_account', uselist=False)
 
     email = db.Column(db.String(254), unique=True, nullable=False)
     username = db.Column(db.String(64), unique=True, nullable=False)
@@ -15,10 +15,14 @@ class Accounts(db.Model):
     phone_number = db.Column(db.String(32), unique=True, nullable=True)
     country_of_origin = db.Column(db.String(64), nullable=False)
     account_created_at = db.Column(db.DateTime, server_default=func.now()) # timestamp
-    authentication_data = db.relationship('Authentication', backref='user', uselist=False)
+
+    # required for flask_login
+    def get_id(self):
+        return str(self.user_id)
 
 class Authentication(db.Model):
-    __tablename__ = "Authentication"
+
+    __tablename__ = "authentication"
 
     auth_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, ForeignKey("accounts.user_id"))

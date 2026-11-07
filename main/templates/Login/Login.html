@@ -6,9 +6,41 @@
 
 {% block content %}
 
+    <!-- Styling for flash messages -->
+    <style>
+        .alert {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+    </style>
+
     <h2>Login</h2>
 
-    <form method="POST" action="{{ url_for('auth.Login') }}">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- FIXED: Action points to Handle_Login, not Login -->
+    <form method="POST" action="{{ url_for('auth.Handle_Login') }}">
 
         <div>
             <input type="text" id="username" name="username" placeholder="Enter your username" required>

@@ -20,8 +20,10 @@
         <input type="text" name="authCode" id="authCode" placeholder="Enter your authentication code" style="width: 300px; height: 50px;">
     </div>
 
-    <button onclick="AuthCode()"
-    >Auth code bugged? Generate a new one</button>
+    <a href="{{ url_for('auth.ResendAuth') }}">
+        <button>New Code</button>
+    </a>
+
 </form>
 
 {% endblock %}

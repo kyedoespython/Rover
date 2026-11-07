@@ -2,7 +2,7 @@ from flask import Flask
 from .extensions import db
 from .extensions import migrate
 from .extensions import login_manager
-from .extensions import sess
+from .extensions import sess, mail
 from .extensions import redis_client
 
 # blueprints
@@ -21,13 +21,19 @@ def create_app(config_class="config.DevelopmentConfig"):
     # start extensions
     db.init_app(app)
     migrate.init_app(app, db)
-    login_manager.init_app(app)
+
+    # login manager section (specific page locks)
+    login_manager.init_app(app) # initialise
+    login_manager.login_view = "auth.Signup"
+    login_manager.login_message = "You must be logged into an account to unlock this page"
+    login_manager.login_message_category = "error"
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(home_bp)
 
     app.config["SESSION_REDIS"] = redis_client
 
+    mail.init_app(app) # flask mail initialisation
     sess.init_app(app) # redis initialisation
 
     # register the blueprints for usage
