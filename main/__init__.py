@@ -22,14 +22,14 @@ def create_app(config_class="config.DevelopmentConfig"):
     db.init_app(app)
     migrate.init_app(app, db)
 
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(home_bp)
+
     # login manager section (specific page locks)
     login_manager.init_app(app) # initialise
     login_manager.login_view = "auth.Signup"
     login_manager.login_message = "You must be logged into an account to unlock this page"
     login_manager.login_message_category = "error"
-
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(home_bp)
 
     app.config["SESSION_REDIS"] = redis_client
 
