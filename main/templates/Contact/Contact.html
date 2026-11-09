@@ -13,6 +13,46 @@
 {% endblock %}
 
 {% block content %}
-    <h1>Contact Us</h1>
-    <p>If you have any questions or need assistance, feel free to reach out to us!</p>
+
+<a href="{{ url_for('home.Rover_Home_Page')}}" id="Home_redirect">
+    Home
+</a>
+
+<h2 id="Rover_Support">Rover Support</h2>
+
+<div class="report_a_bug">
+    <h3 id="report_h3">Want to report a bug?</h3>
+    <p>Email buchanankyle10@gmail.com directly or create a ticket below</p>
+</div>
+
+<div id="Ticket_Create">
+    <h3>Create a ticket</h3>
+    <form action="{{ url_for('home.Tickets') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> <!-- Form uses csrf form protection token -->
+
+        <select id="ticketType">
+            <option value="">Select type</option>
+            <option value="bug">Found a bug</option>
+            <option value="recommendation">Recommendation</option>
+            <option value="question">Question</option>
+        </select>
+
+        <input id="nameTicket" type="text" name="ticketName" placeholder="name your ticket">
+        <br><br>
+        <textarea name="TicketContent" placeholder="Enter related information about your experience or your findings..."></textarea>
+        
+        <br>
+
+        <button id="ticketSubmit" type="submit">Submit your ticket</button>
+
+    </form>
+
+    <div id="RepoRover">
+        <p>More information about this site
+        <a href="https://github.com/kyedoespython/Rover.git" id="repoRedirect">
+        here</a></p>
+    </div>
+
+</div>
+
 {% endblock %}

@@ -3,15 +3,20 @@
 {% block title %} <title>Rover Design</title> {% endblock %}
 
 {% block extra_css %}
-
+<link rel="stylesheet" href="{{ url_for('static', filename='css/Design/Design.css') }}">
 {% endblock %}
 
 {% block extra_js %}
-
+<script src="{{ url_for('static', filename='scripts/Design/Design.js') }}"></script>
 {% endblock %}
 
 {% block content %}
 
-<h2>Your Designs</h2>
+<h2 id="designs_h2">Design Dashboard</h2>
+
+<h3>Schema Layout</h3>
+
+<input type="text" id="schema_name" placeholder="schema name">
+<button>Add table</button>
 
 {% endblock %}

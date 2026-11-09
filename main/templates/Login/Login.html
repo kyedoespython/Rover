@@ -6,24 +6,6 @@
 
 {% block content %}
 
-    <!-- Styling for flash messages -->
-    <style>
-        .alert {
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-        .alert-error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-    </style>
-
     <h2>Login</h2>
 
     <!-- Flash Messages -->
@@ -41,6 +23,7 @@
 
     <!-- FIXED: Action points to Handle_Login, not Login -->
     <form method="POST" action="{{ url_for('auth.Handle_Login') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> <!-- Form uses csrf form protection token -->
 
         <div>
             <input type="text" id="username" name="username" placeholder="Enter your username" required>

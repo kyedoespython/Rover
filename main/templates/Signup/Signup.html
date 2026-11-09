@@ -6,36 +6,17 @@
 
 {% block content %}
 
-    <!-- Move the styling into a style block -->
-    <style>
-        .alert {
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-        .alert-error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-    </style>
-
     <a href="{{ url_for('home.Rover_Home_Page') }}">
         <button>Home</button>
     </a>
 
     <h2>Sign Up</h2>
 
-    <!-- Flash Messages -->
+    <!-- Flash Message -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="flash-messages">
                 {% for category, message in messages %}
-                    <!-- Jinja just adds the class name, no curly braces mixed with CSS -->
                     <div class="alert alert-{{ category }}">
                         {{ message }}
                     </div>
@@ -45,6 +26,8 @@
     {% endwith %}
 
     <form action="{{ url_for('auth.Handle_Signup') }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> <!-- Form uses csrf form protection token -->
+        
         <div>
             <input type="email" id="email" name="email" placeholder="Enter your email" required>
         </div>

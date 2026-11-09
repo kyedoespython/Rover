@@ -19,16 +19,14 @@
 {% block content %}
 
 <nav class="top_nav">
+    
     <div class="auth_links">
         <a href="{{ url_for('auth.Signup') }}" class="Signup">Sign Up</a>
         <a href="{{ url_for('auth.Login') }}" class="Login">Login</a>
     </div>
     
-    <a href="{{ url_for('auth.Contact') }}" class="Contact">
-        <button class="Support">
-            Contact Support
-        </button>
-    </a>
+    <a href="{{ url_for('home.Contact') }}" class="Contact">Contact Support</a>
+
 </nav>
 
 <h2 class="Welcome_text">Welcome to Rover</h2>
@@ -47,9 +45,6 @@
 
 <!-- WRAPPER (We keep this here at the bottom) -->
 <div class="action_section">
-    <div class="Rover_Logo">
-        <img src="{{ url_for('static', filename='images/Rover_Logo.png') }}" alt="Rover Logo">
-    </div>
 
     <a href="{{ url_for('auth.DesignDash')}}" class="Design_Preview_Button">
         <button>Design Now</button>

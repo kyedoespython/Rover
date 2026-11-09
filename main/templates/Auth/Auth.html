@@ -2,9 +2,9 @@
 
 {% block title %}  <title>Rover Auth</title> {% endblock %}
 
-<!-- CSS link -->
+<!-- Bulma CSS Style sheet -->
 {% block extra_css %}
-
+<link rel="stylesheet" href="{{ url_for('static', filename='node_modules/bulma/css/bulma.min.css') }}">
 {% endblock %}
 
 <!-- JS link -->
@@ -15,14 +15,19 @@
 {% block content %}
 
 <!-- Get the authentication code from the user -->
-<form action="{{ url_for('auth.Handle_Auth') }}", method="POST">
+<form action="{{ url_for('auth.Handle_Auth') }}" id="resendForm" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> <!-- Form uses csrf form protection token -->
+
     <div class="auth_code">
         <input type="text" name="authCode" id="authCode" placeholder="Enter your authentication code" style="width: 300px; height: 50px;">
     </div>
 
-    <a href="{{ url_for('auth.ResendAuth') }}">
-        <button>New Code</button>
-    </a>
+    <form method="POST" action="{{ url_for('auth.ResendAuth') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> <!-- Form uses csrf form protection token -->
+
+        <button id="resendBtn" type="submit" onclick="resendCode()">Resend Auth Code</button>
+        <span id="CountDownText"></span>
+    </form>
 
 </form>
 

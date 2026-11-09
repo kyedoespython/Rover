@@ -1,12 +1,30 @@
-from main.extensions import db, mail
 from main.models.user import Accounts, Authentication
-from flask import current_app
-from flask_mail import Message
-from werkzeug.security import generate_password_hash
-import random
+from werkzeug.security import check_password_hash
 import re
-from datetime import datetime, timedelta, timezone
 
+# country codes (useful as global dictionary)
+country_codes = {
+
+            "United Kingdom": "+44",
+            "United States": "+1",
+            "Germany": "+49",
+            "France": "+33"
+        }
+
+# match up the value of the country code dict to first 2 digits phone numbers
+phoneNumber_digit_match = {
+
+    "+44 First Two Digits": ["01", "02", "07", "03", "05", "08", "09"], # UK
+    
+    "+1 First Digit" : ["2", "3", "4", "5", "6", "7", "8", "9"], # USA
+    "+1 Second Digit": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+    
+    "+49 First Two Digits": ["15", "16", "17"], # Germany
+    
+    "+33 First Two Digits": ["06", "07"], # French
+}
+
+# check all account fields before insertion to validate via rules
 class Contents_Checker:
     def __init__(self, email, username, password, phone_number, country):
         self.email = email
@@ -47,18 +65,12 @@ class Contents_Checker:
             return False, "Password must contain a special character (!@#$%^&*)"
         return True, "Password is valid"
 
+    # check if a phone number has been given
     def Check_Phone_Number_Contents(self):
         if not self.phone_number:
             return True, "No phone number entered"
 
         clean_phone_number = self.phone_number.replace("-", "").replace("(", "").replace(")", "")
-
-        country_codes = {
-            "United Kingdom": "+44",
-            "United States": "+1",
-            "Germany": "+49",
-            "France": "+33"
-        }
 
         expected_code = country_codes.get(self.country)
 
@@ -71,72 +83,16 @@ class Contents_Checker:
             return False, "Select a valid country"
         return True, "Country is valid"
 
-#
-# CHCECK IF ACCOUNTS EXISTS VIA EMAIL, USERNAME, PHONE NUMBER INDIVIDUALLY
-#
-
+# check if account exists via email, username
 class Account_Exists_Validator:
-    def __init__(self, email, username, phone_number):
+    def __init__(self, email, username):
         self.email = email
         self.username = username
-        self.phone_number = phone_number
 
     def Email_Found(self):
-        Email_Found = Accounts.query.filter_by(email=self.email).first()
-        if bool(Email_Found) == 1: print("email exists")
-        return bool(Email_Found)
+        user = Accounts.query.filter_by(email=self.email).first()
+        return user is not None
 
     def Username_Found(self):
-        Username_Found = Accounts.query.filter_by(username=self.username).first()
-        if bool(Username_Found) == 1: print("username exists")
-        return bool(Username_Found)
-
-    def Phone_number_found(self):
-        if not self.phone_number:
-            return False
-
-        Phone_number_found = Accounts.query.filter_by(phone_number=self.phone_number).first()
-        if bool(Phone_number_found) == 1: print("Phone number in use")
-        return bool(Phone_number_found)
-
-def AuthCode_check(auth_code):
-    if not auth_code:
-        return False, "auth code cannot hold an empty value"
-    
-    if not auth_code.isdigit():
-        return False, "auth code must be a whole 7 digit number"
-
-    if not len(auth_code) == 7:
-        return False, "auth code must be 7 digits long"
-
-    return True, "Valid code"
-
-# create auth
-def Create_Auth_Code(user_account):
-    # 1. Update existing auth row (or create if it doesn't exist)
-    if not user_account.authentication_data:
-        auth_row = Authentication(user_id=user_account.user_id)
-        db.session.add(auth_row)
-        db.session.commit()
-    else:
-        auth_row = user_account.authentication_data
-
-    # 2. Generate code and save to DB
-    auth_code_ = str(random.randint(1000000, 9999999))
-    auth_row.auth_code = generate_password_hash(auth_code_)
-    auth_row.auth_code_expires = datetime.now(timezone.utc) + timedelta(minutes=10)
-    db.session.commit()
-
-    # 3. Send email
-    try:
-        msg = Message(
-            subject="Rover Auth Code", 
-            sender=current_app.config['MAIL_USERNAME'], # Best practice to use config
-            recipients=[user_account.email]
-        )
-        msg.body = f"Welcome to Rover {user_account.username}!\n\nYour auth code is: {auth_code_}\n\nThis code expires in 10 minutes"
-        mail.send(msg)
-        return True, "Auth code sent to your email."
-    except Exception as e:
-        print(f"Email failed to send: {e}")
-        return False, "Failed to send email."
+        user = Accounts.query.filter_by(username=self.username).first()
+        return user is not None

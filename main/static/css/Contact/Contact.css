@@ -1,0 +1,65 @@
+body {
+    color: black;
+    font-family: 'Josefin Sans', sans-serif; /* Style all font on the page */
+}
+
+#Rover_Support {
+    text-align: center;
+}
+
+#Ticket_Create {
+    text-align: center;
+    margin-top: 50px;
+}
+
+#ticketType {
+    padding: 5px;
+}
+
+#nameTicket {
+    padding: 5px;
+}
+
+#ticketSubmit {
+    background-color: transparent;
+    border: 2px solid;
+    padding: 8px;
+    width: 200px;
+    font-size: 1rem;
+    border-radius: 3px;
+    transition: background-color 0.4s ease;
+    cursor: pointer;
+}
+
+#ticketSubmit:hover {
+    background-color: rgb(38, 98, 189);
+    border: 2px solid black;
+    color: white;
+}
+
+textarea {
+    width: 500px;
+    height: 300px;
+    border-radius: 3px;
+    padding: 5px;
+    font-size: 1rem;
+}
+
+#Home_redirect {
+    display: block;
+    color: black;
+    text-decoration: none;
+    margin-left: 10px;
+    margin-top: 20px;
+}
+
+#RepoRover {
+    display: block;
+    margin-top: 170px;
+    color: rgb(0, 0, 0);
+}
+
+#RepoRover a {
+    text-decoration: none;
+    color: rgb(0, 102, 255);
+}

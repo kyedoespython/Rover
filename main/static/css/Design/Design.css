@@ -1,0 +1,39 @@
+body {
+    color: black;
+    font-family: 'Josefin Sans', sans-serif;
+}
+
+#designs_h2 {
+    text-align: center;
+}
+
+/* Hide the default ugly input */
+.hidden-file-input {
+    display: none;
+}
+
+/* Style the label to look like a button */
+.custom-file-button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: transparent;
+    border: 2px solid black;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: 'Josefin Sans', sans-serif;
+    font-size: 1rem;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.custom-file-button:hover {
+    background-color: rgb(38, 98, 189);
+    border-color: rgb(38, 98, 189);
+    color: white;
+}
+
+/* Style the filename text */
+#fileNameDisplay {
+    margin-left: 10px;
+    font-size: 0.9rem;
+    color: gray;
+}
