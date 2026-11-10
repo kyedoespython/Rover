@@ -48,4 +48,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3)" || exit 1
 
-CMD ["sh", "-c", "flask db upgrade && /usr/local/bin/gunicorn -w 1 --threads 2 -b 0.0.0.0:8000 wsgi:app"]
+CMD ["sh", "-c", "flask db upgrade && python -m gunicorn -w 1 --threads 2 -b 0.0.0.0:8000 wsgi:app"]
