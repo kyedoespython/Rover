@@ -1,4 +1,5 @@
 from flask import Flask
+import atexit
 
 from .extensions import db
 from .extensions import migrate
@@ -11,6 +12,7 @@ from .extensions import limiter
 # blueprints
 from .blueprints.auth import auth_bp
 from .blueprints.home import home_bp
+from .blueprints.Integrations.Ollama import ollama_bp
 
 # import config map, prod config
 from config import CONFIG_MAP, ProductionConfig
@@ -59,6 +61,7 @@ def create_app(env: str | None = None):
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(home_bp)
+    app.register_blueprint(ollama_bp)
 
     # login manager section (specific page locks)
     login_manager.init_app(app) # initialise
@@ -73,6 +76,35 @@ def create_app(env: str | None = None):
 
     mail.init_app(app) # flask mail initialisation
     sess.init_app(app) # redis initialisation
+
+    if not app.testing and app.config.get("AGENT_HISTORY_CLEANUP_ENABLED", True):
+        from apscheduler.schedulers.background import BackgroundScheduler
+
+        from main.services.agent_history_cleanup import cleanup_expired_agent_history
+
+        def cleanup_agent_history_job():
+            with app.app_context():
+                deleted_count = cleanup_expired_agent_history()
+                if deleted_count:
+                    app.logger.info(
+                        "Expired %s Triple Rover chat histories.",
+                        deleted_count,
+                    )
+
+        scheduler = BackgroundScheduler(timezone="UTC", daemon=True)
+        scheduler.add_job(
+            cleanup_agent_history_job,
+            trigger="cron",
+            hour=3,
+            minute=0,
+            id="rover_agent_history_cleanup",
+            replace_existing=True,
+            coalesce=True,
+            max_instances=1,
+        )
+        scheduler.start()
+        app.extensions["rover_agent_history_scheduler"] = scheduler
+        atexit.register(scheduler.shutdown, wait=False)
 
     # register the blueprints for usage
     return app

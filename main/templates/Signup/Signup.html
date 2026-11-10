@@ -1,61 +1,158 @@
 {% extends "base.html" %}
 
 {% block title %}
-    <title>Sign Up</title>
+    <title>Rover Sign Up</title>
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma/bulma.min.css') }}">
 {% endblock %}
 
 {% block content %}
 
-    <a href="{{ url_for('home.Rover_Home_Page') }}">
-        <button>Home</button>
-    </a>
-
-    <h2>Sign Up</h2>
-
-    <!-- Flash Message -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="flash-messages">
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
-
-    <form action="{{ url_for('auth.Handle_Signup') }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> <!-- Form uses csrf form protection token -->
-        
-        <div>
-            <input type="email" id="email" name="email" placeholder="Enter your email" required>
-        </div>
-
-        <div>
-            <input type="text" id="username" name="username" placeholder="Enter your username" required>
-        </div>
-
-        <div>
-            <input type="password" id="password" name="password" placeholder="Enter your password" required>
-        </div>
-
-        <div>
-            <input type="tel" id="telephone" name="telephone" placeholder="Enter your phone number">
-        </div>
-
-        <div>
-            <select name="country">
-                <option value="">Select a country</option>
-                <option value="United Kingdom">United Kingdom +44</option>
-                <option value="United States">United States +1</option>
-                <option value="Germany">Germany +49</option>
-                <option value="France">France +33</option>
-            </select>
-        </div>
-
-        <button type="submit">Sign Up</button>
-        <p>Already have an account? <a href="{{ url_for('auth.Login') }}">Login</a></p>
-    </form>
+<style>
+    .bg-image {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background-image: url("{{ url_for('static', filename='images/RoverBackground.jpg') }}");
+        background-color: #f2f2f2;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        z-index: 0;
+    }
+    .bg-overlay {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background-color: rgba(255, 255, 255, 0.7);
+        z-index: 1;
+        pointer-events: none;
+    }
     
+    .font-roboto, .font-roboto * {
+        font-family: 'Roboto Mono', monospace !important;
+    }
+
+    .font-roboto {
+        position: relative;
+        z-index: 2;
+    }
+
+    .input, .select select {
+        background-color: white !important;
+        color: black !important;
+        border: 1px solid #dbdbdb !important;
+        box-shadow: none !important;
+    }
+    .input::placeholder {
+        color: #999 !important;
+        opacity: 1;
+    }
+    .input:focus, .select select:focus {
+        border-color: black !important;
+        box-shadow: 0 0 0 0.125em rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .select:not(.is-multiple):not(.is-loading)::after {
+        border-color: black !important;
+    }
+
+    .hover_designNow {
+        transition: all 0.5s ease;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    }
+    .hover_designNow:hover {
+        background-color: rgb(4, 68, 206) !important;
+        color: white !important;
+    }
+</style>
+
+<div class="bg-image"></div>
+<div class="bg-overlay"></div>
+
+<div class="font-roboto" style="min-height: 100vh; width: 100%; display: flex; flex-direction: column;">
+    
+    <!-- Navigation -->
+    <nav class="top-nav p-4" style="display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+        <div style="display: flex; gap: 10px;">
+            <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Home</a>
+            <a href="{{ url_for('auth.Login') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Login</a>
+        </div>
+        <div>
+            <a href="{{ url_for('home.Contact') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Contact Support</a>
+        </div>
+    </nav>
+
+    <!-- Signup Form Section -->
+    <div style="flex: 1; display: flex; justify-content: center; align-items: center; padding: 1rem;">
+        
+        <!-- The Form Card -->
+        <div class="box" style="width: 100%; max-width: 450px; background-color: white; box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1); padding: 2rem;">
+            
+            <h1 class="title is-2 has-text-centered has-text-black mb-5">Sign Up</h1>
+
+            <form action="{{ url_for('auth.Handle_Signup') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="field">
+                    <label class="label has-text-black">Email</label>
+                    <div class="control">
+                        <input class="input" type="email" id="email" name="email" placeholder="********" required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label has-text-black">Username</label>
+                    <div class="control">
+                        <input class="input" type="text" id="username" name="username" placeholder="********" required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label has-text-black">Password</label>
+                    <div class="control">
+                        <input class="input" type="password" id="password" name="password" placeholder="********" required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label has-text-black">Phone Number <span class="has-text-grey-light">(Optional)</span></label>
+                    <div class="control">
+                        <input class="input" type="tel" id="telephone" name="telephone" placeholder="********">
+                    </div>
+                </div>
+
+                <div class="field mb-5">
+                    <label class="label has-text-black">Country</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select name="country" required>
+                                <option value="">Select a country</option>
+                                <option value="United Kingdom">United Kingdom +44</option>
+                                <option value="United States">United States +1</option>
+                                <option value="Germany">Germany +49</option>
+                                <option value="France">France +33</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="has-text-centered">
+                    <button type="submit" class="button is-black hover_designNow" style="padding: 0.75rem 3rem;">
+                        Sign Up
+                    </button>
+                </div>
+            </form>
+
+            <p class="has-text-centered mt-4 has-text-black">
+                Already have an account? <a href="{{ url_for('auth.Login') }}" style="color: rgb(4, 68, 206); font-weight: bold;">Login</a>
+            </p>
+        </div>
+        
+    </div>
+</div>
+
 {% endblock %}

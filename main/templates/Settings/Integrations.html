@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}
+    <title>Rover Integrations</title>
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma/bulma.min.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{{ url_for('static', filename='scripts/Integrations/Settings.js') }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<style>
+    #integrationsPage,
+    #integrationsPage * {
+        font-family: 'Roboto Mono', monospace !important;
+    }
+
+    #integrationsPage {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #integrationsPage .integrations-content {
+        width: min(calc(100% - 2rem), 680px);
+        margin: 2rem auto;
+        padding: clamp(1.25rem, 4vw, 2rem);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    }
+
+    #integrationsPage .current-model {
+        margin: 0 0 1.5rem;
+        padding: 0.85rem 1rem;
+        border: 1px solid #e5e5e5;
+        background: #fafafa;
+        color: #222;
+        font-size: 0.85rem;
+    }
+
+    #integrationsPage .input,
+    #integrationsPage .select select {
+        color: #111;
+        background: #fff;
+        border-color: #d5d5d5;
+        box-shadow: none;
+    }
+
+    #integrationsPage .input:focus,
+    #integrationsPage .select select:focus {
+        border-color: #111;
+        box-shadow: 0 0 0 0.125em rgba(0, 0, 0, 0.1);
+    }
+
+    #integrationsPage .integrations-status {
+        min-height: 1.4rem;
+        margin-top: 0.75rem;
+        font-size: 0.78rem;
+        color: #666;
+    }
+
+    #integrationsPage .integrations-status[data-state="error"] {
+        color: #b42318;
+    }
+
+    #integrationsPage .integrations-status[data-state="success"] {
+        color: #16803c;
+    }
+</style>
+
+<div id="integrationsPage">
+    <nav class="top-nav p-4" style="display: flex; justify-content: space-between; align-items: center;" aria-label="Main navigation">
+        <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6">Home</a>
+        <div style="display: flex; gap: 0.625rem;">
+            <a href="{{ url_for('home.Contact') }}" class="button is-black is-outlined is-size-6">Support</a>
+        </div>
+    </nav>
+
+    <section
+        class="integrations-content"
+        id="ollamaPreferences"
+        data-preferences-url="{{ url_for('Ollama.save_preferences') }}"
+        data-cloud-endpoint="{{ 'true' if cloud_endpoint else 'false' }}"
+        aria-labelledby="integrationsHeading"
+    >
+        <h1 class="title is-3 has-text-black" id="integrationsHeading">Integrations</h1>
+        <h2 class="title is-5 has-text-black">Ollama</h2>
+        <p class="current-model">
+            Current AI model: <strong id="currentOllamaModel">{{ current_model }}</strong>
+        </p>
+        <p class="has-text-grey mb-5">{{ status_message }}</p>
+
+        <form id="ollamaPreferencesForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="field">
+                <label class="label" for="ollamaModelSelect">AI model</label>
+                <div class="control select is-fullwidth">
+                    <select id="ollamaModelSelect" name="model" required>
+                        {% if current_model not in available_models %}
+                            <option value="{{ current_model }}" selected>{{ current_model }} (not currently available)</option>
+                        {% endif %}
+                        {% for model in available_models %}
+                            <option value="{{ model }}" {% if model == current_model %}selected{% endif %}>{{ model }}</option>
+                        {% else %}
+                            <option value="" disabled>No Ollama models available</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label" for="ollamaApiKeySelect">Ollama API key</label>
+                <div class="control select is-fullwidth">
+                    <select id="ollamaApiKeySelect" name="api_key_id" {% if cloud_endpoint %}required{% endif %}>
+                        <option value="" {% if cloud_endpoint %}disabled{% endif %}>
+                            {% if cloud_endpoint %}Select a saved API key (required for Ollama Cloud){% else %}No API key (local Ollama){% endif %}
+                        </option>
+                        {% for api_key in api_keys %}
+                            <option value="{{ api_key.api_key_id }}" {% if api_key.api_key_id == active_api_key_id %}selected{% endif %}>
+                                {{ api_key.key_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <p class="help">
+                    {% if cloud_endpoint %}
+                        Ollama Cloud requires an API key. Create or manage keys in the <a href="{{ url_for('auth.DesignDash') }}">design dashboard</a>.
+                    {% else %}
+                        Local Ollama does not require authentication. Saved Ollama keys are not sent to local or custom endpoints.
+                    {% endif %}
+                </p>
+            </div>
+
+            <button class="button is-black is-outlined is-size-6" id="saveOllamaPreferences" type="submit">Save integration settings</button>
+            <p class="integrations-status" id="ollamaPreferencesStatus" role="status" aria-live="polite"></p>
+        </form>
+    </section>
+</div>
+{% endblock %}

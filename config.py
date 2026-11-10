@@ -26,6 +26,14 @@ class Config:
     MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "True").lower() == "true"
     MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+    NOTE_STORAGE_DIR = os.environ.get("NOTE_STORAGE_DIR")
+    OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+    OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
+    OLLAMA_API_KEY_ENCRYPTION_KEY = os.environ.get("OLLAMA_API_KEY_ENCRYPTION_KEY")
+    AGENT_HISTORY_CLEANUP_ENABLED = os.environ.get(
+        "AGENT_HISTORY_CLEANUP_ENABLED",
+        "true",
+    ).lower() == "true"
 
 # local machine config
 class DevelopmentConfig(Config):
@@ -36,7 +44,7 @@ class DevelopmentConfig(Config):
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-insecure-secret")
 
     # Get the postgreSQL database link with no fallback
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URI")
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
 
     # Get the redis url, fallback uses localhost, dev uses same fallback
     REDIS_URL = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")
@@ -66,7 +74,7 @@ class ProductionConfig(Config):
     def load_required(cls):
         # fetch required values
         secret = os.environ.get("SECRET_KEY")
-        db_uri = os.environ.get("DATABASE_URI")
+        db_uri = os.environ.get("DATABASE_URL")
         redis_url = os.environ.get("REDIS_URL")
 
         if not secret or len(secret) < 32:
@@ -76,7 +84,7 @@ class ProductionConfig(Config):
             )
 
         if not db_uri:
-            raise RuntimeError("DATABASE_URI env variable is required")
+            raise RuntimeError("DATABASE_URL env variable is required")
         if not redis_url:
             raise RuntimeError("REDIS_URL env variable is required")
 

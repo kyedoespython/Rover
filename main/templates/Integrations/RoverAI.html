@@ -1,0 +1,79 @@
+<aside
+    class="ollama-drawer is-minimized"
+    id="ollamaDrawer"
+    data-status-url="{{ url_for('Ollama.status') }}"
+    data-chat-url="{{ url_for('Ollama.chat') }}"
+    data-session-url="{{ url_for('Ollama.get_chat_session') }}"
+    data-end-session-url="{{ url_for('Ollama.end_chat_session') }}"
+    data-chatbot-settings-url="{{ url_for('Ollama.save_chatbot_settings') }}"
+    data-permissions-url="{{ url_for('Ollama.save_chatbot_permissions') }}"
+    data-verified="{{ 'true' if current_user.authentication_data and current_user.authentication_data.authenticated else 'false' }}"
+    aria-label="Rover AI assistant"
+>
+    <div class="ollama-mode-section">
+        <label for="roverModeSelect">Rover mode</label>
+        <select
+            id="roverModeSelect"
+            class="ollama-mode-select"
+            data-single-url="{{ url_for('auth.DesignDash') }}"
+            data-triple-url="{{ url_for('auth.AgentsDash') }}"
+            aria-label="Rover mode"
+        >
+            <option value="single" selected>Single Rover Mode</option>
+            <option value="triple">Triple Rover Mode</option>
+        </select>
+    </div>
+    <div class="ollama-resize-handle" id="ollamaResizeHandle" role="separator" aria-orientation="vertical" aria-label="Resize assistant panel"></div>
+    <header class="ollama-drawer-header" id="ollamaDrawerDragHandle">
+        <div>
+            <h2 class="ollama-assistant-title" id="ollamaChatbotName">Rover AI</h2>
+            <p class="ollama-assistant-model">Model: <span id="ollamaModelName">Checking...</span></p>
+        </div>
+        <div class="ollama-drawer-controls">
+            <button class="ollama-drawer-control ollama-end-session" id="ollamaEndSession" type="button" aria-label="End chat session" title="End session and delete its history">×</button>
+            <button class="ollama-drawer-control" id="ollamaMinimize" type="button" aria-label="Minimize assistant">−</button>
+        </div>
+    </header>
+    <details class="ollama-drawer-settings">
+        <summary>Chatbot settings and computer permissions</summary>
+        <form id="ollamaChatbotSettingsForm">
+            <label for="ollamaChatbotNameInput">Chatbot name</label>
+            <input id="ollamaChatbotNameInput" name="name" type="text" maxlength="64" value="Rover AI" required>
+            <label for="ollamaChatbotModelInput">Ollama model</label>
+            <input id="ollamaChatbotModelInput" name="model" type="text" maxlength="128" placeholder="e.g. llama3.2" required>
+            <button id="ollamaSaveChatbotSettings" type="submit">Save chatbot settings</button>
+        </form>
+        <form id="ollamaPermissionsForm">
+            <label><input id="ollamaAllowFolderRead" type="checkbox">Allow reading files from a folder I select</label>
+            <label><input id="ollamaAllowFolderWrite" type="checkbox">Allow creating or editing files in that folder</label>
+            <button id="ollamaChooseFolder" type="button">Choose folder</button>
+            <p class="ollama-folder-name" id="ollamaFolderName">No folder selected for this page.</p>
+            <div class="ollama-folder-actions">
+                <label for="ollamaFileName">Markdown file (auto-loads into your draft)
+                    <input id="ollamaFileName" type="text" maxlength="128" placeholder="notes.md" autocomplete="off">
+                </label>
+            </div>
+            <button id="ollamaWriteFile" type="button">Save latest AI reply to file</button>
+        </form>
+        <p class="ollama-settings-status" id="ollamaSettingsStatus" role="status" aria-live="polite"></p>
+    </details>
+    <div class="ollama-assistant-status" id="ollamaAssistantStatus" data-state="checking" role="status" aria-live="polite">
+        <span class="ollama-status-dot" aria-hidden="true"></span>
+        <span id="ollamaStatusText">Checking model status...</span>
+    </div>
+    <div class="ollama-chat-messages" id="ollamaChatMessages" role="log" aria-live="polite" aria-label="Chat messages">
+        <p class="ollama-chat-empty" id="ollamaChatEmpty">
+            {% if current_user.authentication_data and current_user.authentication_data.authenticated %}
+                Start a Rover AI session to chat.
+            {% else %}
+                Verify your account to enable Rover AI chat.
+            {% endif %}
+        </p>
+    </div>
+    <button class="ollama-new-session" id="ollamaNewSession" type="button" hidden>Start a new session</button>
+    <form class="ollama-chat-form" id="ollamaChatForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <textarea class="ollama-chat-input" id="ollamaChatInput" rows="2" maxlength="20000" placeholder="Message Rover AI..." aria-label="Message Rover AI" {% if not current_user.authentication_data or not current_user.authentication_data.authenticated %}disabled{% endif %} required></textarea>
+        <button class="ollama-chat-send" id="ollamaChatSend" type="submit" {% if not current_user.authentication_data or not current_user.authentication_data.authenticated %}disabled{% endif %}>Send</button>
+    </form>
+</aside>

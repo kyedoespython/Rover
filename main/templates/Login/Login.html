@@ -1,40 +1,117 @@
 {% extends "base.html" %}
 
 {% block title %}
-    <title>Login</title>
+    <title>Rover Login</title>
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma/bulma.min.css') }}">
 {% endblock %}
 
 {% block content %}
 
-    <h2>Login</h2>
+<style>
+    .bg-image {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background-image: url("{{ url_for('static', filename='images/RoverBackground.jpg') }}");
+        background-color: #f2f2f2;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        z-index: 0;
+    }
+    .bg-overlay {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background-color: rgba(255, 255, 255, 0.7);
+        z-index: 1;
+        pointer-events: none;
+    }
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="flash-messages">
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        {{ message }}
+    .font-roboto, .font-roboto * {
+        font-family: 'Roboto Mono', monospace !important;
+    }
+
+    .font-roboto {
+        position: relative;
+        z-index: 2;
+    }
+
+    .input {
+        background-color: white !important;
+        color: black !important;
+        border: 1px solid #dbdbdb !important;
+        box-shadow: none !important;
+    }
+    .input::placeholder {
+        color: #999 !important;
+        opacity: 1;
+    }
+    .input:focus {
+        border-color: black !important;
+        box-shadow: 0 0 0 0.125em rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .hover_designNow {
+        transition: all 0.5s ease;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    }
+    .hover_designNow:hover {
+        background-color: rgb(4, 68, 206) !important;
+        color: white !important;
+    }
+</style>
+
+<div class="bg-image"></div>
+<div class="bg-overlay"></div>
+
+<div class="font-roboto" style="min-height: 100vh; width: 100%; display: flex; flex-direction: column;">
+    <nav class="top-nav p-4" style="display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+        <div style="display: flex; gap: 10px;">
+            <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Home</a>
+            <a href="{{ url_for('auth.Signup') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Sign Up</a>
+        </div>
+        <div>
+            <a href="{{ url_for('home.Contact') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Contact Support</a>
+        </div>
+    </nav>
+
+    <div style="flex: 1; display: flex; justify-content: center; align-items: center; padding: 1rem;">
+        <div class="box" style="width: 100%; max-width: 450px; background-color: white; box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1); padding: 2rem;">
+            <h1 class="title is-2 has-text-centered has-text-black mb-5">Login</h1>
+
+            <form method="POST" action="{{ url_for('auth.Handle_Login') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="field">
+                    <label class="label has-text-black" for="username">Username</label>
+                    <div class="control">
+                        <input class="input" type="text" id="username" name="username" placeholder="********" required>
                     </div>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
+                </div>
 
-    <!-- FIXED: Action points to Handle_Login, not Login -->
-    <form method="POST" action="{{ url_for('auth.Handle_Login') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> <!-- Form uses csrf form protection token -->
+                <div class="field mb-5">
+                    <label class="label has-text-black" for="password">Password</label>
+                    <div class="control">
+                        <input class="input" type="password" id="password" name="password" placeholder="********" required>
+                    </div>
+                </div>
 
-        <div>
-            <input type="text" id="username" name="username" placeholder="Enter your username" required>
+                <div class="has-text-centered">
+                    <button type="submit" class="button is-black hover_designNow" style="padding: 0.75rem 3rem;">
+                        Login
+                    </button>
+                </div>
+            </form>
+
+            <p class="has-text-centered mt-4 has-text-black">
+                Don't have an account? <a href="{{ url_for('auth.Signup') }}" style="color: rgb(4, 68, 206); font-weight: bold;">Sign Up</a>
+            </p>
         </div>
-        
-        <div>
-            <input type="password" id="password" name="password" placeholder="Enter your password" required>
-        </div>
-
-        <button type="submit">Login</button>
-
-    </form>
+    </div>
+</div>
 
 {% endblock %}

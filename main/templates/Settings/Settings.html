@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}
+    <title>Rover Settings</title>
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma/bulma.min.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<style>
+    body, body * {
+        font-family: 'Roboto Mono', monospace !important;
+    }
+
+    body {
+        background-image: url("{{ url_for('static', filename='images/RoverBackground.jpg') }}");
+        background-color: #f2f2f2;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-color: rgba(255, 255, 255, 0.7);
+        z-index: -1;
+    }
+
+    #settingsPage {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #settingsPage .settings-header {
+        margin: 0.75rem 1rem 0;
+    }
+
+    #settingsPage .settings-actions {
+        display: flex;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+</style>
+
+<div id="settingsPage">
+    <nav class="top-nav p-4" style="display: flex; justify-content: space-between; align-items: center;">
+        <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Home</a>
+        <div style="display: flex; gap: 10px;">
+            <a href="{{ url_for('auth.Notes_Page') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Note</a>
+            <a href="{{ url_for('home.Contact') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Support</a>
+        </div>
+    </nav>
+
+    <h1 class="title is-2 has-text-centered has-text-black settings-header">Settings</h1>
+    <div class="settings-actions">
+        <a href="{{ url_for('Ollama.integration_settings') }}" class="button is-black is-outlined is-size-6">Integrations</a>
+    </div>
+</div>
+
+{% endblock %}

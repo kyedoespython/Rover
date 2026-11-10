@@ -4,12 +4,454 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% block title %}{% endblock %}
+
     {% block extra_css %}{% endblock %}
+
     {% block extra_js %}{% endblock %}
+
+    <script src="{{ url_for('static', filename='scripts/navigation.js') }}" defer></script>
+
+    <style>
+        html, body {
+            height: 100%;
+            overflow: hidden !important;
+        }
+
+        body {
+            margin: 0;
+            background-image: url("{{ url_for('static', filename='images/RoverBackground.jpg') }}");
+            background-color: #f2f2f2;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-color: rgba(255, 255, 255, 0.7);
+            z-index: -1;
+        }
+
+        main {
+            height: 100%;
+            min-height: 0 !important;
+            overflow: hidden;
+        }
+
+        .flash-message-stack {
+            position: fixed;
+            top: 5.5rem;
+            right: 1.5rem;
+            z-index: 1000;
+            display: grid;
+            gap: 0.75rem;
+            width: min(24rem, calc(100vw - 2rem));
+            pointer-events: none;
+        }
+
+        .flash-message {
+            padding: 0.9rem 1rem;
+            border-left: 3px solid #b42318;
+            border-radius: 4px;
+            background: #fff;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+            color: #b42318;
+            font-family: "Segoe UI", Arial, sans-serif;
+            font-size: 0.9rem;
+            line-height: 1.45;
+        }
+
+        .flash-message-success {
+            border-left-color: #16803c;
+            color: #16803c;
+        }
+
+        .ollama-drawer {
+            --ollama-drawer-width: 380px;
+            position: fixed;
+            z-index: 1200;
+            top: auto;
+            right: 0;
+            bottom: 7vh;
+            width: min(var(--ollama-drawer-width), calc(100vw - 24px));
+            height: min(78dvh, 680px);
+            display: flex;
+            flex-direction: column;
+            border: 2px solid #111;
+            border-radius: 0;
+            background: rgba(255, 255, 255, 0.97);
+            box-shadow: -8px 0 28px rgba(0, 0, 0, 0.14);
+            transform: translateX(0);
+            transition: transform 0.22s ease;
+        }
+
+        .ollama-drawer.is-minimized {
+            transform: translateX(100%);
+        }
+
+        .ollama-mode-section {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid #e5e5e5;
+            background: rgba(255, 255, 255, 0.97);
+            color: #111;
+            font: 700 0.7rem "Roboto Mono", monospace;
+        }
+
+        .ollama-mode-select {
+            min-width: 0;
+            min-height: 2rem;
+            padding: 0.3rem 0.5rem;
+            border: 1px solid #111;
+            border-radius: 3px;
+            background: #fff;
+            color: #111;
+            font: 0.68rem "Roboto Mono", monospace;
+        }
+
+        .ollama-drawer-header {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 1rem 1rem 1rem 1.5rem;
+            border-bottom: 1px solid #e5e5e5;
+            cursor: grab;
+            touch-action: none;
+            user-select: none;
+        }
+
+        .ollama-drawer-header:active {
+            cursor: grabbing;
+        }
+
+        .ollama-assistant-title {
+            margin: 0;
+            color: #111;
+            font: 700 0.95rem "Roboto Mono", monospace;
+        }
+
+        .ollama-assistant-model {
+            margin: 0.25rem 0 0;
+            color: #666;
+            font: 0.72rem "Roboto Mono", monospace;
+        }
+
+        .ollama-drawer-controls {
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .ollama-drawer-control {
+            min-width: 2rem;
+            min-height: 2rem;
+            border: 1px solid #d5d5d5;
+            border-radius: 4px;
+            background: #fff;
+            color: #111;
+            cursor: pointer;
+        }
+
+        .ollama-drawer-control:hover {
+            border-color: #111;
+            background: #f5f5f5;
+        }
+
+        .ollama-end-session {
+            border-color: #b42318;
+            color: #b42318;
+            font-weight: 700;
+        }
+
+        .ollama-end-session:hover {
+            border-color: #b42318;
+            background: #b42318;
+            color: #fff;
+        }
+
+        .ollama-drawer-settings {
+            flex: 0 0 auto;
+            max-height: 32%;
+            overflow-y: auto;
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid #eee;
+            color: #222;
+            font: 0.7rem "Roboto Mono", monospace;
+        }
+
+        .ollama-drawer-settings,
+        .ollama-drawer-settings * {
+            box-sizing: border-box;
+        }
+
+        .ollama-drawer-settings summary {
+            color: #222;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .ollama-drawer-settings label {
+            display: block;
+            min-width: 0;
+            margin-top: 0.45rem;
+            color: #222;
+        }
+
+        .ollama-drawer-settings input[type="text"] {
+            display: block;
+            width: 100%;
+            min-width: 0;
+            min-height: 2rem;
+            margin-top: 0.2rem;
+            padding: 0.35rem 0.5rem;
+            border: 1px solid #d5d5d5;
+            border-radius: 4px;
+            color: #111;
+            background: white;
+            font: inherit;
+        }
+
+        .ollama-drawer-settings input[type="checkbox"] {
+            margin-right: 0.4rem;
+        }
+
+        .ollama-drawer-settings button {
+            min-height: 1.9rem;
+            margin-top: 0.5rem;
+            padding: 0.3rem 0.55rem;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #fff;
+            color: #222;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .ollama-folder-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.15rem;
+            margin-top: 0.55rem;
+        }
+
+        .ollama-folder-actions label {
+            min-width: 0;
+            margin: 0;
+        }
+
+        .ollama-folder-actions button {
+            align-self: flex-end;
+            min-width: 3.5rem;
+            white-space: nowrap;
+        }
+
+        .ollama-settings-status,
+        .ollama-folder-name {
+            margin: 0.4rem 0 0;
+            color: #666;
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+        }
+
+        .ollama-new-session {
+            display: block;
+            margin: 0.5rem auto;
+            padding: 0.4rem 0.65rem;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: white;
+            color: #222;
+            font: 0.72rem "Roboto Mono", monospace;
+            cursor: pointer;
+        }
+
+        .ollama-new-session[hidden] {
+            display: none;
+        }
+
+        .ollama-assistant-status {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #eee;
+            color: #666;
+            font: 0.72rem "Roboto Mono", monospace;
+        }
+
+        .ollama-status-dot {
+            width: 0.55rem;
+            height: 0.55rem;
+            flex: 0 0 auto;
+            border-radius: 50%;
+            background: #999;
+        }
+
+        .ollama-assistant-status[data-state="ready"] .ollama-status-dot {
+            background: #16803c;
+        }
+
+        .ollama-assistant-status[data-state="busy"] .ollama-status-dot {
+            background: #d08b00;
+            animation: ollama-pulse 1s infinite alternate;
+        }
+
+        .ollama-assistant-status[data-state="offline"],
+        .ollama-assistant-status[data-state="error"] {
+            color: #b42318;
+        }
+
+        .ollama-assistant-status[data-state="offline"] .ollama-status-dot,
+        .ollama-assistant-status[data-state="error"] .ollama-status-dot {
+            background: #b42318;
+        }
+
+        @keyframes ollama-pulse {
+            to { opacity: 0.35; }
+        }
+
+        .ollama-chat-messages {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .ollama-chat-message {
+            max-width: 92%;
+            padding: 0.7rem 0.8rem;
+            border: 1px solid #e4e4e4;
+            border-radius: 6px;
+            background: #fff;
+            color: #222;
+            font: 0.78rem/1.55 "Roboto Mono", monospace;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .ollama-chat-message[data-role="user"] {
+            align-self: flex-end;
+            border-color: #111;
+            background: #111;
+            color: #fff;
+        }
+
+        .ollama-chat-message[data-role="assistant"] {
+            align-self: flex-start;
+        }
+
+        .ollama-chat-empty {
+            margin: auto;
+            color: #777;
+            font: 0.75rem/1.5 "Roboto Mono", monospace;
+            text-align: center;
+        }
+
+        .ollama-chat-form {
+            flex: 0 0 auto;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: end;
+            gap: 0.5rem;
+            padding: 0.85rem;
+            border-top: 1px solid #e5e5e5;
+        }
+
+        .ollama-chat-input {
+            width: 100%;
+            min-height: 2.75rem;
+            max-height: 8rem;
+            resize: vertical;
+            padding: 0.65rem;
+            border: 1px solid #d5d5d5;
+            border-radius: 4px;
+            background: #fff;
+            color: #111;
+            font: 0.75rem/1.4 "Roboto Mono", monospace;
+        }
+
+        .ollama-chat-input:focus {
+            border-color: #111;
+            outline: 2px solid rgba(0, 0, 0, 0.12);
+        }
+
+        .ollama-chat-send {
+            min-height: 2.75rem;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #111;
+            border-radius: 4px;
+            background: #111;
+            color: #fff;
+            font: 0.72rem "Roboto Mono", monospace;
+            cursor: pointer;
+        }
+
+        .ollama-chat-send:disabled {
+            opacity: 0.5;
+            cursor: wait;
+        }
+
+        .ollama-resize-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 8px;
+            cursor: ew-resize;
+            touch-action: none;
+        }
+
+        @media (max-width: 600px) {
+            .flash-message-stack {
+                top: 5rem;
+                right: 1rem;
+                width: calc(100vw - 2rem);
+            }
+
+            .ollama-drawer {
+                --ollama-drawer-width: min(100vw, 390px);
+                bottom: 0;
+                height: min(86dvh, 720px);
+            }
+        }
+    </style>
 </head>
-<body>
-    {% block content %}
-    
-    {% endblock %}
+
+<body class="has-background-white">
+
+    <main class="is-flex is-flex-direction-column" style="min-height: 100vh;">
+        <div class="is-flex-grow-1">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-message-stack" aria-live="polite">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-message-{{ category }}" role="{% if category == 'error' %}alert{% else %}status{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    <script>
+        document.querySelectorAll(".flash-message").forEach((message) => {
+            window.setTimeout(() => message.remove(), 30_000);
+        });
+    </script>
 </body>
 </html>

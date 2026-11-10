@@ -1,22 +1,319 @@
 {% extends "base.html" %}
 
-{% block title %} <title>Rover Design</title> {% endblock %}
+{% block title %}
+    <title>Rover Design Dashboard</title>
+{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/Design/Design.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma/bulma.min.css') }}">
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='scripts/Design/Design.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/Design/Design.js') }}?v=3" defer></script>
+    <script src="{{ url_for('static', filename='scripts/Integrations/Ollama.js') }}?v=8" defer></script>
 {% endblock %}
 
 {% block content %}
+<style>
+    #designPage,
+    #designPage * {
+        font-family: 'Roboto Mono', monospace !important;
+    }
 
-<h2 id="designs_h2">Design Dashboard</h2>
+    #designPage {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
 
-<h3>Schema Layout</h3>
+    #designPage .design-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
 
-<input type="text" id="schema_name" placeholder="schema name">
-<button>Add table</button>
+    #designPage .design-nav-group {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+    }
 
+    #designPage .design-heading {
+        margin: 0.5rem 1rem 0;
+        text-align: center;
+    }
+
+    #designPage .design-layout {
+        flex: 1;
+        min-height: 0;
+        margin-top: clamp(5rem, 17vh, 11rem);
+        padding: 0 1.5rem 2rem;
+    }
+
+    #designPage .design-side-nav {
+        width: min(100%, 220px);
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+        padding: 1rem;
+        border: 2px solid #111;
+        background: rgba(255, 255, 255, 0.78);
+    }
+
+    #designPage .design-side-button {
+        justify-content: flex-start;
+        border-color: #111;
+        color: #111;
+        background: transparent;
+        transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    #designPage .design-side-button:hover,
+    #designPage .design-side-button:focus-visible {
+        border-color: #111;
+        background: white;
+        color: #111;
+    }
+
+    #designPage .api-key-backdrop[hidden] {
+        display: none !important;
+    }
+
+    #designPage .api-key-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1100;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.48);
+    }
+
+    #designPage .api-key-dialog {
+        width: min(100%, 480px);
+        max-height: min(90vh, 760px);
+        overflow-y: auto;
+        padding: clamp(1.25rem, 4vw, 2rem);
+        border: 1px solid #dedede;
+        border-radius: 6px;
+        background: #fff;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.24);
+    }
+
+    #designPage .api-key-dialog-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    #designPage .api-key-dialog-heading .title {
+        margin-bottom: 0.35rem;
+    }
+
+    #designPage .api-key-dialog-description,
+    #designPage .api-key-row-meta {
+        color: #666;
+        font-size: 0.78rem;
+        line-height: 1.5;
+    }
+
+    #designPage .api-key-dialog .label {
+        color: #000;
+    }
+
+    #designPage .api-key-dialog .input,
+    #designPage .api-key-dialog .select select {
+        color: #111;
+        background: #fff;
+        border-color: #d5d5d5;
+        box-shadow: none;
+    }
+
+    #designPage .api-key-dialog .input:focus,
+    #designPage .api-key-dialog .select select:focus {
+        border-color: #111;
+        box-shadow: 0 0 0 0.125em rgba(0, 0, 0, 0.1);
+    }
+
+    #designPage .api-key-dialog .select:not(.is-multiple):not(.is-loading)::after {
+        border-color: #111;
+    }
+
+    #designPage .api-key-close {
+        flex: 0 0 auto;
+        border: 0;
+        background: transparent;
+        color: #333;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    #designPage .api-key-submit {
+        border-color: #111;
+        background: #111;
+        color: white;
+    }
+
+    #designPage .api-key-submit:hover {
+        border-color: #111;
+        background: white;
+        color: #111;
+    }
+
+    #designPage .api-key-status {
+        min-height: 1.5rem;
+        margin-top: 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    #designPage .api-key-status[data-state="error"] {
+        color: #b42318;
+    }
+
+    #designPage .api-key-status[data-state="success"] {
+        color: #16803c;
+    }
+
+    #designPage .saved-api-keys {
+        margin-top: 1.5rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid #e5e5e5;
+    }
+
+    #designPage .saved-api-key {
+        padding: 0.75rem 0;
+        border-top: 1px solid #ededed;
+    }
+
+    #designPage .saved-api-key-name {
+        margin: 0;
+        color: #111;
+        font-size: 0.9rem;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+    }
+
+    #designPage .saved-api-key-type {
+        margin: 0.2rem 0 0;
+        color: #444;
+        font-size: 0.75rem;
+    }
+
+    @media (max-width: 600px) {
+        #designPage .design-nav {
+            align-items: flex-start;
+        }
+
+        #designPage .design-nav-group {
+            flex-wrap: wrap;
+        }
+
+        #designPage .design-layout {
+            margin-top: clamp(3rem, 10vh, 6rem);
+            padding-right: 1rem;
+            padding-left: 1rem;
+        }
+    }
+</style>
+
+<div id="designPage">
+    <nav class="top-nav design-nav p-4" aria-label="Main navigation">
+        <div class="design-nav-group">
+            <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6">Home</a>
+            <a href="{{ url_for('auth.Notes_Page') }}" class="button is-black is-outlined is-size-6">Notes</a>
+        </div>
+        <a href="{{ url_for('home.Contact') }}" class="button is-black is-outlined is-size-6">Support</a>
+    </nav>
+
+    <h1 class="title is-2 has-text-black design-heading" id="dashboardHeading">Your designs</h1>
+
+    <div class="design-layout">
+        <nav class="design-side-nav" aria-label="Design sections">
+            <button class="button is-outlined design-side-button" id="openApiKeyDialog" type="button" aria-haspopup="dialog" aria-controls="apiKeyDialog">API Key</button>
+            <button class="button is-outlined design-side-button" type="button">Schema</button>
+            <button class="button is-outlined design-side-button" type="button">Relationships</button>
+            <button class="button is-outlined design-side-button" type="button">Craft</button>
+            <button class="button is-outlined design-side-button" type="button">Demo</button>
+            <button
+                class="button is-outlined design-side-button rover-ai-nav-button"
+                id="ollamaDrawerToggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="ollamaDrawer"
+            >Rover AI</button>
+        </nav>
+    </div>
+
+    <div class="api-key-backdrop" id="apiKeyDialog" hidden>
+        <section class="api-key-dialog" role="dialog" aria-modal="true" aria-labelledby="apiKeyDialogTitle" aria-describedby="apiKeyDialogDescription" tabindex="-1">
+            <div class="api-key-dialog-heading">
+                <div>
+                    <h2 class="title is-4 has-text-black" id="apiKeyDialogTitle">Add an API key</h2>
+                    <p class="api-key-dialog-description" id="apiKeyDialogDescription">Save a key label and provider. The secret is encrypted and never shown again.</p>
+                </div>
+                <button class="api-key-close" id="closeApiKeyDialog" type="button" aria-label="Close dialog">&times;</button>
+            </div>
+
+            <form id="apiKeyForm" action="{{ url_for('auth.Save_User_Api_Key') }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="field">
+                    <label class="label" for="apiKeyName">Name</label>
+                    <div class="control">
+                        <input class="input" id="apiKeyName" name="name" type="text" maxlength="128" autocomplete="off" required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label" for="apiKeyType">API key type</label>
+                    <div class="control select is-fullwidth">
+                        <select id="apiKeyType" name="type" required>
+                            <option value="">Select API Key</option>
+                            <option value="ollama">Ollama API Key</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label" for="apiKeyValue">API key</label>
+                    <div class="control">
+                        <input class="input" id="apiKeyValue" name="api_key" type="password" maxlength="4096" autocomplete="new-password" spellcheck="false" required>
+                    </div>
+                </div>
+
+                <div class="field is-grouped is-justify-content-flex-end">
+                    <div class="control">
+                        <button class="button is-outlined" id="cancelApiKeyDialog" type="button">Cancel</button>
+                    </div>
+                    <div class="control">
+                        <button class="button api-key-submit" id="saveApiKey" type="submit">Save API key</button>
+                    </div>
+                </div>
+                <p class="api-key-status" id="apiKeyStatus" role="status" aria-live="polite"></p>
+            </form>
+
+            <section class="saved-api-keys" aria-labelledby="savedApiKeysHeading">
+                <h3 class="title is-6 has-text-black" id="savedApiKeysHeading">Saved API keys</h3>
+                <div id="savedApiKeysList">
+                    {% for api_key in api_keys %}
+                        <article class="saved-api-key">
+                            <p class="saved-api-key-name">{{ api_key.key_name }}</p>
+                            <p class="saved-api-key-type">
+                                {% if api_key.key_type == "ollama" %}Ollama API Key{% else %}{{ api_key.key_type }}{% endif %}
+                            </p>
+                            <p class="api-key-row-meta">Added {{ api_key.created_at.strftime("%Y-%m-%d") }}</p>
+                        </article>
+                    {% else %}
+                        <p class="api-key-dialog-description" id="noSavedApiKeys">No API keys saved.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </section>
+    </div>
+</div>
+{% include "Integrations/RoverAI.html" %}
 {% endblock %}

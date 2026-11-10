@@ -85,9 +85,10 @@ class Contents_Checker:
 
 # check if account exists via email, username
 class Account_Exists_Validator:
-    def __init__(self, email, username):
+    def __init__(self, email, username, phone_number=None):
         self.email = email
         self.username = username
+        self.phone_number = phone_number
 
     def Email_Found(self):
         user = Accounts.query.filter_by(email=self.email).first()
@@ -95,4 +96,10 @@ class Account_Exists_Validator:
 
     def Username_Found(self):
         user = Accounts.query.filter_by(username=self.username).first()
+        return user is not None
+
+    def Phone_number_Found(self):
+        if not self.phone_number:
+            return False
+        user = Accounts.query.filter_by(phone_number=self.phone_number).first()
         return user is not None

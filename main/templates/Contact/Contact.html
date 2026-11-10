@@ -1,58 +1,174 @@
 {% extends "base.html" %}
 
 {% block title %}
-    <title>Rover ~ Contact</title>
+    <title>Rover Contact</title>
 {% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Contact/Contact.css') }}">
-{% endblock %}
-
-{% block extra_js %}
-    <script src="{{ url_for('static', filename='scripts/Contact/Contact.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma/bulma.min.css') }}">
 {% endblock %}
 
 {% block content %}
 
-<a href="{{ url_for('home.Rover_Home_Page')}}" id="Home_redirect">
-    Home
-</a>
+<style>
+    body, body * {
+        font-family: 'Roboto Mono', monospace !important;
+    }
 
-<h2 id="Rover_Support">Rover Support</h2>
+    body {
+        background-image: url("{{ url_for('static', filename='images/RoverBackground.jpg') }}");
+        background-color: #f2f2f2;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
 
-<div class="report_a_bug">
-    <h3 id="report_h3">Want to report a bug?</h3>
-    <p>Email buchanankyle10@gmail.com directly or create a ticket below</p>
-</div>
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-color: rgba(255, 255, 255, 0.7);
+        z-index: -1;
+    }
 
-<div id="Ticket_Create">
-    <h3>Create a ticket</h3>
-    <form action="{{ url_for('home.Tickets') }}" method="post">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> <!-- Form uses csrf form protection token -->
+    #supportPage {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
 
-        <select id="ticketType">
-            <option value="">Select type</option>
-            <option value="bug">Found a bug</option>
-            <option value="recommendation">Recommendation</option>
-            <option value="question">Question</option>
-        </select>
+    #supportPage .support-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 0;
+        padding: 0 1rem 1rem;
+        transform: translateY(-8px);
+    }
 
-        <input id="nameTicket" type="text" name="ticketName" placeholder="name your ticket">
-        <br><br>
-        <textarea name="TicketContent" placeholder="Enter related information about your experience or your findings..."></textarea>
-        
-        <br>
+    #supportPage .support-title {
+        margin: 0 0 0.5rem;
+    }
 
-        <button id="ticketSubmit" type="submit">Submit your ticket</button>
+    #supportPage .support-card {
+        width: 100%;
+        max-width: 640px;
+        margin-top: 6rem;
+        padding: 1.5rem 2rem 1.25rem;
+        background: white;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
 
-    </form>
+    #supportPage .ticket-title,
+    #supportPage .field .label {
+        text-align: center;
+    }
 
-    <div id="RepoRover">
-        <p>More information about this site
-        <a href="https://github.com/kyedoespython/Rover.git" id="repoRedirect">
-        here</a></p>
+    #supportPage .input,
+    #supportPage .select select,
+    #supportPage .textarea {
+        background-color: white !important;
+        color: black !important;
+        border: 1px solid #dbdbdb !important;
+        box-shadow: none !important;
+    }
+
+    #supportPage .input:focus,
+    #supportPage .select select:focus,
+    #supportPage .textarea:focus {
+        border-color: black !important;
+        box-shadow: 0 0 0 0.125em rgba(0, 0, 0, 0.1) !important;
+    }
+
+    #supportPage .select:not(.is-multiple):not(.is-loading)::after {
+        border-color: black !important;
+    }
+
+    #supportPage .textarea {
+        min-height: 120px;
+        max-height: 160px;
+        resize: none;
+    }
+
+    #supportPage .support-link {
+        color: rgb(4, 68, 206);
+    }
+
+    #supportPage .hover_designNow {
+        transition: all 0.5s ease;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    #supportPage .hover_designNow:hover {
+        background-color: white;
+        color: black;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    @media (max-width: 600px) {
+        #supportPage .support-content {
+            padding: 0 0.75rem 0.75rem;
+        }
+
+        #supportPage .support-card {
+            padding: 1.25rem 1.25rem 1rem;
+        }
+    }
+</style>
+
+<div id="supportPage">
+    <nav class="top-nav p-4" style="display: flex; justify-content: space-between; align-items: center;" aria-label="Main navigation">
+        <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Home</a>
+        <a href="{{ url_for('auth.Settings') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Settings</a>
+    </nav>
+
+    <div class="support-content">
+        <h1 class="title is-2 has-text-centered has-text-black support-title">Rover Support</h1>
+        <section class="box support-card">
+            <h2 class="title is-4 has-text-centered has-text-black ticket-title mb-4">Create a ticket</h2>
+            <form action="{{ url_for('home.Tickets') }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="field">
+                    <label class="label has-text-black" for="ticketType">Ticket type</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select id="ticketType" name="ticketType" required>
+                                <option value="">Select a ticket type</option>
+                                <option value="bug">Found a bug</option>
+                                <option value="recommendation">Recommendation</option>
+                                <option value="question">Question</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label has-text-black" for="nameTicket">Ticket name</label>
+                    <div class="control">
+                        <input class="input" id="nameTicket" type="text" name="ticketName" placeholder="Ticket name" required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label has-text-black" for="TicketContent">Description</label>
+                    <div class="control">
+                        <textarea class="textarea" id="TicketContent" name="TicketContent" placeholder="Describe the issue or suggestion" required></textarea>
+                    </div>
+                </div>
+
+                <div class="has-text-centered mt-5">
+                    <button class="button is-black is-size-6 hover_designNow" type="submit">Submit your ticket</button>
+                </div>
+            </form>
+
+            <p class="has-text-centered has-text-grey mt-5">
+                More information about this site
+                <a class="support-link" href="https://github.com/kyedoespython/Rover.git">here</a>
+            </p>
+        </section>
     </div>
-
 </div>
 
 {% endblock %}

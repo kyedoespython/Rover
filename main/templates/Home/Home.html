@@ -1,54 +1,94 @@
 {% extends "base.html" %}
 
 {% block title %}
-    <title>Rover ~ Local Assistant</title>
+    <title>Rover Home</title>
 {% endblock %}
 
 {% block extra_css %}
-    <!-- Home page regular CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Home/Home.css') }}">
-    
-    <!-- Bulma implementation -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='node_modules/bulma/css/bulma.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma/bulma.min.css') }}">
 {% endblock %}
 
 {% block extra_js %}
     <script src="{{ url_for('static', filename='scripts/Home/Home.js') }}"></script>
 {% endblock %}
 
+
 {% block content %}
 
-<nav class="top_nav">
-    
-    <div class="auth_links">
-        <a href="{{ url_for('auth.Signup') }}" class="Signup">Sign Up</a>
-        <a href="{{ url_for('auth.Login') }}" class="Login">Login</a>
-    </div>
-    
-    <a href="{{ url_for('home.Contact') }}" class="Contact">Contact Support</a>
+<style>
+    body, body * {
+        font-family: 'Roboto Mono', monospace !important;
+    }
 
+    html, body {
+    overflow: hidden !important;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    }
+
+    body {
+        background-image: url("{{ url_for('static', filename='images/RoverBackground.jpg') }}");
+        background-color: #f2f2f2;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+    }
+
+    /* Add a subtle white overlay so your text is still readable */
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(255, 255, 255, 0.7); /* 70% white overlay */
+        z-index: -1;
+    }
+</style>
+
+<!-- Top Navigation -->
+<nav class="top-nav p-4" style="display: flex; justify-content: space-between; align-items: center;">
+    <div style="display: flex; gap: 10px;">
+        {% if not (current_user.is_authenticated and current_user.authentication_data and current_user.authentication_data.authenticated) %}
+            <a href="{{ url_for('auth.Signup') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Sign Up</a>
+            <a href="{{ url_for('auth.Login') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Login</a>
+        {% endif %}
+    </div>
 </nav>
 
-<h2 class="Welcome_text">Welcome to Rover</h2>
-
-<section class="Rover_description">
-    <h3 class="What_is_Rover_text">What is Rover?</h3>
-    <ul class="Rover_description_list">
-        <li>Your personalised local assistant</li>
-        <li>Designed to run on your network</li>
-        <li>Can run multiple tasks simultaneously</li>
-        <li>Is easy to use and navigate the Control Menu</li>
-        <li>Can be used on a device such as a raspberry pi</li>
-        <li>Provided with open source software to use for setup</li>
-    </ul>
-</section>
-
-<!-- WRAPPER (We keep this here at the bottom) -->
-<div class="action_section">
+<!-- Main Content -->
+<div class="has-text-centered" style="margin-top: 15vh;">
+    
+    <h2 class="is-size-2 has-text-black mb-6 mb-6 pb-6" style="font-family: Roboto Mono">
+        Welcome to Rover
+    </h2>
 
     <a href="{{ url_for('auth.DesignDash')}}" class="Design_Preview_Button">
-        <button>Design Now</button>
+        <button class="button is-black is-size-5 hover_designNow mt-6" style="font-family: Roboto Mono">
+            Design Now
+        </button>
     </a>
+
+    <h3 class="is-size-4 has-text-grey mt-6" style="font-family: Roboto Mono">
+        AI powered integration's with ollama
+    </h3>
+
 </div>
+
+<!-- Button Hover Style -->
+<style>
+    .hover_designNow {
+        transition: all 0.5s ease;
+        /* 0,0,0 is black. 0.2 is 20% opacity (slight) */
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); 
+    }
+
+    .hover_designNow:hover {
+        background-color: rgb(255, 255, 255);
+        color: rgb(0, 0, 0);
+        /* Optional: Make the shadow a tiny bit stronger on hover */
+        box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.3); 
+    }
+</style>
 
 {% endblock %}
