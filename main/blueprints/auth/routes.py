@@ -290,7 +290,7 @@ def Handle_Login():
         # log the user in
         login_user(user)
         
-        flash(f"Glad to have you back {user}!", "success")
+        flash(f"Welcome to Rover {user.username}!", "success")
         
         # take the user to the design page
         return redirect(url_for("auth.DesignDash"))
