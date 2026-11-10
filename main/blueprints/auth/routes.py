@@ -10,7 +10,6 @@ from flask_login import login_user
 from flask_login import logout_user
 from flask_login import login_required
 
-from flask_mail import Message
 from flask import session
 
 # store passwords as hash via werkzeug
@@ -46,7 +45,6 @@ from sqlalchemy.exc import IntegrityError
 
 # main / extension imports
 from main.extensions import db
-from main.extensions import mail
 from main.extensions import limiter
 
 # This is the signup route for the signup page

@@ -3,7 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_session import Session
-from flask_mail import Mail
 
 # Flask_WTF, using for CSRF protection
 from flask_wtf.csrf import CSRFProtect
@@ -33,9 +32,6 @@ redis_client = redis.from_url(redis_url)
 
 # create a session instance with redis client arg
 sess = Session()
-
-# flask mail instance
-mail = Mail()
 
 limiter = Limiter (
     

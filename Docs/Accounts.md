@@ -28,5 +28,5 @@ stateDiagram-v2
   <summary>Email delivery troubleshooting</summary>
   <br>
 
-  Check that the deployment's SMTP settings are configured, the application can reach the mail server, and the recipient can receive mail from it. Keep SMTP credentials in private deployment configuration; never put them in the repository or a screenshot.
+  Check that `RESEND_API_KEY` is configured, the sender address is verified in Resend, and the recipient can receive messages. Keep the API key in private deployment configuration; never put it in the repository or a screenshot.
 </details>

@@ -7,7 +7,7 @@ Rover is a Flask web application. The repository's Docker Compose setup starts t
 - Docker Desktop with Docker Compose, or a Python environment for custom development.
 - A public hostname whose DNS points to the Docker host, with inbound TCP ports 80 and 443 allowed for Nginx and Certbot's TLS setup.
 - An Ollama server and at least one model to use the AI features.
-- SMTP account settings if you want to test account verification email delivery.
+- A Resend API key for account verification email delivery.
 
 ## Run with Docker Compose
 
@@ -46,11 +46,8 @@ Set these in the local `.env` file. The Compose file requires the values marked 
 | `ROVER_DOMAIN` | Yes | Public DNS hostname for the HTTPS reverse proxy. |
 | `CERTBOT_EMAIL` | Yes | Contact address for Let's Encrypt certificate notifications. |
 | `POSTGRES_PASSWORD` | Yes | Password for the Compose PostgreSQL database. |
-| `MAIL_SERVER` | Yes | SMTP server used for verification messages. |
-| `MAIL_USERNAME` | Yes | SMTP account name. |
-| `MAIL_PASSWORD` | Yes | SMTP credential. |
-| `MAIL_PORT` | No | SMTP port; Compose defaults to `587`. |
-| `MAIL_USE_TLS` | No | SMTP TLS setting; Compose defaults to enabled. |
+| `RESEND_API_KEY` | Yes | Private API key for sending verification emails through Resend. |
+| `RESEND_FROM_EMAIL` | No | Verified Resend sender address; defaults to `onboarding@resend.dev`. |
 | `OLLAMA_BASE_URL` | No | Ollama server URL; defaults to a host-local Ollama endpoint in Compose. |
 | `OLLAMA_MODEL` | No | Default model name; defaults to `llama3.2`. |
 | `OLLAMA_API_KEY_ENCRYPTION_KEY` | Recommended for Cloud | Stable encryption secret for saved Ollama Cloud credentials. Keep separate from `SECRET_KEY`. |
@@ -87,7 +84,7 @@ Compose keeps database and note data in named volumes. Removing volumes is destr
 
 ## Development setup
 
-For local development without Docker, install the pinned packages from `requirements.txt`, configure `APP_ENV=development`, and provide reachable database, Redis, SMTP, and Ollama services. Run database migrations with Flask-Migrate before starting the WSGI application. The Docker Compose workflow is the simplest fully wired setup.
+For local development without Docker, install the pinned packages from `requirements.txt`, configure `APP_ENV=development`, and provide a Resend API key, reachable database and Redis services, and an Ollama endpoint. Run database migrations with Flask-Migrate before starting the WSGI application. The Docker Compose workflow is the simplest fully wired setup.
 
 ```mermaid
 flowchart LR
@@ -95,6 +92,6 @@ flowchart LR
     Web --> DB[(PostgreSQL)]
     Web --> Redis[(Redis sessions)]
     Web --> Ollama[Configured Ollama server]
-    Web --> SMTP[SMTP email provider]
+    Web --> Resend[Resend email API]
     User[User] --> Browser
 ```

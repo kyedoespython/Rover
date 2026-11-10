@@ -4,7 +4,7 @@ import atexit
 from .extensions import db
 from .extensions import migrate
 from .extensions import login_manager
-from .extensions import sess, mail
+from .extensions import sess
 from .extensions import redis_client
 from .extensions import csrf
 from .extensions import limiter
@@ -74,7 +74,6 @@ def create_app(env: str | None = None):
 
     app.config["SESSION_REDIS"] = redis_client
 
-    mail.init_app(app) # flask mail initialisation
     sess.init_app(app) # redis initialisation
 
     if not app.testing and app.config.get("AGENT_HISTORY_CLEANUP_ENABLED", True):

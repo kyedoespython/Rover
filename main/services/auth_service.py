@@ -1,16 +1,36 @@
 from html import escape
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta, timezone
-from main.extensions import db, mail
-from flask_mail import Message
+from main.extensions import db
 from flask import current_app
 from main.models.user import Accounts, Authentication
+import resend
 import secrets
+
+def _send_email(to, subject, text, html=None):
+    api_key = current_app.config.get("RESEND_API_KEY")
+    if not api_key:
+        raise RuntimeError("RESEND_API_KEY is not configured")
+
+    resend.api_key = api_key
+    email = {
+        "from": current_app.config.get(
+            "RESEND_FROM_EMAIL",
+            "onboarding@resend.dev",
+        ),
+        "to": to,
+        "subject": subject,
+        "text": text,
+    }
+    if html is not None:
+        email["html"] = html
+
+    return resend.Emails.send(email)
 
 # This function is a reusable signup attempt checker
 # It works by querying the database for the current sessions email address looking for the first instance
 # It then checks if the user var is false meaning no user with that email exists
-# If the email exists it passes in the email to the flask_mail object and sends the user an email
+# If the email exists it sends the user an email.
 def SignupAttemptMail(email):
     user = Accounts.query.filter_by(email=email).first()
 
@@ -18,23 +38,22 @@ def SignupAttemptMail(email):
         return
 
     try:
-        msg = Message(
-        subject="Rover signup attempt",
-        sender=current_app.config["MAIL_USERNAME"],
-        recipients=[user.email],
+        _send_email(
+            to=[user.email],
+            subject="Rover signup attempt",
+            text=(
+                f"Hello {user.username},\n\n"
+                "Someone just tried to create a Rover account with this email address. "
+                "If this was you, log in instead, if not ignore this message. "
+                "\nRover - Support"
+            ),
         )
 
-        msg.body = (
-        f"Hello {user.username},\n\n"
-        "Someone just tried to create a Rover account with this email address. "
-        "If this was you, log in instead, if not ignore this message. "
-        "\nRover - Support"
+    except Exception:
+        current_app.logger.exception(
+            "Failed to send duplicate email notification to %s",
+            user.email,
         )
-
-        mail.send(msg)
-
-    except Exception as e:
-        print(f"Failed to send duplicate email notification: {e}")
 
 
 
@@ -57,24 +76,29 @@ def Create_Auth_Code(user_account):
     auth_row.last_code_sent_at = datetime.now(timezone.utc) # save the copy of the timestamp showing when the last authentication attempt was
     db.session.commit()
 
-    # call this func to send the auth code via flask mail to the users email address
+    # Send the auth code to the user's email.
     return SendAuthCode_EMAIL(user_account, auth_code_) # return / send values into the function call to be used to send the email with the auth code inside of it
 
 # send the auth code in an email message, 
 def SendAuthCode_EMAIL(user_account, auth_code_):
     try:
-        msg = Message(
-            subject="Rover Auth Code", 
-            sender=current_app.config['MAIL_USERNAME'], # Best practice to use config
-            recipients=[user_account.email]
+        _send_email(
+            to=[user_account.email],
+            subject="Rover Auth Code",
+            text=(
+                f"Welcome to Rover {user_account.username}!\n\n"
+                f"Your auth code is: {auth_code_}\n\n"
+                "This code expires in 10 minutes"
+            ),
         )
-
-        msg.body = f"Welcome to Rover {user_account.username}!\n\nYour auth code is: {auth_code_}\n\nThis code expires in 10 minutes"
-        mail.send(msg)
 
         return True, "Auth code sent to your email."
     
-    except Exception as e:
+    except Exception:
+        current_app.logger.exception(
+            "Failed to send authentication code email to %s",
+            user_account.email,
+        )
         return False, "Failed to send email."
 
 
@@ -82,19 +106,14 @@ def SendVerificationConfirmationEmail(user_account):
     username = user_account.username
     safe_username = escape(username)
 
-    msg = Message(
-        subject="Your Rover account is verified",
-        sender=current_app.config["MAIL_USERNAME"],
-        recipients=[user_account.email],
-    )
-    msg.body = (
+    text = (
         f"Congratulations {username}!\n\n"
         "Your Rover account has been successfully verified. "
         "You can now log in and start using Rover.\n\n"
         "Thanks for joining us,\n"
         "The Rover Team"
     )
-    msg.html = f"""\
+    html = f"""\
 <!doctype html>
 <html lang="en">
 <head>
@@ -137,7 +156,12 @@ def SendVerificationConfirmationEmail(user_account):
 </html>"""
 
     try:
-        mail.send(msg)
+        _send_email(
+            to=[user_account.email],
+            subject="Your Rover account is verified",
+            text=text,
+            html=html,
+        )
     except Exception:
         current_app.logger.exception(
             "Failed to send verification confirmation email to %s",

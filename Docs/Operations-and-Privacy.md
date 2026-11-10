@@ -4,7 +4,7 @@ This guide covers safe operational practices for a Rover deployment. It intentio
 
 ## Services and persistence
 
-The Docker Compose deployment includes the Flask web app, PostgreSQL, and Redis. Ollama and the SMTP provider are configured separately. PostgreSQL stores application records; Redis supports server-side sessions; Markdown note files use the configured persistent note-storage location.
+The Docker Compose deployment includes the Flask web app, PostgreSQL, and Redis. Ollama is configured separately, and verification email is sent through Resend using a private API key. PostgreSQL stores application records; Redis supports server-side sessions; Markdown note files use the configured persistent note-storage location.
 
 Run database migrations as part of deployment before serving requests. Back up the database and note files together, restrict access to backups, and test restore procedures without exposing production data.
 
@@ -41,7 +41,7 @@ flowchart TD
     Web --> Redis[(Redis)]
     Web --> Notes[(Persistent Markdown note storage)]
     Web --> Model[Configured Ollama endpoint]
-    Web --> Mail[Configured SMTP provider]
+    Web --> Resend[Resend email API]
     Operator[Authorized operator] --> Backup[Restricted backups]
     DB --> Backup
     Notes --> Backup

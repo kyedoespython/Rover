@@ -20,12 +20,11 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
 
-    # flask mail config
-    MAIL_SERVER = os.environ.get("MAIL_SERVER")
-    MAIL_PORT = os.environ.get("MAIL_PORT", 587)
-    MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "True").lower() == "true"
-    MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
-    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+    RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+    RESEND_FROM_EMAIL = os.environ.get(
+        "RESEND_FROM_EMAIL",
+        "onboarding@resend.dev",
+    )
     NOTE_STORAGE_DIR = os.environ.get("NOTE_STORAGE_DIR")
     OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
     OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
@@ -76,6 +75,7 @@ class ProductionConfig(Config):
         secret = os.environ.get("SECRET_KEY")
         db_uri = os.environ.get("DATABASE_URL")
         redis_url = os.environ.get("REDIS_URL")
+        resend_api_key = os.environ.get("RESEND_API_KEY")
 
         if not secret or len(secret) < 32:
             raise RuntimeError (
@@ -87,11 +87,14 @@ class ProductionConfig(Config):
             raise RuntimeError("DATABASE_URL env variable is required")
         if not redis_url:
             raise RuntimeError("REDIS_URL env variable is required")
+        if not resend_api_key:
+            raise RuntimeError("RESEND_API_KEY env variable is required")
 
         # class vars inside the Prod config
         cls.SECRET_KEY = secret
         cls.SQLALCHEMY_DATABASE_URI = db_uri
         cls.REDIS_URL = redis_url
+        cls.RESEND_API_KEY = resend_api_key
 
 # dispatch table for create app function simplified
 CONFIG_MAP = {
