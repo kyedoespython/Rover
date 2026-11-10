@@ -1,7 +1,7 @@
 function initializeNotesPage() {
     const notesList = document.querySelector("#notesPage .notes-list-panel");
     const content = document.getElementById("noteContent");
-    const headingSelect = document.getElementById("noteHeadingSelect");
+    const headingMenu = document.getElementById("noteHeadingMenu");
 
     if (!(notesList instanceof HTMLElement)) {
         return;
@@ -45,7 +45,7 @@ function initializeNotesPage() {
 
     if (
         !(content instanceof HTMLTextAreaElement) ||
-        !(headingSelect instanceof HTMLSelectElement)
+        !(headingMenu instanceof HTMLElement)
     ) {
         return;
     }
@@ -61,15 +61,24 @@ function initializeNotesPage() {
         }
 
         selectedLine = { start: lineStart, end: lineEnd };
-        headingSelect.hidden = false;
-        headingSelect.value = "";
-        headingSelect.focus();
+        headingMenu.hidden = false;
+        headingMenu.querySelector("button")?.focus();
     });
 
-    headingSelect.addEventListener("change", () => {
-        const level = Number(headingSelect.value);
+    headingMenu.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+            return;
+        }
+
+        const button = target.closest("button[data-heading-level]");
+        if (!(button instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        const level = Number(button.dataset.headingLevel);
         if (selectedLine === null || level < 1 || level > 4) {
-            headingSelect.hidden = true;
+            headingMenu.hidden = true;
             content.focus();
             return;
         }
@@ -84,9 +93,16 @@ function initializeNotesPage() {
             "select",
         );
         selectedLine = null;
-        headingSelect.hidden = true;
-        headingSelect.value = "";
+        headingMenu.hidden = true;
         content.focus();
+    });
+
+    headingMenu.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            headingMenu.hidden = true;
+            selectedLine = null;
+            content.focus();
+        }
     });
 }
 

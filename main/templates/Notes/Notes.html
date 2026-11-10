@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{{ url_for('static', filename='scripts/Notes/Notes.js') }}?v=2" defer></script>
+    <script src="{{ url_for('static', filename='scripts/Notes/Notes.js') }}?v=3" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -167,22 +167,34 @@
 
     #notesPage .note-editor-title {
         min-width: 0;
+        width: 100%;
         margin: 0;
         overflow-wrap: anywhere;
         color: #111;
     }
 
-    #notesPage .heading-select[hidden] {
+    #notesPage .heading-menu[hidden] {
         display: none;
     }
 
-    #notesPage .heading-select {
-        max-width: 10rem;
-        padding: 0.4rem 0.6rem;
+    #notesPage .heading-menu {
+        display: flex;
+        flex: 0 0 auto;
+        gap: 0.25rem;
+    }
+
+    #notesPage .heading-menu button {
+        padding: 0.4rem 0.55rem;
         border: 1px solid #111;
         border-radius: 4px;
         background: #fff;
         color: #111;
+        cursor: pointer;
+    }
+
+    #notesPage .heading-menu button:hover,
+    #notesPage .heading-menu button:focus-visible {
+        background: #f0f0f0;
     }
 
     #notesPage .note-edit-form {
@@ -360,23 +372,37 @@
 
         <section class="note-editor-panel" aria-labelledby="noteEditorHeading">
             {% if selected_note %}
-                <div class="note-editor-header">
-                    <h2 class="title is-4 note-editor-title" id="noteEditorHeading">{{ selected_note.note_name }}</h2>
-                    <label class="is-sr-only" for="noteHeadingSelect">Change selected text to a heading</label>
-                    <select class="select heading-select" id="noteHeadingSelect" hidden>
-                        <option value="">Heading</option>
-                        <option value="1">Heading 1</option>
-                        <option value="2">Heading 2</option>
-                        <option value="3">Heading 3</option>
-                        <option value="4">Heading 4</option>
-                    </select>
-                </div>
                 <form
                     class="note-edit-form"
                     action="{{ url_for('auth.Update_Note', note_id=selected_note.note_id) }}"
                     method="post"
                 >
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="note-editor-header">
+                        <label class="is-sr-only" for="noteName">Note name</label>
+                        <input
+                            class="input title is-4 note-editor-title"
+                            id="noteName"
+                            name="note_name"
+                            type="text"
+                            maxlength="128"
+                            value="{{ selected_note.note_name }}"
+                            aria-label="Note name"
+                            required
+                        >
+                        <div
+                            class="heading-menu"
+                            id="noteHeadingMenu"
+                            role="group"
+                            aria-label="Change selected line to a heading"
+                            hidden
+                        >
+                            <button type="button" data-heading-level="1">H1</button>
+                            <button type="button" data-heading-level="2">H2</button>
+                            <button type="button" data-heading-level="3">H3</button>
+                            <button type="button" data-heading-level="4">H4</button>
+                        </div>
+                    </div>
                     <textarea
                         class="textarea note-content"
                         id="noteContent"

@@ -97,7 +97,7 @@ def test_notes_route_create_load_edit_and_delete(notes_client):
     assert response.status_code == 200
     assert b"# Route note\nInitial content" in response.data
     assert b"Save note" in response.data
-    assert b'id="noteHeadingSelect"' in response.data
+    assert b'id="noteHeadingMenu"' in response.data
     assert b'id="notePreview"' not in response.data
     assert b"Preview" not in response.data
 
@@ -116,6 +116,14 @@ def test_notes_route_create_load_edit_and_delete(notes_client):
         assert note.note_name == "Updated route plan"
         assert note.file_metadata.relative_path
         assert not file_path.exists()
+
+    response = notes_client.get(f"/Rover/Notes?load_id={note_id}")
+    assert response.status_code == 200
+    assert b'id="noteName"' in response.data
+    assert b'name="note_name"' in response.data
+    assert b'value="Updated route plan"' in response.data
+    assert b'id="noteHeadingMenu"' in response.data
+    assert b'data-heading-level="1"' in response.data
 
     response = notes_client.post(
         f"/Rover/Notes/{note_id}/description",
@@ -139,7 +147,7 @@ def test_notes_page_creates_default_note_and_sidebar_creates_named_notes(notes_c
     assert b"Empty note" in page.data
     assert b"New note name" in page.data
     assert b"Your notes" in page.data
-    assert b"scripts/Notes/Notes.js?v=2" in page.data
+    assert b"scripts/Notes/Notes.js?v=3" in page.data
     assert b"notePreview" not in page.data
     assert b"Preview" not in page.data
 
