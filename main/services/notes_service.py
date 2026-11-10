@@ -91,6 +91,14 @@ def read_note_content(note: Notes) -> str:
             )
             note.note_content = None
             db.session.commit()
+        except OSError:
+            db.session.rollback()
+            current_app.logger.warning(
+                "Unable to migrate Markdown file for note %s; using database content",
+                note_id,
+                exc_info=True,
+            )
+            return content
         except Exception:
             db.session.rollback()
             if file_path is not None:
@@ -137,6 +145,28 @@ def create_note(user_id: int, name: str, description: str, content: str) -> Note
             )
         )
         db.session.commit()
+    except OSError:
+        db.session.rollback()
+        current_app.logger.warning(
+            "Unable to write Markdown file for note belonging to user %s; "
+            "saving note content in the database",
+            user_id,
+            exc_info=True,
+        )
+        note = Notes(
+            user_id=user_id,
+            note_name=name,
+            note_description=description,
+            note_content=content,
+            note_created_at=now,
+            note_last_modified_at=now,
+        )
+        db.session.add(note)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
     except Exception:
         db.session.rollback()
         if file_path is not None and note_id is not None:
@@ -177,21 +207,48 @@ def update_note(note: Notes, name: str, description: str, content: str) -> None:
             size_bytes,
             sha256,
         ) = _write_markdown_file(note.user_id, content)
-        metadata = note.file_metadata
-        if metadata is None:
-            metadata = NoteMetadata(note_id=note.note_id, created_at=now)
-            note.file_metadata = metadata
-
+    except OSError:
+        current_app.logger.warning(
+            "Unable to write Markdown file for note %s; saving note content "
+            "in the database",
+            note_id,
+            exc_info=True,
+        )
         note.note_name = name
         note.note_description = description
-        note.note_content = None
+        note.note_content = content
         note.note_last_modified_at = now
-        metadata.file_name = file_name
-        metadata.relative_path = relative_path
-        metadata.size_bytes = size_bytes
-        metadata.sha256 = sha256
-        metadata.content_type = "text/markdown"
-        metadata.updated_at = now
+        note.file_metadata = None
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+        if previous_path is not None:
+            _remove_file(previous_path, note_id)
+        return
+    except Exception:
+        db.session.rollback()
+        if file_path is not None:
+            _remove_file(file_path, note_id)
+        raise
+
+    metadata = note.file_metadata
+    if metadata is None:
+        metadata = NoteMetadata(note_id=note.note_id, created_at=now)
+        note.file_metadata = metadata
+
+    note.note_name = name
+    note.note_description = description
+    note.note_content = None
+    note.note_last_modified_at = now
+    metadata.file_name = file_name
+    metadata.relative_path = relative_path
+    metadata.size_bytes = size_bytes
+    metadata.sha256 = sha256
+    metadata.content_type = "text/markdown"
+    metadata.updated_at = now
+    try:
         db.session.commit()
     except Exception:
         db.session.rollback()

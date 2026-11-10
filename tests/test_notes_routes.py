@@ -24,6 +24,7 @@ from main.models.user import (
 from main.services.ollama_service import decrypt_api_key
 from main.services.agent_history_cleanup import cleanup_expired_agent_history
 from main.services.notes_service import create_note
+from main.services import notes_service
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
@@ -166,6 +167,34 @@ def test_notes_page_creates_default_note_and_sidebar_creates_named_notes(notes_c
     assert opened.status_code == 200
     assert b'id="noteContent"' in opened.data
     assert b"Double-click a line to add a heading." in opened.data
+
+
+def test_notes_page_remains_usable_when_markdown_storage_is_unavailable(
+    notes_client, monkeypatch
+):
+    def fail_file_write(*args, **kwargs):
+        raise PermissionError("note storage is read-only")
+
+    monkeypatch.setattr(notes_service, "_write_markdown_file", fail_file_write)
+
+    page = notes_client.get("/Rover/Notes")
+    assert page.status_code == 200
+    assert b"Empty note" in page.data
+    assert b"Your default note could not be created" not in page.data
+
+    response = notes_client.post(
+        "/Rover/Notes",
+        data={
+            "note_name": "Saved in database",
+            "note_description": "Fallback note",
+            "note_content": "This note is still saved",
+        },
+    )
+    assert response.status_code == 302
+    with notes_client.application.app_context():
+        note = Notes.query.filter_by(note_name="Saved in database").one()
+        assert note.note_content == "This note is still saved"
+        assert note.file_metadata is None
 
 
 def test_note_names_are_unique_per_user(notes_client):

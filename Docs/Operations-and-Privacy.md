@@ -4,7 +4,7 @@ This guide covers safe operational practices for a Rover deployment. It intentio
 
 ## Services and persistence
 
-The Docker Compose deployment includes the Flask web app, PostgreSQL, and Redis. Ollama is configured separately, and verification email is sent through Resend using a private API key. PostgreSQL stores application records; Redis supports server-side sessions; Markdown note files use the configured persistent note-storage location.
+The Docker Compose deployment includes the Flask web app, PostgreSQL, and Redis. Ollama is configured separately, and verification email is sent through Resend using a private API key. PostgreSQL stores application records; Redis supports server-side sessions; Markdown notes use the configured file storage when available and fall back to PostgreSQL if the filesystem cannot be written.
 
 Run database migrations as part of deployment before serving requests. Back up the database and note files together, restrict access to backups, and test restore procedures without exposing production data.
 
@@ -25,7 +25,7 @@ Run database migrations as part of deployment before serving requests. Back up t
 | Account and application records | PostgreSQL | Retained until removed by an account or deployment data-management process. |
 | Single Rover AI messages | PostgreSQL | Deleted when the user ends the active chat session. |
 | Triple Rover transcript | PostgreSQL | Cleanup is scheduled after the seven-day window measured from first chat. |
-| Markdown note content | Note-storage directory or volume | Retained until the note is deleted or its storage is removed. |
+| Markdown note content | Note-storage directory or PostgreSQL fallback | Retained until the note is deleted or its storage is removed. |
 | Browser-selected folder access | User's browser page session | Folder handles are held in page memory; Rover does not receive the selected folder handle. |
 
 Retention and backup behavior should be reviewed against the requirements of the organization operating the deployment.

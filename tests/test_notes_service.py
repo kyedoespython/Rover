@@ -9,9 +9,11 @@ from main.models.user import Accounts, Notes, NoteMetadata
 from main.services.notes_service import (
     create_note,
     delete_note,
+    ensure_default_note,
     read_note_content,
     update_note,
 )
+from main.services import notes_service
 
 
 @pytest.fixture
@@ -115,3 +117,57 @@ def test_legacy_note_content_migrates_to_markdown_when_loaded(notes_app):
         assert note.note_content is None
         assert read_note_content(note) == "Migrated content"
         assert note.file_metadata.file_name.endswith(".md")
+
+
+def test_default_note_uses_database_when_markdown_storage_is_unavailable(
+    notes_app, monkeypatch
+):
+    with notes_app.app_context():
+        account = _create_account()
+
+        def fail_file_write(*args, **kwargs):
+            raise PermissionError("note storage is read-only")
+
+        monkeypatch.setattr(notes_service, "_write_markdown_file", fail_file_write)
+
+        note = ensure_default_note(account.user_id)
+
+        assert note.note_name == "Empty note"
+        assert note.note_content == ""
+        assert note.file_metadata is None
+        assert read_note_content(note) == ""
+
+
+def test_create_and_update_notes_use_database_when_markdown_storage_is_unavailable(
+    notes_app, monkeypatch
+):
+    with notes_app.app_context():
+        account = _create_account()
+        note = create_note(account.user_id, "Plan", "Original", "Old content")
+        previous_path = (
+            Path(notes_app.config["NOTE_STORAGE_DIR"])
+            / note.file_metadata.relative_path
+        )
+
+        def fail_file_write(*args, **kwargs):
+            raise PermissionError("note storage is read-only")
+
+        monkeypatch.setattr(notes_service, "_write_markdown_file", fail_file_write)
+
+        update_note(note, "Updated plan", "Updated", "New content")
+
+        assert note.note_name == "Updated plan"
+        assert note.note_description == "Updated"
+        assert note.note_content == "New content"
+        assert note.file_metadata is None
+        assert read_note_content(note) == "New content"
+        assert not previous_path.exists()
+
+        created_note = create_note(
+            account.user_id,
+            "Database note",
+            "Saved without filesystem",
+            "Database content",
+        )
+        assert created_note.note_content == "Database content"
+        assert created_note.file_metadata is None
