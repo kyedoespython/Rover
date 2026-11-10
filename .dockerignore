@@ -1,0 +1,31 @@
+# Local environments and secrets
+.env
+.env.*
+!.env.example
+.flaskenv
+Security.md
+security.md
+SECURITY-REVIEW.md
+venv/
+.venv/
+ENV/
+
+# Version control and editor files
+.git/
+.vscode/
+.postman/
+
+# Python caches and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage*
+htmlcov/
+tests/
+
+# Local frontend install; built/static assets are copied from main/static
+node_modules/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
