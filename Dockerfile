@@ -8,10 +8,24 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 WORKDIR /build
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools \
+    && pip install --no-cache-dir -r requirements.txt \
+    && rm -rf /opt/venv/lib/python3.12/site-packages/pip \
+        /opt/venv/lib/python3.12/site-packages/pip-*.dist-info \
+        /opt/venv/lib/python3.12/site-packages/setuptools \
+        /opt/venv/lib/python3.12/site-packages/setuptools-*.dist-info \
+        /opt/venv/bin/pip*
 
 FROM python:3.12-slim AS runtime
+
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/* \
+        /usr/local/lib/python3.12/site-packages/pip \
+        /usr/local/lib/python3.12/site-packages/pip-*.dist-info \
+        /usr/local/lib/python3.12/site-packages/setuptools \
+        /usr/local/lib/python3.12/site-packages/setuptools-*.dist-info \
+        /usr/local/bin/pip*
 
 ENV VIRTUAL_ENV=/opt/venv \
     PATH="/opt/venv/bin:$PATH" \
@@ -30,5 +44,8 @@ COPY --chown=app:app . .
 
 USER app
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3)" || exit 1
 
 CMD ["gunicorn", "--bind=0.0.0.0:8000", "--workers=2", "wsgi:app"]

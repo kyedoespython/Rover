@@ -2,11 +2,12 @@ services:
   web:
     build:
       context: .
+      provenance: mode=max
+      sbom: true
     init: true
     expose:
       - "8000"
     volumes:
-      - .:/app
       - note_files:/var/lib/rover/notes
     environment:
       APP_ENV: production
@@ -25,7 +26,7 @@ services:
       MAIL_USE_TLS: ${MAIL_USE_TLS:-true}
       MAIL_USERNAME: ${MAIL_USERNAME:?Set MAIL_USERNAME in the environment or .env file}
       MAIL_PASSWORD: ${MAIL_PASSWORD:?Set MAIL_PASSWORD in the environment or .env file}
-    command: sh -c "flask db upgrade && gunicorn --reload -w 4 -b 0.0.0.0:8000 wsgi:app"
+    command: sh -c "flask db upgrade && gunicorn -w 4 -b 0.0.0.0:8000 wsgi:app"
     depends_on:
       db:
         condition: service_healthy

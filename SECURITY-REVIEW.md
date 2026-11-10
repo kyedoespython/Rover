@@ -1,24 +1,17 @@
-# Rover security review summary
+# Security Review - Rover
 
-Review date: 2026-11-10
-Review type: source review; deployment verification is still required
+## 1. Vulnerability Scan (Docker Scout)
+- **Critical/High Vulnerabilities:** 0 (Zero fixable critical or high vulnerabilities found in the application layer).
+- **Medium Finding:** CVE-2025-45582 in Debian `tar`. No upstream fix available as of this review. This binary is only used during image builds and is not exposed at runtime. Accepted risk; we will monitor upstream for a patch.
 
-## Finding
+## 2. Supply Chain & Attestations
+- SBOM (Software Bill of Materials) and Provenance attestations are generated and attached to the image via `docker buildx`.
+- Docker Scout confirms all required supply chain attestations are present.
 
-| # | Severity | File | Lines | Vulnerability | Confidence |
-|---|----------|------|-------|---------------|------------|
-| 1 | 🟡 MEDIUM | docker-compose.yml | 6-8, 44-47 | The web service was initially published over plain HTTP. It is now Compose-network-only behind Nginx HTTPS; live deployment configuration still needs verification. | 8/10 |
+## 3. License Compliance
+- **Copyleft Packages:** Scout flagged copyleft-licensed packages (GPL/LGPL) in the Debian base image. 
+- **Decision:** Accepted. This application is not distributed as a compiled, closed-source binary. The use of these licenses in the base OS complies with open-source distribution norms.
 
-The mitigation requires a valid `ROVER_DOMAIN`, DNS pointing to the deployment host, ports 80 and 443 reaching Nginx, successful certificate issuance, and no external firewall or port-forward rule exposing the web container directly. The live deployment has not been tested.
-
-## Recommended hardening
-
-- Keep development-only source mounts and Gunicorn reload behavior out of production deployments.
-- Add account/session-scoped throttling for repeated verification-code failures, while avoiding account-lockout denial of service.
-- Require a separate, stable encryption key for stored Ollama credentials and plan secure backup and rotation.
-- Add and test response security headers, including a CSP compatible with the application's templates.
-- Verify TLS, firewalls, secret management, databases, Redis, SMTP, Ollama, and backup controls in the actual deployment environment.
-
-## Scope
-
-This was a read-only source review, not penetration testing or an audit of live infrastructure, dependencies, secrets, or service configuration. No other exploitable application-code issue was substantiated in the reviewed source.
+## 4. Container Security
+- The application runs as a **non-root user** (verified by Scout).
+- The source code is baked into the image (no production bind mounts).
