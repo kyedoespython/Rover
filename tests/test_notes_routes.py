@@ -101,6 +101,13 @@ def test_notes_route_create_load_edit_and_delete(notes_client):
     assert b"# Route note\nInitial content" in response.data
     assert b"Save note" in response.data
     assert b'id="noteHeadingMenu"' in response.data
+    assert b'id="headingSelectToggle"' in response.data
+    assert b'id="noteContentEditor"' in response.data
+    assert b'data-heading-level="6"' in response.data
+    notes_heading = response.data.index(b">Notes</h1>")
+    heading_button = response.data.index(b">Heading select</button>")
+    support_button = response.data.index(b">Support</a>")
+    assert notes_heading < heading_button < support_button
     assert b'id="notePreview"' not in response.data
     assert b"Preview" not in response.data
 
@@ -150,7 +157,7 @@ def test_notes_page_creates_default_note_and_sidebar_creates_named_notes(notes_c
     assert b"Empty note" in page.data
     assert b"New note name" in page.data
     assert b"Your notes" in page.data
-    assert b"scripts/Notes/Notes.js?v=3" in page.data
+    assert b"scripts/Notes/Notes.js?v=4" in page.data
     assert b"notePreview" not in page.data
     assert b"Preview" not in page.data
 
@@ -177,7 +184,8 @@ def test_notes_page_creates_default_note_and_sidebar_creates_named_notes(notes_c
     opened = notes_client.get(f"/Rover/Notes?load_id={default_note_id}")
     assert opened.status_code == 200
     assert b'id="noteContent"' in opened.data
-    assert b"Double-click a line to add a heading." in opened.data
+    assert b"Use the Heading select menu to format the current text block." in opened.data
+    assert b'id="noteContentEditor"' in opened.data
 
 
 def test_notes_page_remains_usable_when_markdown_storage_is_unavailable(
