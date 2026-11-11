@@ -448,12 +448,7 @@ def Handle_Login():
 @auth_bp.route("/DesignDashboard")
 @login_required  # only logged in users can access the design dashboard
 def DesignDash():
-    api_keys = (
-        UserApiKey.query.filter_by(user_id=current_user.user_id)
-        .order_by(UserApiKey.created_at.desc())
-        .all()
-    )
-    return render_template("Design/DesignDash.html", api_keys=api_keys)
+    return render_template("Design/DesignDash.html")
 
 
 @auth_bp.route("/DesignDashboard/Agents")
@@ -557,7 +552,16 @@ def Settings():
     access_denied = _require_verified_account()
     if access_denied:
         return access_denied
-    return render_template("Settings/Settings.html")
+    api_keys = (
+        UserApiKey.query.filter_by(user_id=current_user.user_id)
+        .order_by(UserApiKey.created_at.desc())
+        .all()
+    )
+    return render_template(
+        "Settings/Settings.html",
+        api_keys=api_keys,
+        active_api_key_id=current_user.active_ollama_api_key_id,
+    )
 
 
 @auth_bp.route("/Rover/Notes", methods=["GET", "POST"])

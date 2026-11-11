@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{{ url_for('static', filename='scripts/Design/Design.js') }}?v=3" defer></script>
+    <script src="{{ url_for('static', filename='scripts/Design/Design.js') }}?v=4" defer></script>
     <script src="{{ url_for('static', filename='scripts/Design/Schema.js') }}?v=2" defer></script>
     <script src="{{ url_for('static', filename='scripts/Integrations/Ollama.js') }}?v=11" defer></script>
 {% endblock %}
@@ -184,31 +184,6 @@
 
     #designPage .api-key-status[data-state="success"] {
         color: #16803c;
-    }
-
-    #designPage .saved-api-keys {
-        margin-top: 1.5rem;
-        padding-top: 1.25rem;
-        border-top: 1px solid #e5e5e5;
-    }
-
-    #designPage .saved-api-key {
-        padding: 0.75rem 0;
-        border-top: 1px solid #ededed;
-    }
-
-    #designPage .saved-api-key-name {
-        margin: 0;
-        color: #111;
-        font-size: 0.9rem;
-        font-weight: 700;
-        overflow-wrap: anywhere;
-    }
-
-    #designPage .saved-api-key-type {
-        margin: 0.2rem 0 0;
-        color: #444;
-        font-size: 0.75rem;
     }
 
     #schemaEditorDialog {
@@ -712,22 +687,6 @@
                 <p class="api-key-status" id="apiKeyStatus" role="status" aria-live="polite"></p>
             </form>
 
-            <section class="saved-api-keys" aria-labelledby="savedApiKeysHeading">
-                <h3 class="title is-6 has-text-black" id="savedApiKeysHeading">Saved API keys</h3>
-                <div id="savedApiKeysList">
-                    {% for api_key in api_keys %}
-                        <article class="saved-api-key">
-                            <p class="saved-api-key-name">{{ api_key.key_name }}</p>
-                            <p class="saved-api-key-type">
-                                {% if api_key.key_type == "ollama" %}Ollama API Key{% else %}{{ api_key.key_type }}{% endif %}
-                            </p>
-                            <p class="api-key-row-meta">Added {{ api_key.created_at.strftime("%Y-%m-%d") }}</p>
-                        </article>
-                    {% else %}
-                        <p class="api-key-dialog-description" id="noSavedApiKeys">No API keys saved.</p>
-                    {% endfor %}
-                </div>
-            </section>
         </section>
     </div>
 </div>

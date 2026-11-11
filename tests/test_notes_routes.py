@@ -597,8 +597,16 @@ def test_api_key_is_saved_as_hash_and_returned_without_secret(notes_client):
 
     dashboard = notes_client.get("/DesignDashboard")
     assert dashboard.status_code == 200
-    assert b"Local Ollama" in dashboard.data
+    assert b"Saved API keys" not in dashboard.data
+    assert b"Local Ollama" not in dashboard.data
     assert secret.encode() not in dashboard.data
+
+    settings = notes_client.get("/Rover/Settings")
+    assert settings.status_code == 200
+    assert b"Saved API keys" in settings.data
+    assert b"Local Ollama" in settings.data
+    assert b"Active" in settings.data
+    assert secret.encode() not in settings.data
 
 
 def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):

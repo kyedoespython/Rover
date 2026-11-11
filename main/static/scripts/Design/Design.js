@@ -65,7 +65,6 @@ function initializeDesignDashboard() {
     const status = document.getElementById("apiKeyStatus");
     const apiKeyInput = document.getElementById("apiKeyValue");
     const typeInput = document.getElementById("apiKeyType");
-    const savedKeysList = document.getElementById("savedApiKeysList");
     const saveButton = document.getElementById("saveApiKey");
     const csrfInput = form?.querySelector('input[name="csrf_token"]');
 
@@ -75,7 +74,6 @@ function initializeDesignDashboard() {
         !(nameInput instanceof HTMLInputElement) ||
         !(apiKeyInput instanceof HTMLInputElement) ||
         !(typeInput instanceof HTMLSelectElement) ||
-        !(savedKeysList instanceof HTMLElement) ||
         !(saveButton instanceof HTMLButtonElement) ||
         !(csrfInput instanceof HTMLInputElement)
     ) {
@@ -118,27 +116,6 @@ function initializeDesignDashboard() {
                 return;
             }
 
-            document.getElementById("noSavedApiKeys")?.remove();
-
-            const entry = document.createElement("article");
-            entry.className = "saved-api-key";
-
-            const name = document.createElement("p");
-            name.className = "saved-api-key-name";
-            name.textContent = result.api_key.name;
-
-            const type = document.createElement("p");
-            type.className = "saved-api-key-type";
-            type.textContent = result.api_key.type === "ollama"
-                ? "Ollama API Key"
-                : result.api_key.type;
-
-            const created = document.createElement("p");
-            created.className = "api-key-row-meta";
-            created.textContent = `Added ${new Date(result.api_key.created_at).toLocaleDateString()}`;
-
-            entry.append(name, type, created);
-            savedKeysList.prepend(entry);
             form.reset();
             setStatus("API key saved. The secret cannot be viewed again.", "success");
             window.dispatchEvent(new CustomEvent("ollama-preferences-updated", {
