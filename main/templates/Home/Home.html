@@ -21,32 +21,57 @@
     }
 
     html, body {
-    overflow: hidden !important;
-    height: 100vh;
-    margin: 0;
-    padding: 0;
+        overflow: hidden !important;
+        height: 100vh;
+        margin: 0;
+        padding: 0;
     }
 
-    body {
-        background-image: url("{{ url_for('static', filename='images/RoverBackground.jpg') }}");
-        background-color: #f2f2f2;
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        min-height: 100vh;
+    .home-hero {
+        width: min(100% - 2rem, 920px);
+        margin: clamp(2rem, 8vh, 5rem) auto 0;
+        padding: clamp(1.5rem, 4vw, 3rem) 1rem;
+        text-align: center;
     }
 
-    /* Add a subtle white overlay so your text is still readable */
-    body::before {
-        content: "";
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background-color: rgba(255, 255, 255, 0.7); /* 70% white overlay */
-        z-index: -1;
+    .home-eyebrow {
+        margin-bottom: 1rem;
+        color: #91b6ff;
+        font-size: 0.72rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+    }
+
+    .home-hero-title {
+        margin: 0 auto 1.25rem;
+        color: #f8f6fc;
+        font: 500 clamp(3rem, 8vw, 6rem)/0.98 Georgia, "Times New Roman", serif !important;
+        letter-spacing: -0.055em;
+        text-wrap: balance;
+    }
+
+    .home-hero-copy {
+        max-width: 42rem;
+        margin: 0 auto;
+        color: #b8c2d3;
+        font: 400 clamp(0.95rem, 2vw, 1.1rem)/1.7 "Segoe UI", Arial, sans-serif !important;
+    }
+
+    .home-cta {
+        min-height: 3.25rem;
+        margin-top: 2rem;
+        padding: 0.8rem 1.5rem !important;
+        border-radius: 6px !important;
+        background: #3677df !important;
+        color: #fff !important;
+        text-decoration: none;
+    }
+
+    .home-cta:hover {
+        background: #4b89ef !important;
     }
 </style>
 
-<!-- Top Navigation -->
 <nav class="top-nav p-4" style="display: flex; justify-content: space-between; align-items: center;">
     <div style="display: flex; gap: 10px;">
         {% if not (current_user.is_authenticated and current_user.authentication_data and current_user.authentication_data.authenticated) %}
@@ -56,39 +81,13 @@
     </div>
 </nav>
 
-<!-- Main Content -->
-<div class="has-text-centered" style="margin-top: 15vh;">
-    
-    <h2 class="is-size-2 has-text-black mb-6 mb-6 pb-6" style="font-family: Roboto Mono">
-        Welcome to Rover
-    </h2>
-
-    <a href="{{ url_for('auth.DesignDash')}}" class="Design_Preview_Button">
-        <button class="button is-black is-size-5 hover_designNow mt-6" style="font-family: Roboto Mono">
-            Design Now
-        </button>
+<section class="home-hero">
+    <p class="home-eyebrow">Build with Rover AI</p>
+    <h1 class="home-hero-title">Ideas into<br>intelligent software.</h1>
+    <p class="home-hero-copy">Design, explore, and build with an AI-powered workspace that keeps your tools and ideas together.</p>
+    <a href="{{ url_for('auth.DesignDash') }}" class="button is-size-5 home-cta">
+        Open your workspace <span aria-hidden="true">&nbsp;→</span>
     </a>
-
-    <h3 class="is-size-4 has-text-grey mt-6" style="font-family: Roboto Mono">
-        AI powered integration's with ollama
-    </h3>
-
-</div>
-
-<!-- Button Hover Style -->
-<style>
-    .hover_designNow {
-        transition: all 0.5s ease;
-        /* 0,0,0 is black. 0.2 is 20% opacity (slight) */
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); 
-    }
-
-    .hover_designNow:hover {
-        background-color: rgb(255, 255, 255);
-        color: rgb(0, 0, 0);
-        /* Optional: Make the shadow a tiny bit stronger on hover */
-        box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.3); 
-    }
-</style>
+</section>
 
 {% endblock %}

@@ -1,4 +1,5 @@
 from flask import Flask
+from werkzeug.middleware.proxy_fix import ProxyFix
 import atexit
 
 from .extensions import db
@@ -48,6 +49,8 @@ def create_app(env: str | None = None):
 
     # redis config loader from root config class
     app.config.from_object(config_class)
+    if config_class is ProductionConfig:
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
     # start extensions
     db.init_app(app)

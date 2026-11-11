@@ -59,6 +59,7 @@ class Accounts(db.Model, UserMixin):
 
     # store the amount of failed login attempts the user has had, defaulted to no failed login attempts
     failed_login_attempts = db.Column(db.Integer, default=0, server_default="0", nullable=False)
+    session_version = db.Column(db.Integer, default=0, server_default="0", nullable=False)
 
     # timestamp to store the last known login attempt of the user
     # starts empty and filled only when the user attempts to login / logs into there account
@@ -66,7 +67,23 @@ class Accounts(db.Model, UserMixin):
 
     # required for flask_login
     def get_id(self):
-        return str(self.user_id)
+        return f"{self.user_id}:{self.session_version}"
+
+
+class PasswordResetToken(db.Model):
+    __tablename__ = "password_reset_tokens"
+
+    reset_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        ForeignKey("accounts.user_id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    token_hash = db.Column(db.String(64), nullable=False, unique=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    used_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
 class Authentication(db.Model):
 

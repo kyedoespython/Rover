@@ -44,8 +44,18 @@ limiter = Limiter (
 
 @login_manager.user_loader
 def load_user(user_id):
-    
-    from main.models.user import Accounts 
-    
-    # Return the user object (or None if not found)
-    return Accounts.query.get(int(user_id))
+    from main.models.user import Accounts
+
+    account_id, separator, raw_session_version = user_id.partition(":")
+    try:
+        user = Accounts.query.get(int(account_id))
+    except ValueError:
+        return None
+
+    if user is None:
+        return None
+    if not separator:
+        return user if user.session_version == 0 else None
+    if not raw_session_version.isdecimal():
+        return None
+    return user if user.session_version == int(raw_session_version) else None

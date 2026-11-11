@@ -1,11 +1,13 @@
 from html import escape
+from hashlib import sha256
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta, timezone
 from main.extensions import db
 from flask import current_app
-from main.models.user import Accounts, Authentication
+from main.models.user import Accounts, Authentication, PasswordResetToken
 import resend
 import secrets
+from sqlalchemy import update
 
 def _send_email(to, subject, text, html=None):
     api_key = current_app.config.get("RESEND_API_KEY")
@@ -170,6 +172,139 @@ def SendVerificationConfirmationEmail(user_account):
         return False, "Your account is verified, but the confirmation email could not be sent."
 
     return True, "Your account is verified. A confirmation email has been sent."
+
+
+def Create_Password_Reset_Token(user_account):
+    token = secrets.token_urlsafe(32)
+    token_hash = sha256(token.encode("ascii")).hexdigest()
+    now = datetime.now(timezone.utc)
+    reset_record = PasswordResetToken.query.filter_by(
+        user_id=user_account.user_id
+    ).with_for_update().first()
+
+    if reset_record is None:
+        reset_record = PasswordResetToken(
+            user_id=user_account.user_id,
+            token_hash=token_hash,
+            created_at=now,
+            expires_at=now + timedelta(minutes=30),
+        )
+        db.session.add(reset_record)
+    else:
+        reset_record.token_hash = token_hash
+        reset_record.created_at = now
+        reset_record.expires_at = now + timedelta(minutes=30)
+        reset_record.used_at = None
+
+    db.session.commit()
+    return token
+
+
+def Is_Password_Reset_Token_Valid(token):
+    if not isinstance(token, str) or not 32 <= len(token) <= 128:
+        return False
+
+    try:
+        token_bytes = token.encode("ascii")
+    except UnicodeEncodeError:
+        return False
+
+    token_hash = sha256(token_bytes).hexdigest()
+    reset_record = PasswordResetToken.query.filter_by(token_hash=token_hash).first()
+    if reset_record is None or reset_record.used_at is not None:
+        return False
+
+    expires_at = reset_record.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) < expires_at
+
+
+def Consume_Password_Reset_Token(token, new_password):
+    if not isinstance(token, str) or not 32 <= len(token) <= 128:
+        return False
+
+    try:
+        token_bytes = token.encode("ascii")
+    except UnicodeEncodeError:
+        return False
+
+    token_hash = sha256(token_bytes).hexdigest()
+    reset_record = PasswordResetToken.query.filter_by(token_hash=token_hash).first()
+    if reset_record is None or reset_record.used_at is not None:
+        return False
+
+    now = datetime.now(timezone.utc)
+    expires_at = reset_record.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if now >= expires_at:
+        return False
+
+    password_hash = generate_password_hash(new_password)
+    update_result = db.session.execute(
+        update(PasswordResetToken)
+        .where(
+            PasswordResetToken.reset_id == reset_record.reset_id,
+            PasswordResetToken.token_hash == token_hash,
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > now,
+        )
+        .values(used_at=now)
+        .execution_options(synchronize_session=False)
+    )
+    if update_result.rowcount != 1:
+        db.session.rollback()
+        return False
+
+    user_account = db.session.get(Accounts, reset_record.user_id)
+    if user_account is None:
+        db.session.rollback()
+        return False
+
+    user_account.password = password_hash
+    user_account.session_version += 1
+    user_account.failed_login_attempts = 0
+    user_account.last_login_attempt = None
+    db.session.commit()
+    return True
+
+
+def SendPasswordResetEmail(user_account, reset_url):
+    safe_reset_url = escape(reset_url, quote=True)
+    text = (
+        "We received a request to reset your Rover password.\n\n"
+        f"Reset your password using this link:\n{reset_url}\n\n"
+        "This link expires in 30 minutes and can only be used once. "
+        "If you did not request a reset, you can ignore this email."
+    )
+    html = f"""\
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="font-family:Arial,Helvetica,sans-serif;color:#202124;">
+    <h1>Reset your Rover password</h1>
+    <p>We received a request to reset your Rover password.</p>
+    <p><a href="{safe_reset_url}">Reset your password</a></p>
+    <p>This link expires in 30 minutes and can only be used once. If you did not request a reset, you can ignore this email.</p>
+</body>
+</html>"""
+
+    try:
+        _send_email(
+            to=[user_account.email],
+            subject="Reset your Rover password",
+            text=text,
+            html=html,
+        )
+    except Exception:
+        current_app.logger.exception(
+            "Failed to send password reset email for account %s",
+            user_account.user_id,
+        )
+        return False
+
+    return True
 
 
 # check if the auth code field from the web page is a valid input

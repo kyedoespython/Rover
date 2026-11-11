@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 import json
+import re
 from unittest.mock import patch
 
 import pytest
@@ -17,6 +18,7 @@ from main.models.user import (
     ChatbotMessage,
     ChatbotSession,
     Notes,
+    PasswordResetToken,
     RoverAgent,
     RoverAgentMessage,
     RoverAgentSession,
@@ -41,6 +43,7 @@ def notes_client(tmp_path):
         SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         NOTE_STORAGE_DIR=str(tmp_path / "note-files"),
+        PUBLIC_BASE_URL="https://rover.test",
         OLLAMA_BASE_URL="http://ollama.test",
         OLLAMA_MODEL="llama3.2",
         OLLAMA_API_KEY_ENCRYPTION_KEY="test-ollama-encryption-key",
@@ -152,6 +155,16 @@ def test_notes_route_create_load_edit_and_delete(notes_client):
         assert db.session.get(Notes, note_id) is None
 
 
+def test_home_uses_the_rover_background_video_and_dark_hero(notes_client):
+    response = notes_client.get("/")
+
+    assert response.status_code == 200
+    assert b'id="Rover_backgroundVideo"' in response.data
+    assert b"Videos/Rover_backgroundVideo.mp4" in response.data
+    assert b'class="home-hero-title"' in response.data
+    assert b"Ideas into<br>intelligent software." in response.data
+
+
 def test_signup_phone_country_mismatch_flashes_red_error(notes_client):
     response = notes_client.post(
         "/Handle_signup",
@@ -172,6 +185,83 @@ def test_signup_phone_country_mismatch_flashes_red_error(notes_client):
     assert b'data-calling-code="44"' in response.data
     with notes_client.application.app_context():
         assert Accounts.query.filter_by(email="signup-mismatch@example.com").first() is None
+
+
+def test_password_reset_request_is_generic_and_reset_token_is_single_use(notes_client):
+    notes_client.application.config["RESEND_API_KEY"] = "test-resend-key"
+    account_email = "route-notes@example.com"
+
+    with patch("main.services.auth_service.resend.Emails.send") as send:
+        known_response = notes_client.post(
+            "/Handle_Forgot_Password",
+            data={"email": account_email},
+            follow_redirects=True,
+        )
+        unknown_response = notes_client.post(
+            "/Handle_Forgot_Password",
+            data={"email": "not-an-account@example.com"},
+            follow_redirects=True,
+        )
+
+    assert known_response.status_code == 200
+    assert known_response.data == unknown_response.data
+    assert (
+        b"If an account exists for that email, password reset instructions will be sent."
+        in known_response.data
+    )
+    send.assert_called_once()
+
+    email_payload = send.call_args.args[0]
+    assert email_payload["to"] == [account_email]
+    match = re.search(
+        r"https://rover\.test/Rover/Reset-Password\?token=([A-Za-z0-9_-]+)",
+        email_payload["text"],
+    )
+    assert match is not None
+    token = match.group(1)
+
+    with notes_client.application.app_context():
+        reset_record = PasswordResetToken.query.one()
+        account = Accounts.query.filter_by(email=account_email).one()
+        assert reset_record.token_hash != token
+        assert reset_record.user_id == account.user_id
+
+    reset_page = notes_client.get(f"/Rover/Reset-Password?token={token}")
+    assert reset_page.status_code == 200
+    assert reset_page.headers["Cache-Control"] == "no-store"
+    assert reset_page.headers["Referrer-Policy"] == "no-referrer"
+
+    changed = notes_client.post(
+        "/Rover/Reset-Password",
+        data={
+            "token": token,
+            "password": "NewStrong!Password",
+            "confirm_password": "NewStrong!Password",
+        },
+        follow_redirects=True,
+    )
+    assert changed.status_code == 200
+    assert b"Your password has been reset. Please log in." in changed.data
+    assert b"Login" in changed.data
+    assert notes_client.get("/DesignDashboard").status_code == 401
+
+    reused = notes_client.post(
+        "/Rover/Reset-Password",
+        data={
+            "token": token,
+            "password": "AnotherStrong!Password",
+            "confirm_password": "AnotherStrong!Password",
+        },
+        follow_redirects=True,
+    )
+    assert b"That password reset link is invalid or expired." in reused.data
+
+    with notes_client.application.app_context():
+        account = Accounts.query.filter_by(email=account_email).one()
+        assert check_password_hash(account.password, "NewStrong!Password")
+        assert not check_password_hash(account.password, "AnotherStrong!Password")
+        assert account.session_version == 1
+        assert PasswordResetToken.query.one().used_at is not None
 
 
 def test_notes_page_creates_default_note_and_sidebar_creates_named_notes(notes_client):

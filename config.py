@@ -25,6 +25,11 @@ class Config:
         "RESEND_FROM_EMAIL",
         "Rover <noreply@rover-solutions.com>",
     )
+    PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL") or (
+        f"https://{os.environ['ROVER_DOMAIN'].strip('/')}"
+        if os.environ.get("ROVER_DOMAIN")
+        else None
+    )
     NOTE_STORAGE_DIR = os.environ.get("NOTE_STORAGE_DIR")
     OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
     OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
@@ -76,6 +81,8 @@ class ProductionConfig(Config):
         db_uri = os.environ.get("DATABASE_URL")
         redis_url = os.environ.get("REDIS_URL")
         resend_api_key = os.environ.get("RESEND_API_KEY")
+        public_base_url = os.environ.get("PUBLIC_BASE_URL")
+        rover_domain = os.environ.get("ROVER_DOMAIN")
 
         if not secret or len(secret) < 32:
             raise RuntimeError (
@@ -89,12 +96,17 @@ class ProductionConfig(Config):
             raise RuntimeError("REDIS_URL env variable is required")
         if not resend_api_key:
             raise RuntimeError("RESEND_API_KEY env variable is required")
+        if not public_base_url and not rover_domain:
+            raise RuntimeError(
+                "PUBLIC_BASE_URL or ROVER_DOMAIN is required for password reset links"
+            )
 
         # class vars inside the Prod config
         cls.SECRET_KEY = secret
         cls.SQLALCHEMY_DATABASE_URI = db_uri
         cls.REDIS_URL = redis_url
         cls.RESEND_API_KEY = resend_api_key
+        cls.PUBLIC_BASE_URL = public_base_url or f"https://{rover_domain.strip('/')}"
 
 # dispatch table for create app function simplified
 CONFIG_MAP = {

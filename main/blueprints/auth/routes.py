@@ -1,5 +1,6 @@
 from flask import current_app
 from flask import jsonify
+from flask import make_response
 from flask import render_template
 from flask import request
 from flask import flash
@@ -34,7 +35,11 @@ from main.models.user import (
 # import auth services for auth code generation, storing hashed auth code, verifying auth code
 from main.services.auth_service import (
     AuthCode_check,
+    Consume_Password_Reset_Token,
+    Create_Password_Reset_Token,
     Create_Auth_Code,
+    Is_Password_Reset_Token_Valid,
+    SendPasswordResetEmail,
     SendVerificationConfirmationEmail,
 )
 from main.services.auth_service import SignupAttemptMail
@@ -48,8 +53,10 @@ from main.services.notes_service import (
 from main.services.ollama_service import encrypt_api_key
 
 from datetime import datetime, timedelta, timezone
+from hashlib import sha256
 from math import isfinite
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 
 # main / extension imports
 from main.extensions import db
@@ -248,6 +255,98 @@ def ResendAuth():
 @auth_bp.route("/Rover/Login")
 def Login():
     return render_template("Login/Login.html")
+
+
+def _password_reset_email_limit_key():
+    email = request.form.get("email", "").strip().casefold()
+    return sha256(email.encode("utf-8")).hexdigest()
+
+
+def _password_reset_url(token):
+    reset_path = url_for("auth.Reset_Password", token=token)
+    public_base_url = current_app.config.get("PUBLIC_BASE_URL")
+    if public_base_url:
+        return f"{public_base_url.rstrip('/')}{reset_path}"
+    if current_app.debug:
+        return f"{request.url_root.rstrip('/')}{reset_path}"
+    raise RuntimeError("PUBLIC_BASE_URL is required to send password reset links")
+
+
+def _password_reset_redirect(endpoint, **values):
+    response = make_response(redirect(url_for(endpoint, **values)))
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
+
+
+@auth_bp.route("/Rover/Forgot-Password")
+def Forgot_Password():
+    return render_template("Auth/ForgotPassword.html")
+
+
+@auth_bp.route("/Handle_Forgot_Password", methods=["POST"])
+@limiter.limit("10 per hour")
+@limiter.limit("3 per hour", key_func=_password_reset_email_limit_key)
+def Handle_Forgot_Password():
+    email = request.form.get("email", "").strip()
+    if email and len(email) <= 254:
+        user_account = Accounts.query.filter(
+            func.lower(Accounts.email) == email.casefold()
+        ).first()
+        if user_account is not None:
+            token = Create_Password_Reset_Token(user_account)
+            SendPasswordResetEmail(user_account, _password_reset_url(token))
+
+    flash(
+        "If an account exists for that email, password reset instructions will be sent.",
+        "info",
+    )
+    return redirect(url_for("auth.Forgot_Password"))
+
+
+@auth_bp.route("/Rover/Reset-Password", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
+def Reset_Password():
+    if request.method == "GET":
+        token = request.args.get("token", "")
+        if not Is_Password_Reset_Token_Valid(token):
+            flash("That password reset link is invalid or expired. Request a new one.", "error")
+            return _password_reset_redirect("auth.Forgot_Password")
+
+        response = make_response(render_template("Auth/ResetPassword.html", token=token))
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return response
+
+    token = request.form.get("token", "")
+    if not Is_Password_Reset_Token_Valid(token):
+        flash("That password reset link is invalid or expired. Request a new one.", "error")
+        return _password_reset_redirect("auth.Forgot_Password")
+
+    password = request.form.get("password", "")
+    confirmation = request.form.get("confirm_password", "")
+    if password != confirmation:
+        flash("The passwords do not match.", "error")
+        return _password_reset_redirect("auth.Reset_Password", token=token)
+    if len(password) > 128:
+        flash("Password must be 128 characters or fewer.", "error")
+        return _password_reset_redirect("auth.Reset_Password", token=token)
+
+    password_checker = Contents_Checker("", "", password, "", "")
+    is_valid, message = password_checker.Check_Password_Contents()
+    if not is_valid:
+        flash(message, "error")
+        return _password_reset_redirect("auth.Reset_Password", token=token)
+
+    if not Consume_Password_Reset_Token(token, password):
+        flash("That password reset link is invalid or expired. Request a new one.", "error")
+        return _password_reset_redirect("auth.Forgot_Password")
+
+    logout_user()
+    flash("Your password has been reset. Please log in.", "success")
+    return redirect(url_for("auth.Login"))
+
 
 @auth_bp.route("/Handle_Login", methods=["POST", "GET"])
 @limiter.limit("5 per minute") # 5 login request per IP address per minute, no max per day

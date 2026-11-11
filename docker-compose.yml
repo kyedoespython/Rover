@@ -18,11 +18,13 @@ services:
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the environment or .env file}
       DATABASE_URL: postgresql+psycopg://rover:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the environment or .env file}@db:5432/rover
       REDIS_URL: redis://redis:6379/0
+      ROVER_DOMAIN: ${ROVER_DOMAIN:?Set ROVER_DOMAIN to the public hostname for Rover}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       SESSION_TYPE: redis
       SESSION_PERMANENT: "false"
       SESSION_USE_SIGNER: "true"
       RESEND_API_KEY: ${RESEND_API_KEY:?Set RESEND_API_KEY in the environment or .env file}
-      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-onboarding@resend.dev}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-Rover <noreply@rover-solutions.com>}
     command: sh -c "flask db upgrade && gunicorn --control-socket /run/gunicorn/gunicorn.ctl -w 1 --threads 2 -b 0.0.0.0:8000 wsgi:app"
     depends_on:
       db:

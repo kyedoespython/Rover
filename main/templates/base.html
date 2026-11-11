@@ -17,24 +17,53 @@
             overflow: hidden !important;
         }
 
+        :root {
+            color-scheme: dark;
+            --rover-background: #0c0b10;
+            --rover-surface: rgba(22, 20, 29, 0.9);
+            --rover-surface-raised: rgba(30, 27, 39, 0.94);
+            --rover-border: rgba(208, 220, 242, 0.16);
+            --rover-text: #f5f2fa;
+            --rover-muted: #aaa4b7;
+            --rover-accent: #5b8ff0;
+            --rover-accent-hover: #91b6ff;
+        }
+
         body {
             margin: 0;
             background-image: url("{{ url_for('static', filename='images/RoverBackground.jpg') }}");
-            background-color: #f2f2f2;
+            background-color: var(--rover-background);
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
+            color: var(--rover-text);
+        }
+
+        #Rover_backgroundVideo {
+            position: fixed;
+            z-index: 0;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.48;
+            filter: brightness(0.48) saturate(0.7);
+            pointer-events: none;
         }
 
         body::before {
             content: "";
             position: fixed;
             inset: 0;
-            background-color: rgba(255, 255, 255, 0.7);
-            z-index: -1;
+            background:
+                radial-gradient(ellipse at 50% 35%, rgba(39, 78, 145, 0.24), transparent 58%),
+                linear-gradient(180deg, rgba(10, 9, 15, 0.48), rgba(10, 9, 15, 0.88));
+            z-index: 1;
         }
 
         main {
+            position: relative;
+            z-index: 2;
             height: 100%;
             min-height: 0 !important;
             overflow: hidden;
@@ -53,19 +82,195 @@
 
         .flash-message {
             padding: 0.9rem 1rem;
-            border-left: 3px solid #b42318;
+            border: 1px solid var(--rover-border);
+            border-left: 3px solid #f16d79;
             border-radius: 4px;
-            background: #fff;
+            background: #191720;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
-            color: #b42318;
+            color: #ff9aa3;
             font-family: "Segoe UI", Arial, sans-serif;
             font-size: 0.9rem;
             line-height: 1.45;
         }
 
         .flash-message-success {
-            border-left-color: #16803c;
-            color: #16803c;
+            border-left-color: #71d6ae;
+            color: #9ce8ca;
+        }
+
+        .flash-message-info {
+            border-left-color: var(--rover-accent);
+            color: #a7c7ff;
+        }
+
+        body .bg-image,
+        body .bg-overlay {
+            display: none !important;
+        }
+
+        body .has-text-black,
+        body .title,
+        body .label,
+        body .has-text-grey,
+        body .has-text-grey-dark {
+            color: var(--rover-text) !important;
+        }
+
+        body .has-text-grey-light {
+            color: var(--rover-muted) !important;
+        }
+
+        body a:not(.button) {
+            color: var(--rover-accent-hover);
+        }
+
+        body .box,
+        body .card,
+        body .modal-card,
+        body #notesPage .notes-list-panel,
+        body #notesPage .note-editor-panel,
+        body #designPage .design-side-nav {
+            border: 1px solid var(--rover-border) !important;
+            border-radius: 10px !important;
+            background: var(--rover-surface) !important;
+            color: var(--rover-text) !important;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.32) !important;
+            backdrop-filter: blur(14px);
+        }
+
+        body #notesPage .input,
+        body #notesPage .textarea,
+        body #notesPage .note-content-editor {
+            border-color: var(--rover-border) !important;
+            background: rgba(12, 11, 17, 0.82) !important;
+            color: var(--rover-text) !important;
+        }
+
+        body #notesPage .note-editor-title {
+            color: var(--rover-text) !important;
+        }
+
+        body #notesPage .note-open-button {
+            color: var(--rover-text) !important;
+        }
+
+        body #notesPage .note-open-button:hover,
+        body #notesPage .note-open-button.is-active {
+            border-color: var(--rover-accent) !important;
+            background: rgba(91, 143, 240, 0.16) !important;
+        }
+
+        body #notesPage .heading-popup {
+            border-color: var(--rover-border) !important;
+            background: #191720 !important;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42) !important;
+        }
+
+        body #notesPage .heading-popup button {
+            border-color: var(--rover-border) !important;
+            background: #211e2a !important;
+            color: var(--rover-text) !important;
+        }
+
+        body #notesPage .heading-popup button:hover,
+        body #notesPage .heading-popup button:focus-visible {
+            border-color: var(--rover-accent) !important;
+            background: rgba(91, 143, 240, 0.2) !important;
+        }
+
+        body .ollama-drawer {
+            border-color: var(--rover-border) !important;
+            background: #14121b !important;
+            color: var(--rover-text) !important;
+        }
+
+        body .ollama-mode-section,
+        body .ollama-drawer-header,
+        body .ollama-chat-form {
+            border-color: var(--rover-border) !important;
+            background: rgba(22, 20, 29, 0.96) !important;
+            color: var(--rover-text) !important;
+        }
+
+        body .ollama-drawer-settings,
+        body .ollama-drawer-settings summary,
+        body .ollama-drawer-settings label,
+        body .ollama-assistant-title {
+            color: var(--rover-text) !important;
+        }
+
+        body .ollama-chat-message[data-role="assistant"] {
+            border-color: var(--rover-border) !important;
+            background: #211e2a !important;
+            color: var(--rover-text) !important;
+        }
+
+        body .ollama-chat-message[data-role="user"] {
+            border-color: rgba(151, 187, 255, 0.5) !important;
+            background: #2859a8 !important;
+            color: #fff !important;
+        }
+
+        body .ollama-chat-form:focus-within {
+            border-color: var(--rover-accent) !important;
+            box-shadow: 0 0 0 2px rgba(91, 143, 240, 0.2) !important;
+        }
+
+        body .ollama-chat-send {
+            border-color: #3677df !important;
+            background: #3677df !important;
+        }
+
+        body .input,
+        body .textarea,
+        body select,
+        body input,
+        body textarea,
+        body #notesPage .note-content-editor {
+            border-color: var(--rover-border) !important;
+            background-color: rgba(12, 11, 17, 0.82) !important;
+            color: var(--rover-text) !important;
+        }
+
+        body input::placeholder,
+        body textarea::placeholder {
+            color: #8e879d !important;
+        }
+
+        body .input:focus,
+        body .textarea:focus,
+        body select:focus,
+        body #notesPage .note-content-editor:focus {
+            border-color: var(--rover-accent) !important;
+            box-shadow: 0 0 0 0.15em rgba(91, 143, 240, 0.2) !important;
+        }
+
+        body .button.is-black,
+        body .button.is-black.is-outlined {
+            border-color: rgba(151, 187, 255, 0.52) !important;
+            background: rgba(91, 143, 240, 0.14) !important;
+            color: #f8f5ff !important;
+            transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+        }
+
+        body .button.is-black:hover,
+        body .button.is-black.is-outlined:hover {
+            border-color: var(--rover-accent-hover) !important;
+            background: rgba(91, 143, 240, 0.3) !important;
+            color: #fff !important;
+            transform: translateY(-1px);
+        }
+
+        body .top-nav {
+            border-bottom: 1px solid rgba(225, 219, 240, 0.1);
+            background: rgba(12, 11, 16, 0.62);
+            backdrop-filter: blur(16px);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #Rover_backgroundVideo {
+                display: none;
+            }
         }
 
         .ollama-drawer {
@@ -506,7 +711,11 @@
     </style>
 </head>
 
-<body class="has-background-white">
+<body>
+    <video id="Rover_backgroundVideo" autoplay muted loop playsinline preload="metadata"
+        poster="{{ url_for('static', filename='images/RoverBackground.jpg') }}" aria-hidden="true" tabindex="-1">
+        <source src="{{ url_for('static', filename='Videos/Rover_backgroundVideo.mp4') }}" type="video/mp4">
+    </video>
 
     <main class="is-flex is-flex-direction-column" style="min-height: 100vh;">
         <div class="is-flex-grow-1">
@@ -529,6 +738,12 @@
         document.querySelectorAll(".flash-message").forEach((message) => {
             window.setTimeout(() => message.remove(), 30_000);
         });
+
+        const backgroundVideo = document.getElementById("Rover_backgroundVideo");
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+        if (backgroundVideo && reducedMotion.matches) {
+            backgroundVideo.pause();
+        }
     </script>
 </body>
 </html>
