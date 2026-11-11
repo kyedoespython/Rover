@@ -307,7 +307,7 @@ function initializeOllamaDrawer() {
     };
 
     const resizeDrawer = (event) => {
-        const width = window.innerWidth - event.clientX;
+        const width = drawer.getBoundingClientRect().right - event.clientX;
         if (width < 180) {
             setDrawerOpen(false);
             return;
@@ -464,7 +464,9 @@ function initializeOllamaDrawer() {
 
     dragHandle.addEventListener("dblclick", () => {
         const currentWidth = drawer.getBoundingClientRect().width;
-        const defaultWidth = Math.min(window.innerWidth * 0.84, window.innerWidth - 24);
+        const defaultWidth = window.innerWidth <= 600
+            ? window.innerWidth - 24
+            : Math.min(420, window.innerWidth - 24);
         drawer.style.setProperty(
             "--ollama-drawer-width",
             `${currentWidth > defaultWidth + 20 ? defaultWidth : Math.min(window.innerWidth * 0.94, window.innerWidth - 24)}px`,

@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma/bulma.min.css') }}">
 {% endblock %}
 
+{% block extra_js %}
+    <script src="{{ url_for('static', filename='scripts/Signup.js') }}?v=1" defer></script>
+{% endblock %}
+
 {% block content %}
 
 <style>
@@ -128,12 +132,12 @@
                     <label class="label has-text-black">Country</label>
                     <div class="control">
                         <div class="select is-fullwidth">
-                            <select name="country" required>
+                            <select id="signupCountry" name="country" required>
                                 <option value="">Select a country</option>
-                                <option value="United Kingdom">United Kingdom +44</option>
-                                <option value="United States">United States +1</option>
-                                <option value="Germany">Germany +49</option>
-                                <option value="France">France +33</option>
+                                <option value="United Kingdom" data-calling-code="44">United Kingdom +44</option>
+                                <option value="United States" data-calling-code="1">United States +1</option>
+                                <option value="Germany" data-calling-code="49">Germany +49</option>
+                                <option value="France" data-calling-code="33">France +33</option>
                             </select>
                         </div>
                     </div>

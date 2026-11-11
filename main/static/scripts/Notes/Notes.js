@@ -4,6 +4,7 @@ function initializeNotesPage() {
     const editor = document.getElementById("noteContentEditor");
     const headingMenu = document.getElementById("noteHeadingMenu");
     const headingToggle = document.getElementById("headingSelectToggle");
+    const headingSelect = document.getElementById("headingSelect");
     const editForm = document.querySelector("#notesPage .note-edit-form");
 
     if (notesList instanceof HTMLElement) {
@@ -49,6 +50,7 @@ function initializeNotesPage() {
         !(editor instanceof HTMLElement) ||
         !(headingMenu instanceof HTMLElement) ||
         !(headingToggle instanceof HTMLButtonElement) ||
+        !(headingSelect instanceof HTMLElement) ||
         !(editForm instanceof HTMLFormElement)
     ) {
         return;
@@ -95,6 +97,17 @@ function initializeNotesPage() {
     document.addEventListener("selectionchange", rememberSelection);
     editor.addEventListener("keyup", rememberSelection);
     editor.addEventListener("mouseup", rememberSelection);
+    editor.addEventListener("dblclick", () => {
+        const selection = window.getSelection();
+        if (!selection || selection.isCollapsed || !editor.contains(selection.anchorNode) ||
+            !editor.contains(selection.focusNode)) {
+            return;
+        }
+        rememberSelection();
+        headingSelect.hidden = false;
+        headingMenu.hidden = false;
+        headingToggle.setAttribute("aria-expanded", "true");
+    });
     editor.addEventListener("input", () => {
         content.value = serializeMarkdown();
         editor.removeAttribute("aria-invalid");
@@ -159,6 +172,7 @@ function initializeNotesPage() {
 
         content.value = serializeMarkdown();
         headingMenu.hidden = true;
+        headingSelect.hidden = true;
         headingToggle.setAttribute("aria-expanded", "false");
         editor.focus();
     });
@@ -171,13 +185,15 @@ function initializeNotesPage() {
             !headingToggle.contains(target)
         ) {
             headingMenu.hidden = true;
+            headingSelect.hidden = true;
             headingToggle.setAttribute("aria-expanded", "false");
         }
     });
 
     document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape" && !headingMenu.hidden) {
+        if (event.key === "Escape" && !headingSelect.hidden) {
             headingMenu.hidden = true;
+            headingSelect.hidden = true;
             headingToggle.setAttribute("aria-expanded", "false");
             editor.focus();
         }

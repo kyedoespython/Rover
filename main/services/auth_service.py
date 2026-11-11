@@ -16,7 +16,7 @@ def _send_email(to, subject, text, html=None):
     email = {
         "from": current_app.config.get(
             "RESEND_FROM_EMAIL",
-            "onboarding@resend.dev",
+            "Rover <noreply@rover-solutions.com>",
         ),
         "to": to,
         "subject": subject,

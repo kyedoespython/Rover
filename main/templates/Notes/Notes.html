@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{{ url_for('static', filename='scripts/Notes/Notes.js') }}?v=4" defer></script>
+    <script src="{{ url_for('static', filename='scripts/Notes/Notes.js') }}?v=5" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -40,8 +40,11 @@
         justify-self: end;
     }
 
-    #notesPage .notes-nav-group,
-    #notesPage .notes-heading-controls {
+    #notesPage .notes-nav > :first-child {
+        justify-self: start;
+    }
+
+    #notesPage .notes-nav-group {
         display: flex;
         align-items: center;
         gap: 0.625rem;
@@ -58,6 +61,10 @@
         position: relative;
     }
 
+    #notesPage .heading-select[hidden] {
+        display: none;
+    }
+
     #notesPage .heading-popup[hidden] {
         display: none;
     }
@@ -66,7 +73,7 @@
         position: absolute;
         z-index: 20;
         top: calc(100% + 0.5rem);
-        left: 0;
+        right: 0;
         display: grid;
         min-width: 10rem;
         gap: 0.25rem;
@@ -311,8 +318,15 @@
             gap: 0.35rem;
         }
 
-        #notesPage .notes-heading-controls {
-            gap: 0.35rem;
+        #notesPage .notes-nav-group {
+            position: relative;
+        }
+
+        #notesPage .heading-select {
+            position: absolute;
+            z-index: 20;
+            top: calc(100% + 0.35rem);
+            right: 0;
         }
 
         #notesPage .notes-header {
@@ -342,9 +356,9 @@
 <div id="notesPage">
     <nav class="top-nav notes-nav p-4" aria-label="Main navigation">
         <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6">Home</a>
-        <div class="notes-heading-controls">
-            <h1 class="title has-text-black notes-header">Notes</h1>
-            <div class="heading-select">
+        <h1 class="title has-text-black notes-header">Notes</h1>
+        <div class="notes-nav-group">
+            <div class="heading-select" id="headingSelect" hidden>
                 <button
                     class="button is-black is-outlined is-size-6"
                     id="headingSelectToggle"
@@ -363,8 +377,6 @@
                     <button type="button" data-heading-level="0">Paragraph</button>
                 </div>
             </div>
-        </div>
-        <div class="notes-nav-group">
             <a href="{{ url_for('home.Contact') }}" class="button is-black is-outlined is-size-6">Support</a>
         </div>
     </nav>
@@ -447,7 +459,7 @@
                     </div>
                     <textarea class="note-content" id="noteContent" name="note_content" maxlength="4096" aria-label="Note body in Markdown" hidden>{{ selected_content }}</textarea>
                     <div class="note-content-editor" id="noteContentEditor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Note body" aria-describedby="noteContentHelp"></div>
-                    <p class="is-sr-only" id="noteContentHelp">Use the Heading select menu to format the current text block.</p>
+                    <p class="is-sr-only" id="noteContentHelp">Double-click text to show the Heading select menu and format the selected text block.</p>
                     <div class="field is-grouped note-edit-actions">
                         <div class="control">
                             <button class="button is-black is-outlined is-size-6" type="submit">Save note</button>

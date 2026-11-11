@@ -23,7 +23,7 @@ class Config:
     RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
     RESEND_FROM_EMAIL = os.environ.get(
         "RESEND_FROM_EMAIL",
-        "onboarding@resend.dev",
+        "Rover <noreply@rover-solutions.com>",
     )
     NOTE_STORAGE_DIR = os.environ.get("NOTE_STORAGE_DIR")
     OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")

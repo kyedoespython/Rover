@@ -102,6 +102,7 @@ def test_notes_route_create_load_edit_and_delete(notes_client):
     assert b"Save note" in response.data
     assert b'id="noteHeadingMenu"' in response.data
     assert b'id="headingSelectToggle"' in response.data
+    assert b'id="headingSelect" hidden' in response.data
     assert b'id="noteContentEditor"' in response.data
     assert b'data-heading-level="6"' in response.data
     notes_heading = response.data.index(b">Notes</h1>")
@@ -151,13 +152,35 @@ def test_notes_route_create_load_edit_and_delete(notes_client):
         assert db.session.get(Notes, note_id) is None
 
 
+def test_signup_phone_country_mismatch_flashes_red_error(notes_client):
+    response = notes_client.post(
+        "/Handle_signup",
+        data={
+            "email": "signup-mismatch@example.com",
+            "username": "SignupMismatch",
+            "password": "Strong!Password",
+            "telephone": "+442083661177",
+            "country": "France",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b'class="flash-message flash-message-error"' in response.data
+    assert b"phone number and country doesnt match" in response.data
+    assert b"scripts/Signup.js?v=1" in response.data
+    assert b'data-calling-code="44"' in response.data
+    with notes_client.application.app_context():
+        assert Accounts.query.filter_by(email="signup-mismatch@example.com").first() is None
+
+
 def test_notes_page_creates_default_note_and_sidebar_creates_named_notes(notes_client):
     page = notes_client.get("/Rover/Notes")
     assert page.status_code == 200
     assert b"Empty note" in page.data
     assert b"New note name" in page.data
     assert b"Your notes" in page.data
-    assert b"scripts/Notes/Notes.js?v=4" in page.data
+    assert b"scripts/Notes/Notes.js?v=5" in page.data
     assert b"notePreview" not in page.data
     assert b"Preview" not in page.data
 
@@ -184,7 +207,7 @@ def test_notes_page_creates_default_note_and_sidebar_creates_named_notes(notes_c
     opened = notes_client.get(f"/Rover/Notes?load_id={default_note_id}")
     assert opened.status_code == 200
     assert b'id="noteContent"' in opened.data
-    assert b"Use the Heading select menu to format the current text block." in opened.data
+    assert b"Double-click text to show the Heading select menu" in opened.data
     assert b'id="noteContentEditor"' in opened.data
 
 
@@ -286,7 +309,7 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'class="ollama-mode-section"' in response.data
     assert b'id="ollamaMinimize"' in response.data
     assert b'id="ollamaEndSession"' in response.data
-    assert b"scripts/Integrations/Ollama.js?v=10" in response.data
+    assert b"scripts/Integrations/Ollama.js?v=11" in response.data
     assert response.data.count(b'id="ollamaDrawer"') == 1
     assert b'class="button is-outlined design-side-button rover-ai-nav-button"' in response.data
     assert b"ollama-drawer-toggle" not in response.data

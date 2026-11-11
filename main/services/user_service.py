@@ -1,27 +1,13 @@
 from main.models.user import Accounts, Authentication
 from werkzeug.security import check_password_hash
 import re
+import phonenumbers
 
-# country codes (useful as global dictionary)
-country_codes = {
-
-            "United Kingdom": "+44",
-            "United States": "+1",
-            "Germany": "+49",
-            "France": "+33"
-        }
-
-# match up the value of the country code dict to first 2 digits phone numbers
-phoneNumber_digit_match = {
-
-    "+44 First Two Digits": ["01", "02", "07", "03", "05", "08", "09"], # UK
-    
-    "+1 First Digit" : ["2", "3", "4", "5", "6", "7", "8", "9"], # USA
-    "+1 Second Digit": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
-    
-    "+49 First Two Digits": ["15", "16", "17"], # Germany
-    
-    "+33 First Two Digits": ["06", "07"], # French
+country_regions = {
+    "United Kingdom": "GB",
+    "United States": "US",
+    "Germany": "DE",
+    "France": "FR",
 }
 
 # check all account fields before insertion to validate via rules
@@ -70,16 +56,28 @@ class Contents_Checker:
         if not self.phone_number:
             return True, "No phone number entered"
 
-        clean_phone_number = self.phone_number.replace("-", "").replace("(", "").replace(")", "")
+        region = country_regions.get(self.country)
+        if region is None:
+            return False, "Select a valid country"
 
-        expected_code = country_codes.get(self.country)
+        try:
+            phone_number = phonenumbers.parse(
+                self.phone_number,
+                None if self.phone_number.lstrip().startswith("+") else region,
+            )
+        except phonenumbers.NumberParseException:
+            return False, "Enter a valid phone number"
 
-        if not clean_phone_number.startswith(expected_code):
-            return False, "Phone number does not match selected country"
+        if not phonenumbers.is_valid_number(phone_number):
+            return False, "Enter a valid phone number"
+
+        if phonenumbers.region_code_for_number(phone_number) != region:
+            return False, "phone number and country doesnt match"
+
         return True, "Phone number is valid"
 
     def Check_Country_Valid(self):
-        if not self.country:
+        if self.country not in country_regions:
             return False, "Select a valid country"
         return True, "Country is valid"
 

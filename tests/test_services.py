@@ -7,7 +7,37 @@ from main.services.auth_service import (
     SendVerificationConfirmationEmail,
     resend,
 )
-from main.services.user_service import Account_Exists_Validator
+from main.services.user_service import Account_Exists_Validator, Contents_Checker
+
+
+def test_phone_number_validator_accepts_local_number_for_selected_country():
+    checker = Contents_Checker("", "", "", "020 8366 1177", "United Kingdom")
+
+    assert checker.Check_Phone_Number_Contents() == (True, "Phone number is valid")
+
+
+def test_phone_number_validator_rejects_number_from_different_country():
+    checker = Contents_Checker("", "", "", "+442083661177", "France")
+
+    assert checker.Check_Phone_Number_Contents() == (
+        False,
+        "phone number and country doesnt match",
+    )
+
+
+def test_phone_number_validator_detects_region_inside_shared_calling_code():
+    checker = Contents_Checker("", "", "", "+14165550123", "United States")
+
+    assert checker.Check_Phone_Number_Contents() == (
+        False,
+        "phone number and country doesnt match",
+    )
+
+
+def test_phone_number_validator_rejects_unsupported_country():
+    checker = Contents_Checker("", "", "", "+442083661177", "Canada")
+
+    assert checker.Check_Phone_Number_Contents() == (False, "Select a valid country")
 
 
 @patch("main.services.user_service.Accounts")
@@ -61,6 +91,6 @@ def test_auth_code_email_uses_resend_api_key_from_app_config(send):
     assert sent
     assert message == "Auth code sent to your email."
     assert resend.api_key == "test-resend-key"
-    assert send.call_args.args[0]["from"] == "onboarding@resend.dev"
+    assert send.call_args.args[0]["from"] == "Rover <noreply@rover-solutions.com>"
     assert send.call_args.args[0]["to"] == ["alex@example.com"]
     assert "1234567" in send.call_args.args[0]["text"]
