@@ -2,6 +2,14 @@ function initializeSchemaEditor() {
     const dialog = document.getElementById("schemaEditorDialog");
     const openButton = document.getElementById("openSchemaEditor");
     const closeButton = document.getElementById("closeSchemaEditor");
+    const demoButton = document.getElementById("openSchemaDemo");
+    const databaseList = document.getElementById("schemaDatabaseList");
+    const databaseCount = document.getElementById("schemaDatabaseCount");
+    const libraryStatus = document.getElementById("schemaLibraryStatus");
+    const createForm = document.getElementById("schemaCreateForm");
+    const newNameInput = document.getElementById("schemaNewName");
+    const fileInput = document.getElementById("schemaFileInput");
+    const nameInput = document.getElementById("schemaNameInput");
     const canvas = document.getElementById("schemaCanvas");
     const inspector = document.getElementById("schemaInspector");
     const tableGrid = document.getElementById("schemaTableGrid");
@@ -9,6 +17,21 @@ function initializeSchemaEditor() {
     const connectionLayer = document.getElementById("schemaConnections");
     const saveButton = document.getElementById("saveSchemaButton");
     const saveStatus = document.getElementById("schemaSaveStatus");
+    const queryButton = document.getElementById("openSchemaQuery");
+    const queryPanel = document.getElementById("schemaQueryPanel");
+    const workspace = document.getElementById("schemaWorkspace");
+    const queryInput = document.getElementById("schemaQueryInput");
+    const runQueryButton = document.getElementById("runSchemaQuery");
+    const queryStatus = document.getElementById("schemaQueryStatus");
+    const queryResults = document.getElementById("schemaQueryResults");
+    const demoDialog = document.getElementById("schemaDemoDialog");
+    const closeDemoButton = document.getElementById("closeSchemaDemo");
+    const demoDatabaseName = document.getElementById("schemaDemoDatabaseName");
+    const demoNodes = document.getElementById("schemaDemoNodes");
+    const demoPackets = document.getElementById("schemaDemoPackets");
+    const demoTrack = document.querySelector("#schemaDemoDialog .schema-demo-track");
+    const demoActiveUsers = document.getElementById("schemaDemoActiveUsers");
+    const demoStatus = document.getElementById("schemaDemoStatus");
     const viewButtons = document.querySelectorAll("[data-schema-view]");
     const csrfInput = document.querySelector('#apiKeyForm input[name="csrf_token"]');
 
@@ -16,6 +39,14 @@ function initializeSchemaEditor() {
         !(dialog instanceof HTMLDialogElement) ||
         !(openButton instanceof HTMLButtonElement) ||
         !(closeButton instanceof HTMLButtonElement) ||
+        !(demoButton instanceof HTMLButtonElement) ||
+        !(databaseList instanceof HTMLElement) ||
+        !(databaseCount instanceof HTMLElement) ||
+        !(libraryStatus instanceof HTMLElement) ||
+        !(createForm instanceof HTMLFormElement) ||
+        !(newNameInput instanceof HTMLInputElement) ||
+        !(fileInput instanceof HTMLInputElement) ||
+        !(nameInput instanceof HTMLInputElement) ||
         !(canvas instanceof HTMLElement) ||
         !(inspector instanceof HTMLElement) ||
         !(tableGrid instanceof HTMLElement) ||
@@ -23,6 +54,21 @@ function initializeSchemaEditor() {
         !(connectionLayer instanceof SVGSVGElement) ||
         !(saveButton instanceof HTMLButtonElement) ||
         !(saveStatus instanceof HTMLElement) ||
+        !(queryButton instanceof HTMLButtonElement) ||
+        !(queryPanel instanceof HTMLElement) ||
+        !(workspace instanceof HTMLElement) ||
+        !(queryInput instanceof HTMLTextAreaElement) ||
+        !(runQueryButton instanceof HTMLButtonElement) ||
+        !(queryStatus instanceof HTMLElement) ||
+        !(queryResults instanceof HTMLElement) ||
+        !(demoDialog instanceof HTMLDialogElement) ||
+        !(closeDemoButton instanceof HTMLButtonElement) ||
+        !(demoDatabaseName instanceof HTMLElement) ||
+        !(demoNodes instanceof HTMLElement) ||
+        !(demoPackets instanceof HTMLElement) ||
+        !(demoTrack instanceof HTMLElement) ||
+        !(demoActiveUsers instanceof HTMLElement) ||
+        !(demoStatus instanceof HTMLElement) ||
         !(csrfInput instanceof HTMLInputElement) ||
         viewButtons.length === 0
     ) {
@@ -31,13 +77,19 @@ function initializeSchemaEditor() {
 
     const tables = [];
     const relationships = [];
+    const databases = [];
     let activeView = "tables";
     let selectedTableId = null;
+    let selectedDatabaseId = null;
     let relationshipSourceId = null;
     let relationshipTargetId = null;
     let selectedLineColor = "#2878b5";
     let nextId = 1;
     let dragState = null;
+    let hasUnsavedChanges = false;
+    let demoTrafficTimer = null;
+    let activeDemoPacketCount = 0;
+    let reloadAfterEditorClose = false;
 
     const lineColors = [
         { color: "#2878b5", name: "Blue line" },
@@ -81,6 +133,51 @@ function initializeSchemaEditor() {
             select.value = selectedValue;
         }
         return select;
+    };
+
+    const databaseUrl = (databaseId, suffix = "") =>
+        `${dialog.dataset.schemaUrl}/${encodeURIComponent(databaseId)}${suffix}`;
+
+    const setLibraryStatus = (message) => {
+        libraryStatus.textContent = message;
+    };
+
+    const renderDatabaseList = () => {
+        databaseList.replaceChildren();
+        databaseCount.textContent = String(databases.length);
+        if (databases.length === 0) {
+            databaseList.append(
+                createElement("p", "schema-sidebar-help", "No saved databases yet."),
+            );
+            return;
+        }
+
+        databases.forEach((database) => {
+            const item = createElement(
+                "div",
+                `schema-database-item${Number(database.id) === selectedDatabaseId ? " is-selected" : ""}`,
+            );
+            const select = createElement("button", "schema-database-select");
+            select.type = "button";
+            select.dataset.action = "select-database";
+            select.dataset.databaseId = String(database.id);
+            select.setAttribute("aria-current", String(Number(database.id) === selectedDatabaseId));
+            const name = createElement("strong", "", database.name);
+            const detail = createElement(
+                "span",
+                "",
+                `${database.table_count} tables | ${database.file_name}`,
+            );
+            select.append(name, detail);
+
+            const remove = createElement("button", "schema-database-delete", "Delete");
+            remove.type = "button";
+            remove.dataset.action = "delete-database";
+            remove.dataset.databaseId = String(database.id);
+            remove.setAttribute("aria-label", `Delete ${database.name}`);
+            item.append(select, remove);
+            databaseList.append(item);
+        });
     };
 
     const selectedTable = () =>
@@ -181,6 +278,14 @@ function initializeSchemaEditor() {
     const renderTablesView = () => {
         inspector.replaceChildren(
             createElement("h3", "", "Tables"),
+        );
+        if (!selectedDatabaseId) {
+            inspector.append(
+                createElement("p", "", "Create a database or load a SQLite file to edit its schema."),
+            );
+            return;
+        }
+        inspector.append(
             createElement(
                 "p",
                 "",
@@ -206,6 +311,10 @@ function initializeSchemaEditor() {
     const renderConfigureView = () => {
         const table = selectedTable();
         inspector.replaceChildren(createElement("h3", "", "Configure table"));
+        if (!selectedDatabaseId) {
+            inspector.append(createElement("p", "", "Create or load a database first."));
+            return;
+        }
         if (!table) {
             inspector.append(
                 createElement("p", "", "Add and select a table before configuring it."),
@@ -284,6 +393,15 @@ function initializeSchemaEditor() {
         doneButton.type = "button";
         doneButton.dataset.action = "apply-table";
         inspector.append(doneButton);
+
+        const removeTableButton = createElement(
+            "button",
+            "schema-action schema-secondary-action schema-danger-action",
+            "Delete table",
+        );
+        removeTableButton.type = "button";
+        removeTableButton.dataset.action = "remove-table";
+        inspector.append(removeTableButton);
     };
 
     const renderRelationshipsView = () => {
@@ -292,10 +410,17 @@ function initializeSchemaEditor() {
             createElement(
                 "p",
                 "",
-                "Load your saved tables here, then drag one table onto another to connect them automatically.",
+                "Drag one table onto another to connect them, or define the relationship below.",
             ),
         );
-        const loadButton = createElement("button", "schema-action", "Load tables");
+        if (!selectedDatabaseId) {
+            inspector.replaceChildren(
+                createElement("h3", "", "Relationships"),
+                createElement("p", "", "Create or load a database first."),
+            );
+            return;
+        }
+        const loadButton = createElement("button", "schema-action", "Reload database");
         loadButton.type = "button";
         loadButton.dataset.action = "load-schema";
         inspector.append(loadButton);
@@ -451,6 +576,8 @@ function initializeSchemaEditor() {
     };
 
     const markDirty = () => {
+        hasUnsavedChanges = true;
+        saveButton.disabled = !selectedDatabaseId;
         saveStatus.textContent = "Unsaved changes";
     };
 
@@ -482,17 +609,43 @@ function initializeSchemaEditor() {
         markDirty();
     };
 
-    const loadSchema = async () => {
-        saveStatus.textContent = "Loading saved tables...";
+    const clearSelectedDatabase = () => {
+        selectedDatabaseId = null;
+        nameInput.value = "";
+        nameInput.disabled = true;
+        saveButton.disabled = true;
+        queryButton.disabled = true;
+        runQueryButton.disabled = true;
+        hasUnsavedChanges = false;
+        tables.splice(0, tables.length);
+        relationships.splice(0, relationships.length);
+        selectedTableId = null;
+        queryPanel.hidden = true;
+        workspace.hidden = false;
+        queryButton.setAttribute("aria-pressed", "false");
+        queryStatus.textContent = "";
+        queryResults.replaceChildren();
+        renderDatabaseList();
+        render();
+    };
+
+    const loadDatabase = async (databaseId) => {
+        saveStatus.textContent = "Loading database...";
         try {
-            const response = await fetch(dialog.dataset.schemaUrl, {
+            const response = await fetch(databaseUrl(databaseId), {
                 credentials: "same-origin",
                 headers: { Accept: "application/json" },
             });
             const result = await response.json();
             if (!response.ok) {
-                throw new Error(result.error || "Could not load the saved schema.");
+                throw new Error(result.error || "Could not load the database.");
             }
+            selectedDatabaseId = Number(result.database.id);
+            nameInput.value = result.database.name;
+            nameInput.disabled = false;
+            saveButton.disabled = false;
+            queryButton.disabled = false;
+            runQueryButton.disabled = false;
             tables.splice(0, tables.length, ...result.schema.tables);
             relationships.splice(
                 0,
@@ -508,20 +661,64 @@ function initializeSchemaEditor() {
             nextId = Math.max(0, ...numericIds) + 1;
             relationshipSourceId = null;
             relationshipTargetId = null;
+            hasUnsavedChanges = false;
+            renderDatabaseList();
             render();
-            saveStatus.textContent = tables.length
-                ? `Loaded ${tables.length} table${tables.length === 1 ? "" : "s"}`
-                : "No saved tables yet";
+            saveStatus.textContent =
+                `Loaded ${result.database.name} (${result.database.table_count} tables)`;
+            return true;
         } catch (error) {
             saveStatus.textContent = error.message || "Could not load the saved schema.";
+            return false;
+        }
+    };
+
+    const loadDatabaseList = async (selectFirst = false) => {
+        setLibraryStatus("Loading saved databases...");
+        try {
+            const response = await fetch(dialog.dataset.schemaUrl, {
+                credentials: "same-origin",
+                headers: { Accept: "application/json" },
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "Could not load saved databases.");
+            }
+            databases.splice(0, databases.length, ...result.databases);
+            renderDatabaseList();
+            setLibraryStatus(
+                databases.length ? "" : "Create a database or load a SQLite file.",
+            );
+            if (selectedDatabaseId && !databases.some(
+                (database) => Number(database.id) === selectedDatabaseId,
+            )) {
+                clearSelectedDatabase();
+            }
+            if (
+                selectFirst &&
+                databases.length > 0 &&
+                (!selectedDatabaseId || !databases.some(
+                    (database) => Number(database.id) === selectedDatabaseId,
+                ))
+            ) {
+                await loadDatabase(databases[0].id);
+            }
+            return true;
+        } catch (error) {
+            setLibraryStatus(error.message || "Could not load saved databases.");
+            return false;
         }
     };
 
     const saveSchema = async () => {
+        if (!selectedDatabaseId) {
+            saveStatus.textContent = "Create or load a database first.";
+            return;
+        }
         saveButton.disabled = true;
         saveStatus.textContent = "Saving schema...";
         try {
-            const response = await fetch(dialog.dataset.schemaUrl, {
+            const response = await fetch(databaseUrl(selectedDatabaseId), {
                 method: "PUT",
                 credentials: "same-origin",
                 headers: {
@@ -530,6 +727,7 @@ function initializeSchemaEditor() {
                     Accept: "application/json",
                 },
                 body: JSON.stringify({
+                    name: nameInput.value,
                     schema: { tables, relationships },
                 }),
             });
@@ -537,6 +735,17 @@ function initializeSchemaEditor() {
             if (!response.ok) {
                 throw new Error(result.error || "Could not save the schema.");
             }
+            databases.splice(
+                0,
+                databases.length,
+                ...databases.map((database) =>
+                    Number(database.id) === selectedDatabaseId
+                        ? result.database
+                        : database,
+                ),
+            );
+            hasUnsavedChanges = false;
+            renderDatabaseList();
             saveStatus.textContent =
                 `Saved ${result.metadata.table_count} tables, ` +
                 `${result.metadata.column_count} fields, and ` +
@@ -544,7 +753,7 @@ function initializeSchemaEditor() {
         } catch (error) {
             saveStatus.textContent = error.message || "Could not save the schema.";
         } finally {
-            saveButton.disabled = false;
+            saveButton.disabled = !selectedDatabaseId;
         }
     };
 
@@ -559,7 +768,298 @@ function initializeSchemaEditor() {
         renderInspector();
     };
 
+    const createDatabase = async (event) => {
+        event.preventDefault();
+        const name = newNameInput.value.trim();
+        if (!name) {
+            setLibraryStatus("Enter a name for the new database.");
+            newNameInput.focus();
+            return;
+        }
+        const submitButton = createForm.querySelector('button[type="submit"]');
+        if (submitButton instanceof HTMLButtonElement) {
+            submitButton.disabled = true;
+        }
+        setLibraryStatus("Creating SQLite database...");
+        try {
+            const response = await fetch(dialog.dataset.schemaUrl, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfInput.value,
+                    Accept: "application/json",
+                },
+                body: JSON.stringify({
+                    name,
+                    schema: { tables: [], relationships: [] },
+                }),
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "Could not create the database.");
+            }
+            newNameInput.value = "";
+            await loadDatabaseList();
+            await loadDatabase(result.database.id);
+            setLibraryStatus("Database created.");
+        } catch (error) {
+            setLibraryStatus(error.message || "Could not create the database.");
+        } finally {
+            if (submitButton instanceof HTMLButtonElement) {
+                submitButton.disabled = false;
+            }
+        }
+    };
+
+    const importDatabase = async () => {
+        const file = fileInput.files?.[0];
+        if (!file) {
+            return;
+        }
+        const extension = file.name.split(".").pop()?.toLowerCase();
+        if (!["db", "sqlite", "sqlite3"].includes(extension)) {
+            setLibraryStatus("Only .sqlite3, .sqlite, and .db files are accepted.");
+            fileInput.value = "";
+            return;
+        }
+        const formData = new FormData();
+        formData.append("file", file);
+        setLibraryStatus("Validating and loading SQLite file...");
+        fileInput.disabled = true;
+        try {
+            const response = await fetch(dialog.dataset.schemaImportUrl, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "X-CSRFToken": csrfInput.value,
+                    Accept: "application/json",
+                },
+                body: formData,
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "Could not load the SQLite file.");
+            }
+            await loadDatabaseList();
+            await loadDatabase(result.database.id);
+            setLibraryStatus("SQLite database loaded.");
+        } catch (error) {
+            setLibraryStatus(error.message || "Could not load the SQLite file.");
+        } finally {
+            fileInput.disabled = false;
+            fileInput.value = "";
+        }
+    };
+
+    const deleteDatabase = async (databaseId, databaseName) => {
+        if (!window.confirm(`Permanently delete "${databaseName}" and its stored SQLite file?`)) {
+            return;
+        }
+        setLibraryStatus(`Deleting ${databaseName}...`);
+        try {
+            const response = await fetch(databaseUrl(databaseId), {
+                method: "DELETE",
+                credentials: "same-origin",
+                headers: {
+                    "X-CSRFToken": csrfInput.value,
+                    Accept: "application/json",
+                },
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "Could not delete the database.");
+            }
+            if (Number(databaseId) === selectedDatabaseId) {
+                clearSelectedDatabase();
+            }
+            await loadDatabaseList();
+            setLibraryStatus("Database deleted.");
+        } catch (error) {
+            setLibraryStatus(error.message || "Could not delete the database.");
+        }
+    };
+
+    const renderQueryResults = (columns, rows, truncated) => {
+        queryResults.replaceChildren();
+        if (columns.length === 0) {
+            queryResults.append(
+                createElement("p", "schema-sidebar-help", "No result columns were returned."),
+            );
+            return;
+        }
+        const table = createElement("table");
+        const head = createElement("thead");
+        const headerRow = createElement("tr");
+        columns.forEach((column) => {
+            const cell = createElement("th", "", column);
+            cell.scope = "col";
+            headerRow.append(cell);
+        });
+        head.append(headerRow);
+        const body = createElement("tbody");
+        if (rows.length === 0) {
+            const row = createElement("tr");
+            const cell = createElement("td", "", "No rows returned.");
+            cell.colSpan = columns.length;
+            row.append(cell);
+            body.append(row);
+        } else {
+            rows.forEach((values) => {
+                const row = createElement("tr");
+                values.forEach((value) => {
+                    let text = value === null ? "NULL" : String(value);
+                    if (value && typeof value === "object" && "blob_hex" in value) {
+                        text = `BLOB ${value.blob_hex}${value.truncated ? "..." : ""}`;
+                    }
+                    row.append(createElement("td", "", text));
+                });
+                body.append(row);
+            });
+        }
+        table.append(head, body);
+        queryResults.append(table);
+        if (truncated) {
+            queryResults.append(
+                createElement("p", "schema-sidebar-help", "Showing the first 200 rows."),
+            );
+        }
+    };
+
+    const runSchemaQuery = async () => {
+        if (!selectedDatabaseId) {
+            queryStatus.textContent = "Load a database first.";
+            return;
+        }
+        runQueryButton.disabled = true;
+        queryStatus.textContent = "Running read-only query...";
+        queryResults.replaceChildren();
+        try {
+            const response = await fetch(databaseUrl(selectedDatabaseId, "/query"), {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfInput.value,
+                    Accept: "application/json",
+                },
+                body: JSON.stringify({ query: queryInput.value }),
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "The query could not be completed.");
+            }
+            renderQueryResults(result.columns, result.rows, result.truncated);
+            queryStatus.textContent =
+                `${result.rows.length} row${result.rows.length === 1 ? "" : "s"} returned` +
+                (result.truncated ? " (limited)" : "");
+        } catch (error) {
+            queryStatus.textContent = error.message || "The query could not be completed.";
+        } finally {
+            runQueryButton.disabled = !selectedDatabaseId;
+        }
+    };
+
+    const toggleQueryPanel = () => {
+        if (!selectedDatabaseId) {
+            saveStatus.textContent = "Create or load a database before querying.";
+            return;
+        }
+        const showingQuery = queryPanel.hidden;
+        queryPanel.hidden = !showingQuery;
+        workspace.hidden = showingQuery;
+        queryButton.setAttribute("aria-pressed", String(showingQuery));
+        if (showingQuery) {
+            queryInput.focus();
+        } else {
+            queryButton.focus();
+        }
+    };
+
+    const renderDemo = () => {
+        demoNodes.replaceChildren();
+        demoPackets.replaceChildren();
+        const database = databases.find(
+            (item) => Number(item.id) === selectedDatabaseId,
+        );
+        demoDatabaseName.textContent = database
+            ? `Simulated traffic passing through ${database.name}.`
+            : "Simulated requests passing through your schema.";
+        const visibleTables = tables.slice(0, 8);
+        visibleTables.forEach((table) => {
+            demoNodes.append(
+                createElement("div", "schema-demo-node", table.name),
+            );
+        });
+        demoStatus.textContent = tables.length > visibleTables.length
+            ? `Showing 8 of ${tables.length} tables.`
+            : `${tables.length} table${tables.length === 1 ? "" : "s"} in this model.`;
+        activeDemoPacketCount = 0;
+        demoActiveUsers.textContent = "Simulated active users: 0";
+    };
+
+    const stopDemoTraffic = () => {
+        if (demoTrafficTimer !== null) {
+            window.clearInterval(demoTrafficTimer);
+            demoTrafficTimer = null;
+        }
+        demoPackets.replaceChildren();
+        activeDemoPacketCount = 0;
+        demoActiveUsers.textContent = "Simulated active users: 0";
+    };
+
+    const startDemoTraffic = () => {
+        stopDemoTraffic();
+        const spawnPacket = () => {
+            if (!demoDialog.open || tables.length === 0) {
+                return;
+            }
+            const packet = createElement("span", "schema-demo-packet");
+            packet.style.top = `${35 + Math.random() * 30}%`;
+            packet.style.setProperty(
+                "--travel",
+                `${Math.max(0, demoTrack.clientWidth - 12)}px`,
+            );
+            packet.style.animationDuration = `${2.4 + Math.random() * 1.2}s`;
+            packet.addEventListener("animationend", () => {
+                packet.remove();
+                activeDemoPacketCount = Math.max(0, activeDemoPacketCount - 1);
+                demoActiveUsers.textContent =
+                    `Simulated active users: ${activeDemoPacketCount}`;
+            }, { once: true });
+            demoPackets.append(packet);
+            activeDemoPacketCount += 1;
+            demoActiveUsers.textContent =
+                `Simulated active users: ${activeDemoPacketCount}`;
+        };
+        spawnPacket();
+        demoTrafficTimer = window.setInterval(spawnPacket, 850);
+    };
+
+    const openDemo = async () => {
+        if (!dialog.open) {
+            dialog.showModal();
+        }
+        if (!await loadDatabaseList(true)) {
+            return;
+        }
+        if (!selectedDatabaseId) {
+            setLibraryStatus("Create a database or load a SQLite file before starting the demo.");
+            newNameInput.focus();
+            return;
+        }
+        if (dialog.open) {
+            dialog.close();
+        }
+        renderDemo();
+        demoDialog.showModal();
+        startDemoTraffic();
+    };
+
     const addTable = () => {
+        if (!selectedDatabaseId) {
+            return;
+        }
         const id = String(nextId++);
         const tableIndex = tables.length;
         const table = {
@@ -756,7 +1256,13 @@ function initializeSchemaEditor() {
                 addTable();
                 break;
             case "load-schema":
-                loadSchema();
+                if (
+                    selectedDatabaseId &&
+                    (!hasUnsavedChanges ||
+                        window.confirm("Discard unsaved changes and reload this database?"))
+                ) {
+                    loadDatabase(selectedDatabaseId);
+                }
                 break;
             case "choose-line-color":
                 selectedLineColor = button.dataset.color;
@@ -799,6 +1305,27 @@ function initializeSchemaEditor() {
                             relationships.splice(index, 1);
                         }
                     }
+                    markDirty();
+                    render();
+                }
+                break;
+            case "remove-table":
+                if (
+                    table &&
+                    window.confirm(
+                        `Delete table "${table.name}" from the database schema?`,
+                    )
+                ) {
+                    tables.splice(tables.indexOf(table), 1);
+                    for (let index = relationships.length - 1; index >= 0; index -= 1) {
+                        if (
+                            relationships[index].sourceTableId === table.id ||
+                            relationships[index].targetTableId === table.id
+                        ) {
+                            relationships.splice(index, 1);
+                        }
+                    }
+                    selectedTableId = tables[0]?.id || null;
                     markDirty();
                     render();
                 }
@@ -855,22 +1382,124 @@ function initializeSchemaEditor() {
         }
     });
 
+    createForm.addEventListener("submit", (event) => {
+        if (
+            hasUnsavedChanges &&
+            !window.confirm("Discard unsaved changes before creating another database?")
+        ) {
+            event.preventDefault();
+            return;
+        }
+        createDatabase(event);
+    });
+
+    fileInput.addEventListener("change", () => {
+        if (
+            hasUnsavedChanges &&
+            !window.confirm("Discard unsaved changes before loading another database?")
+        ) {
+            fileInput.value = "";
+            return;
+        }
+        importDatabase();
+    });
+
+    databaseList.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+            return;
+        }
+        const button = target.closest("button[data-action]");
+        if (!(button instanceof HTMLButtonElement)) {
+            return;
+        }
+        const databaseId = Number(button.dataset.databaseId);
+        const database = databases.find((item) => Number(item.id) === databaseId);
+        if (!database) {
+            return;
+        }
+        if (button.dataset.action === "delete-database") {
+            if (
+                databaseId === selectedDatabaseId &&
+                hasUnsavedChanges &&
+                !window.confirm("Discard unsaved changes before deleting this database?")
+            ) {
+                return;
+            }
+            deleteDatabase(databaseId, database.name);
+            return;
+        }
+        if (button.dataset.action === "select-database") {
+            if (
+                databaseId === selectedDatabaseId ||
+                !hasUnsavedChanges ||
+                window.confirm("Discard unsaved changes and load another database?")
+            ) {
+                loadDatabase(databaseId);
+            }
+        }
+    });
+
+    nameInput.addEventListener("input", markDirty);
+    queryButton.addEventListener("click", toggleQueryPanel);
+    runQueryButton.addEventListener("click", runSchemaQuery);
     saveButton.addEventListener("click", saveSchema);
-    openButton.addEventListener("click", () => {
-        dialog.showModal();
+
+    openButton.addEventListener("click", async () => {
+        if (!dialog.open) {
+            dialog.showModal();
+        }
         render();
+        await loadDatabaseList(true);
         dialog.querySelector('[data-schema-view="tables"]').focus();
     });
     closeButton.addEventListener("click", () => {
+        if (
+            hasUnsavedChanges &&
+            !window.confirm("Close without saving the schema changes?")
+        ) {
+            return;
+        }
+        reloadAfterEditorClose = hasUnsavedChanges;
         dialog.close();
         openButton.focus();
     });
     dialog.addEventListener("click", (event) => {
         if (event.target === dialog) {
+            if (
+                hasUnsavedChanges &&
+                !window.confirm("Close without saving the schema changes?")
+            ) {
+                return;
+            }
+            reloadAfterEditorClose = hasUnsavedChanges;
             dialog.close();
             openButton.focus();
         }
     });
+    dialog.addEventListener("cancel", (event) => {
+        if (
+            hasUnsavedChanges &&
+            !window.confirm("Close without saving the schema changes?")
+        ) {
+            event.preventDefault();
+        } else {
+            reloadAfterEditorClose = hasUnsavedChanges;
+        }
+    });
+    dialog.addEventListener("close", () => {
+        if (reloadAfterEditorClose && selectedDatabaseId) {
+            reloadAfterEditorClose = false;
+            loadDatabase(selectedDatabaseId);
+        }
+    });
+    demoButton.addEventListener("click", openDemo);
+    closeDemoButton.addEventListener("click", () => {
+        demoDialog.close();
+        demoButton.focus();
+    });
+    demoDialog.addEventListener("close", stopDemoTraffic);
+    demoDialog.addEventListener("cancel", stopDemoTraffic);
 }
 
 if (document.readyState === "loading") {

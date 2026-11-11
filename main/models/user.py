@@ -1,5 +1,5 @@
 from flask_login import UserMixin
-from sqlalchemy import ForeignKey, UniqueConstraint, func
+from sqlalchemy import ForeignKey, Index, UniqueConstraint, func
 
 from main.extensions import db
 
@@ -43,6 +43,12 @@ class Accounts(db.Model, UserMixin):
         cascade="all, delete-orphan",
         uselist=False,
         lazy="joined",
+    )
+    schema_databases = db.relationship(
+        "UserSchemaDatabase",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     email = db.Column(db.String(254), unique=True, nullable=False)
@@ -495,6 +501,42 @@ class UserSchema(db.Model):
         uselist=False,
         lazy="joined",
     )
+
+
+class UserSchemaDatabase(db.Model):
+    __tablename__ = "user_schema_databases"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "schema_name",
+            name="uq_user_schema_databases_user_name",
+        ),
+        Index("ix_user_schema_databases_user_updated", "user_id", "updated_at"),
+    )
+
+    schema_database_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        ForeignKey("accounts.user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    schema_name = db.Column(db.String(128), nullable=False)
+    file_name = db.Column(db.String(255), nullable=False)
+    database_data = db.Column(db.LargeBinary, nullable=False)
+    schema_data = db.Column(db.JSON, nullable=False)
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    owner = db.relationship("Accounts", back_populates="schema_databases")
 
 
 class SchemaMetadata(db.Model):

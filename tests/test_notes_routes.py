@@ -1,5 +1,7 @@
+import io
 import json
 import re
+import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -25,6 +27,7 @@ from main.models.user import (
     RoverAgentSession,
     SchemaMetadata,
     UserApiKey,
+    UserSchemaDatabase,
     UserSchema,
 )
 from main.services import notes_service
@@ -648,10 +651,15 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'id="ollamaChatbotModelInput"' not in response.data
     assert b'id="ollamaApiKeySelect"' in response.data
     assert b'id="ollamaLoadApiKey"' in response.data
-    assert b"scripts/Design/Schema.js?v=2" in response.data
+    assert b"scripts/Design/Schema.js?v=3" in response.data
     assert b'id="openSchemaEditor"' in response.data
     assert b'id="schemaEditorDialog"' in response.data
     assert b'data-schema-url="/api/schema"' in response.data
+    assert b'id="schemaFileInput"' in response.data
+    assert b'id="schemaDatabaseList"' in response.data
+    assert b'id="openSchemaQuery"' in response.data
+    assert b'id="openSchemaDemo"' in response.data
+    assert b"Browser simulation only" in response.data
     assert b'id="saveSchemaButton"' in response.data
     assert b'data-schema-view="tables"' in response.data
     assert b'data-schema-view="configure"' in response.data
@@ -719,29 +727,34 @@ def test_user_schema_saves_connections_and_derived_metadata(notes_client):
 
     empty = notes_client.get("/api/schema")
     assert empty.status_code == 200
-    assert empty.get_json()["schema"] == {"tables": [], "relationships": []}
+    assert empty.get_json()["databases"] == []
 
-    saved = notes_client.put("/api/schema", json={"schema": schema})
-    assert saved.status_code == 200
-    saved_metadata = saved.get_json()["metadata"]
-    assert saved_metadata["table_count"] == 2
-    assert saved_metadata["column_count"] == 3
-    assert saved_metadata["relationship_count"] == 1
-    assert saved_metadata["table_names"] == ["Accounts", "Orders"]
-    assert saved_metadata["data_types"] == ["AutoNumber", "Number"]
+    saved = notes_client.post(
+        "/api/schema",
+        json={"name": "Orders database", "schema": schema},
+    )
+    assert saved.status_code == 201
+    database = saved.get_json()["database"]
+    assert database["name"] == "Orders database"
+    assert database["file_name"] == "Orders-database.sqlite3"
+    assert database["table_count"] == 2
+    assert database["column_count"] == 3
+    assert database["relationship_count"] == 1
 
-    loaded = notes_client.get("/api/schema")
+    loaded = notes_client.get(f"/api/schema/{database['id']}")
     assert loaded.status_code == 200
     assert loaded.get_json()["schema"] == schema
     with notes_client.application.app_context():
-        stored_schema = UserSchema.query.one()
-        stored_metadata = SchemaMetadata.query.one()
-        assert stored_schema.schema_data == schema
-        assert stored_metadata.table_count == 2
-        assert stored_metadata.column_count == 3
-        assert stored_metadata.relationship_count == 1
-        assert stored_metadata.table_names == ["Accounts", "Orders"]
-        assert stored_metadata.data_types == ["AutoNumber", "Number"]
+        stored_database = UserSchemaDatabase.query.one()
+        assert stored_database.schema_data == schema
+        assert stored_database.database_data.startswith(b"SQLite format 3\x00")
+        sqlite_file = sqlite3.connect(":memory:")
+        sqlite_file.deserialize(stored_database.database_data)
+        assert sqlite_file.execute(
+            "SELECT name FROM sqlite_master "
+            "WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        ).fetchall() == [("Accounts",), ("Orders",)]
+        sqlite_file.close()
 
     invalid = {
         **schema,
@@ -752,9 +765,168 @@ def test_user_schema_saves_connections_and_derived_metadata(notes_client):
             }
         ],
     }
-    rejected = notes_client.put("/api/schema", json={"schema": invalid})
+    rejected = notes_client.put(
+        f"/api/schema/{database['id']}",
+        json={"name": "Orders database", "schema": invalid},
+    )
     assert rejected.status_code == 400
-    assert notes_client.get("/api/schema").get_json()["schema"] == schema
+    assert notes_client.get(f"/api/schema/{database['id']}").get_json()["schema"] == schema
+
+    query = notes_client.post(
+        f"/api/schema/{database['id']}/query",
+        json={
+            "query": "SELECT name FROM sqlite_master "
+            "WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        },
+    )
+    assert query.status_code == 200
+    assert query.get_json()["rows"] == [["Accounts"], ["Orders"]]
+
+    write_query = notes_client.post(
+        f"/api/schema/{database['id']}/query",
+        json={"query": "DELETE FROM Accounts"},
+    )
+    assert write_query.status_code == 400
+
+    deleted = notes_client.delete(f"/api/schema/{database['id']}")
+    assert deleted.status_code == 200
+    assert notes_client.get("/api/schema").get_json()["databases"] == []
+
+
+def test_sqlite_upload_preserves_data_and_rejects_writes(notes_client):
+    source = sqlite3.connect(":memory:")
+    source.execute("CREATE TABLE Sample (id INTEGER PRIMARY KEY, value TEXT)")
+    source.execute("INSERT INTO Sample (id, value) VALUES (1, 'stored')")
+    database_file = source.serialize()
+    source.close()
+
+    unsupported = notes_client.post(
+        "/api/schema/import",
+        data={"file": (io.BytesIO(database_file), "sample.txt")},
+        content_type="multipart/form-data",
+    )
+    assert unsupported.status_code == 415
+
+    imported = notes_client.post(
+        "/api/schema/import",
+        data={"file": (io.BytesIO(database_file), "sample.db")},
+        content_type="multipart/form-data",
+    )
+    assert imported.status_code == 201
+    database = imported.get_json()["database"]
+    assert database["name"] == "sample"
+
+    loaded = notes_client.get(f"/api/schema/{database['id']}")
+    schema = loaded.get_json()["schema"]
+    schema["tables"][0]["columns"].append(
+        {
+            "id": "new-column",
+            "name": "notes",
+            "type": "Short Text",
+            "primaryKey": False,
+        }
+    )
+    updated = notes_client.put(
+        f"/api/schema/{database['id']}",
+        json={"name": "sample", "schema": schema},
+    )
+    assert updated.status_code == 200
+    rows = notes_client.post(
+        f"/api/schema/{database['id']}/query",
+        json={"query": "SELECT id, value, notes FROM Sample"},
+    )
+    assert rows.status_code == 200
+    assert rows.get_json()["rows"] == [[1, "stored", None]]
+
+    rejected_write = notes_client.post(
+        f"/api/schema/{database['id']}/query",
+        json={"query": "DELETE FROM Sample"},
+    )
+    assert rejected_write.status_code == 400
+    assert notes_client.post(
+        f"/api/schema/{database['id']}/query",
+        json={"query": "SELECT id, value FROM Sample"},
+    ).get_json()["rows"] == [[1, "stored"]]
+
+
+@pytest.mark.parametrize("filename", ["schema.sqlite3", "schema.sqlite", "schema.db"])
+def test_sqlite_import_accepts_supported_extensions(notes_client, filename):
+    source = sqlite3.connect(":memory:")
+    database_file = source.serialize()
+    source.close()
+
+    response = notes_client.post(
+        "/api/schema/import",
+        data={"file": (io.BytesIO(database_file), filename)},
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 201
+    assert response.get_json()["database"]["file_name"] == filename
+
+
+def test_legacy_user_schema_is_migrated_to_sqlite_storage(notes_client):
+    with notes_client.application.app_context():
+        account = Accounts.query.filter_by(email="route-notes@example.com").one()
+        legacy = UserSchema(
+            user_id=account.user_id,
+            schema_data={"tables": [], "relationships": []},
+        )
+        legacy.details = SchemaMetadata(
+            table_count=0,
+            column_count=0,
+            relationship_count=0,
+            table_names=[],
+            data_types=[],
+        )
+        db.session.add(legacy)
+        db.session.commit()
+
+    response = notes_client.get("/api/schema")
+    assert response.status_code == 200
+    database = response.get_json()["databases"][0]
+    assert database["name"] == "My Database"
+    with notes_client.application.app_context():
+        assert UserSchema.query.count() == 0
+        stored_database = UserSchemaDatabase.query.one()
+        assert stored_database.database_data.startswith(b"SQLite format 3\x00")
+
+
+def test_schema_database_crud_is_scoped_to_the_owner(notes_client):
+    source = sqlite3.connect(":memory:")
+    database_file = source.serialize()
+    source.close()
+    with notes_client.application.app_context():
+        other_account = Accounts(
+            email="other-schema@example.com",
+            username="OtherSchema",
+            password="hashed-password",
+            country_of_origin="United States",
+        )
+        db.session.add(other_account)
+        db.session.flush()
+        other_database = UserSchemaDatabase(
+            user_id=other_account.user_id,
+            schema_name="Private database",
+            file_name="private.db",
+            database_data=database_file,
+            schema_data={"tables": [], "relationships": []},
+        )
+        db.session.add(other_database)
+        db.session.commit()
+        database_id = other_database.schema_database_id
+
+    url = f"/api/schema/{database_id}"
+    assert notes_client.get(url).status_code == 404
+    assert notes_client.put(
+        url,
+        json={"name": "Changed", "schema": {"tables": [], "relationships": []}},
+    ).status_code == 404
+    assert notes_client.delete(url).status_code == 404
+    assert (
+        notes_client.post(f"{url}/query", json={"query": "SELECT 1"}).status_code
+        == 404
+    )
 
 
 def test_triple_rover_page_keeps_only_the_navigation_and_three_agent_slots(

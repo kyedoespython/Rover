@@ -10,7 +10,7 @@
 
 {% block extra_js %}
     <script src="{{ url_for('static', filename='scripts/Design/Design.js') }}?v=4" defer></script>
-    <script src="{{ url_for('static', filename='scripts/Design/Schema.js') }}?v=2" defer></script>
+    <script src="{{ url_for('static', filename='scripts/Design/Schema.js') }}?v=3" defer></script>
     <script src="{{ url_for('static', filename='scripts/Integrations/Ollama.js') }}?v=11" defer></script>
 {% endblock %}
 
@@ -194,6 +194,8 @@
         margin: auto;
         padding: 0;
         border: 2px solid #111;
+        border-radius: 10px;
+        overflow: hidden;
         background: #f3f5f8;
         color: #111;
         box-shadow: 0 20px 70px rgba(0, 0, 0, 0.35);
@@ -270,15 +272,221 @@
         display: flex;
         flex: 0 0 auto;
         flex-wrap: wrap;
+        align-items: center;
         gap: 0.6rem;
         padding: 0.8rem 1rem;
         border-bottom: 1px solid #d5dbe4;
         background: #fff;
     }
 
+    #schemaEditorDialog .schema-management-layout {
+        display: grid;
+        flex: 1;
+        grid-template-columns: minmax(210px, 250px) minmax(0, 1fr);
+        min-height: 0;
+    }
+
+    #schemaEditorDialog .schema-database-sidebar {
+        display: flex;
+        min-height: 0;
+        flex-direction: column;
+        gap: 0.75rem;
+        overflow-y: auto;
+        padding: 1rem;
+        border-right: 1px solid #d5dbe4;
+        background: #e9edf2;
+    }
+
+    #schemaEditorDialog .schema-sidebar-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    #schemaEditorDialog .schema-sidebar-heading h3 {
+        margin: 0;
+        color: #172033;
+        font-size: 0.9rem;
+    }
+
+    #schemaEditorDialog .schema-sidebar-heading span {
+        display: grid;
+        min-width: 1.5rem;
+        min-height: 1.5rem;
+        place-items: center;
+        border-radius: 999px;
+        background: #d7dfe9;
+        color: #273248;
+        font-size: 0.68rem;
+    }
+
+    #schemaEditorDialog .schema-create-form {
+        display: grid;
+        gap: 0.4rem;
+        padding: 0.75rem;
+        border: 1px solid #cbd3df;
+        border-radius: 6px;
+        background: #fff;
+    }
+
+    #schemaEditorDialog .schema-create-form label,
+    #schemaEditorDialog .schema-name-field,
+    #schemaEditorDialog .schema-query-label {
+        color: #303b4e;
+        font-size: 0.68rem;
+        font-weight: 700;
+    }
+
+    #schemaEditorDialog .schema-create-form input,
+    #schemaEditorDialog .schema-name-field input,
+    #schemaEditorDialog .schema-query-panel textarea {
+        width: 100%;
+        min-height: 2.25rem;
+        padding: 0.45rem 0.55rem;
+        border: 1px solid #b9c3d1;
+        border-radius: 4px;
+        background: #fff;
+        color: #172033;
+        font: 0.75rem var(--rover-font-sans);
+    }
+
+    #schemaEditorDialog .schema-name-field {
+        display: grid;
+        width: min(100%, 220px);
+        gap: 0.2rem;
+        margin-left: auto;
+    }
+
+    #schemaEditorDialog .schema-name-field input:disabled {
+        background: #edf0f4;
+        color: #68758a;
+    }
+
+    #schemaEditorDialog .schema-upload-button {
+        display: flex;
+        min-height: 2.4rem;
+        align-items: center;
+        justify-content: center;
+        padding: 0.45rem 0.8rem;
+        border: 1px solid #39475c;
+        border-radius: 4px;
+        background: #fff;
+        color: #172033;
+        font-size: 0.72rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    #schemaEditorDialog .schema-upload-button:hover,
+    #schemaEditorDialog .schema-upload-button:focus-within {
+        background: #edf1f6;
+    }
+
+    #schemaEditorDialog .schema-upload-button input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+    }
+
+    #schemaEditorDialog .schema-sidebar-help,
+    #schemaEditorDialog .schema-library-status {
+        margin: 0;
+        color: #657187;
+        font-size: 0.64rem;
+        line-height: 1.45;
+    }
+
+    #schemaEditorDialog .schema-database-list {
+        display: grid;
+        align-content: start;
+        gap: 0.45rem;
+    }
+
+    #schemaEditorDialog .schema-database-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0.3rem;
+        padding: 0.35rem;
+        border: 1px solid #cbd3df;
+        border-radius: 5px;
+        background: #fff;
+    }
+
+    #schemaEditorDialog .schema-database-item.is-selected {
+        border-color: #26364d;
+        box-shadow: inset 3px 0 #26364d;
+    }
+
+    #schemaEditorDialog .schema-database-select,
+    #schemaEditorDialog .schema-database-delete {
+        min-width: 0;
+        min-height: 0 !important;
+        border: 0 !important;
+        border-radius: 3px !important;
+        background: transparent !important;
+        color: #172033 !important;
+        cursor: pointer;
+    }
+
+    #schemaEditorDialog .schema-database-select {
+        display: grid;
+        gap: 0.2rem;
+        padding: 0.45rem !important;
+        font-size: 0.72rem !important;
+        text-align: left;
+    }
+
+    #schemaEditorDialog .schema-database-select strong {
+        overflow-wrap: anywhere;
+        font-size: 0.72rem;
+    }
+
+    #schemaEditorDialog .schema-database-select span {
+        color: #68758a;
+        font-size: 0.62rem;
+    }
+
+    #schemaEditorDialog .schema-database-delete {
+        align-self: start;
+        padding: 0.35rem !important;
+        color: #9c2525 !important;
+        font-size: 0.68rem !important;
+    }
+
+    #schemaEditorDialog .schema-database-select:focus-visible,
+    #schemaEditorDialog .schema-database-delete:focus-visible,
+    #schemaEditorDialog .schema-upload-button:focus-within {
+        outline: 2px solid #2878b5;
+        outline-offset: 2px;
+    }
+
+    #schemaEditorDialog .schema-editor-main {
+        display: flex;
+        min-width: 0;
+        min-height: 0;
+        flex-direction: column;
+    }
+
     #schemaEditorDialog .schema-tool[aria-pressed="true"] {
         background: #111;
         color: #fff;
+    }
+
+    #schemaEditorDialog .schema-primary-tool {
+        background: #111;
+        color: #fff;
+    }
+
+    #schemaEditorDialog .schema-primary-tool:disabled,
+    #schemaEditorDialog .schema-tool:disabled,
+    #schemaEditorDialog .schema-action:disabled {
+        border-color: #b9c3d1;
+        background: #e3e7ed;
+        color: #768196;
+        cursor: not-allowed;
     }
 
     #schemaEditorDialog .schema-workspace {
@@ -288,6 +496,74 @@
         gap: 1rem;
         min-height: 0;
         padding: 1rem;
+    }
+
+    #schemaEditorDialog .schema-workspace[hidden],
+    #schemaEditorDialog .schema-query-panel[hidden] {
+        display: none;
+    }
+
+    #schemaEditorDialog .schema-query-panel {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        padding: 1.25rem;
+        background: #f3f5f8;
+    }
+
+    #schemaEditorDialog .schema-query-panel h3 {
+        margin: 0;
+        color: #172033;
+        font-size: 0.95rem;
+    }
+
+    #schemaEditorDialog .schema-query-panel > p {
+        margin: 0.25rem 0 0.9rem;
+        color: #657187;
+        font-size: 0.72rem;
+    }
+
+    #schemaEditorDialog .schema-query-panel textarea {
+        display: block;
+        min-height: 8rem;
+        margin-top: 0.3rem;
+        resize: vertical;
+        font-family: Consolas, "Courier New", monospace;
+    }
+
+    #schemaEditorDialog .schema-query-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-top: 0.65rem;
+        color: #657187;
+        font-size: 0.7rem;
+    }
+
+    #schemaEditorDialog .schema-query-results {
+        margin-top: 1rem;
+        overflow: auto;
+    }
+
+    #schemaEditorDialog .schema-query-results table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        font-size: 0.7rem;
+    }
+
+    #schemaEditorDialog .schema-query-results th,
+    #schemaEditorDialog .schema-query-results td {
+        max-width: 20rem;
+        padding: 0.5rem 0.65rem;
+        border: 1px solid #d5dbe4;
+        text-align: left;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+    }
+
+    #schemaEditorDialog .schema-query-results th {
+        background: #e6ebf2;
     }
 
     #schemaEditorDialog .schema-canvas {
@@ -485,6 +761,12 @@
         color: #111;
     }
 
+    #schemaEditorDialog .schema-inspector .schema-danger-action {
+        border-color: #9c2525 !important;
+        background: transparent !important;
+        color: #9c2525 !important;
+    }
+
     #schemaEditorDialog .schema-relationship {
         margin-top: 0.65rem;
         padding: 0.65rem;
@@ -544,6 +826,149 @@
         font-size: 0.7rem;
     }
 
+    #schemaDemoDialog {
+        width: min(94vw, 1000px);
+        max-width: none;
+        padding: clamp(1rem, 3vw, 1.5rem);
+        border: 1px solid #657187;
+        border-radius: 10px;
+        background: #f3f5f8;
+        color: #172033;
+        box-shadow: 0 20px 70px rgba(0, 0, 0, 0.35);
+        font-family: var(--rover-font-sans);
+    }
+
+    #schemaDemoDialog::backdrop {
+        background: rgba(0, 0, 0, 0.68);
+        backdrop-filter: blur(2px);
+    }
+
+    #schemaDemoDialog[open] {
+        display: grid;
+        gap: 1rem;
+    }
+
+    #schemaDemoDialog .schema-demo-header,
+    #schemaDemoDialog .schema-demo-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    #schemaDemoDialog h2 {
+        margin: 0;
+        font-size: 1.1rem;
+    }
+
+    #schemaDemoDialog .schema-demo-header p,
+    #schemaDemoDialog .schema-demo-disclaimer,
+    #schemaDemoDialog .schema-demo-footer {
+        color: #657187;
+        font-size: 0.72rem;
+    }
+
+    #schemaDemoDialog .schema-demo-header p,
+    #schemaDemoDialog .schema-demo-disclaimer {
+        margin: 0.25rem 0 0;
+    }
+
+    #schemaDemoDialog .schema-demo-disclaimer {
+        padding: 0.65rem 0.8rem;
+        border-left: 3px solid #526982;
+        background: #e6ebf2;
+    }
+
+    #schemaDemoDialog .schema-demo-flow {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 1rem;
+        min-height: 13rem;
+        padding: 1rem;
+        border: 1px solid #cbd3df;
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    #schemaDemoDialog .schema-demo-endpoint {
+        padding: 0.6rem 0.75rem;
+        border: 1px solid #cbd3df;
+        border-radius: 5px;
+        background: #f3f5f8;
+        color: #303b4e;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    #schemaDemoDialog .schema-demo-track {
+        position: relative;
+        display: grid;
+        min-width: 0;
+        min-height: 10rem;
+        align-items: center;
+    }
+
+    #schemaDemoDialog .schema-demo-track::before {
+        position: absolute;
+        top: 50%;
+        right: 0;
+        left: 0;
+        height: 2px;
+        background: #cbd3df;
+        content: "";
+    }
+
+    #schemaDemoDialog .schema-demo-nodes {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-around;
+        gap: 0.55rem;
+    }
+
+    #schemaDemoDialog .schema-demo-node {
+        display: grid;
+        width: min(8rem, 30%);
+        min-height: 3.2rem;
+        place-items: center;
+        padding: 0.45rem;
+        border: 1px solid #657187;
+        border-radius: 5px;
+        background: #e6ebf2;
+        color: #172033;
+        font-size: 0.65rem;
+        text-align: center;
+        overflow-wrap: anywhere;
+    }
+
+    #schemaDemoDialog .schema-demo-packets {
+        position: absolute;
+        z-index: 2;
+        inset: 0;
+        pointer-events: none;
+    }
+
+    #schemaDemoDialog .schema-demo-packet {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        width: 0.7rem;
+        height: 0.7rem;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        background: #2878b5;
+        box-shadow: 0 0 0 2px rgba(40, 120, 181, 0.22);
+        animation: schema-user-flow 2.8s linear forwards;
+    }
+
+    @keyframes schema-user-flow {
+        from { transform: translate(-50%, -50%); }
+        to { transform: translate(var(--travel, 30rem), -50%); }
+    }
+
     @media (max-width: 600px) {
         #designPage .design-nav {
             align-items: flex-start;
@@ -564,9 +989,45 @@
             height: 94dvh;
         }
 
+        #schemaEditorDialog .schema-management-layout {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: minmax(145px, auto) minmax(0, 1fr);
+        }
+
+        #schemaEditorDialog .schema-database-sidebar {
+            max-height: 220px;
+            border-right: 0;
+            border-bottom: 1px solid #d5dbe4;
+            padding: 0.65rem;
+        }
+
+        #schemaEditorDialog .schema-create-form {
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: end;
+        }
+
+        #schemaEditorDialog .schema-create-form label {
+            grid-column: 1 / -1;
+        }
+
+        #schemaEditorDialog .schema-create-form .schema-action {
+            width: auto;
+            margin: 0;
+        }
+
+        #schemaEditorDialog .schema-database-list {
+            grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+        }
+
+        #schemaEditorDialog .schema-name-field {
+            width: 100%;
+            margin-left: 0;
+        }
+
         #schemaEditorDialog .schema-workspace {
             grid-template-columns: minmax(0, 1fr);
             grid-template-rows: minmax(180px, 1fr) minmax(180px, 0.8fr);
+            overflow-y: auto;
             padding: 0.6rem;
         }
 
@@ -576,6 +1037,21 @@
 
         #schemaEditorDialog .schema-table-card {
             width: min(280px, calc(100vw - 80px));
+        }
+
+        #schemaDemoDialog .schema-demo-flow {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.6rem;
+        }
+
+        #schemaDemoDialog .schema-demo-track {
+            min-height: 8rem;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #schemaDemoDialog .schema-demo-packet {
+            animation-duration: 0.01ms;
         }
     }
 </style>
@@ -596,7 +1072,7 @@
             <button class="button is-outlined design-side-button" id="openApiKeyDialog" type="button" aria-haspopup="dialog" aria-controls="apiKeyDialog">API Key</button>
             <button class="button is-outlined design-side-button" id="openSchemaEditor" type="button" aria-haspopup="dialog" aria-controls="schemaEditorDialog">Schema</button>
             <button class="button is-outlined design-side-button" type="button">Craft</button>
-            <button class="button is-outlined design-side-button" type="button">Demo</button>
+            <button class="button is-outlined design-side-button" id="openSchemaDemo" type="button" aria-haspopup="dialog" aria-controls="schemaDemoDialog">Demo</button>
             <button
                 class="button is-outlined design-side-button rover-ai-nav-button"
                 id="ollamaDrawerToggle"
@@ -607,35 +1083,101 @@
         </nav>
     </div>
 
-    <dialog id="schemaEditorDialog" data-schema-url="{{ url_for('auth.User_Schema') }}" aria-labelledby="schemaEditorHeading">
+    <dialog
+        id="schemaEditorDialog"
+        data-schema-url="{{ url_for('auth.User_Schema') }}"
+        data-schema-import-url="{{ url_for('auth.Import_Schema_Database') }}"
+        aria-labelledby="schemaEditorHeading"
+    >
         <header class="schema-header">
             <div>
                 <h2 class="schema-heading" id="schemaEditorHeading">Schema designer</h2>
-                <p class="schema-description">Build tables and relationships, then save them to your account.</p>
+                <p class="schema-description">Manage SQLite databases, inspect their structure, and safely run read-only queries.</p>
             </div>
             <button class="schema-close" id="closeSchemaEditor" type="button" aria-label="Close schema designer">Close</button>
         </header>
-        <nav class="schema-toolbar" aria-label="Schema tools">
-            <button class="schema-tool" type="button" data-schema-view="tables" aria-pressed="true">Tables</button>
-            <button class="schema-tool" type="button" data-schema-view="configure" aria-pressed="false">Configure</button>
-            <button class="schema-tool" type="button" data-schema-view="relationships" aria-pressed="false">Relationships</button>
-            <button class="schema-tool" id="saveSchemaButton" type="button">Save schema</button>
-            <span class="schema-status" id="schemaSaveStatus" role="status" aria-live="polite">Not loaded</span>
-        </nav>
-        <div class="schema-workspace">
-            <section class="schema-canvas" id="schemaCanvas" aria-label="Schema diagram">
-                <div class="schema-empty" id="schemaEmptyState">
-                    <strong>Blank schema diagram</strong>
-                    <span>Choose Tables to add your first table.</span>
+        <div class="schema-management-layout">
+            <aside class="schema-database-sidebar" aria-label="Saved SQLite databases">
+                <div class="schema-sidebar-heading">
+                    <h3>Databases</h3>
+                    <span id="schemaDatabaseCount">0</span>
                 </div>
-                <svg class="schema-connection-layer" id="schemaConnections" aria-label="Table relationships"></svg>
-                <div class="schema-table-grid" id="schemaTableGrid"></div>
-            </section>
-            <aside class="schema-inspector" id="schemaInspector" aria-live="polite">
-                <h3>Tables</h3>
-                <p>Add tables to the diagram, then select one to customize its fields.</p>
-                <button class="schema-action" id="addSchemaTable" type="button">Add table</button>
+                <form id="schemaCreateForm" class="schema-create-form">
+                    <label for="schemaNewName">New database</label>
+                    <input id="schemaNewName" name="name" type="text" maxlength="128" placeholder="Database name" required>
+                    <button class="schema-action" type="submit">Create database</button>
+                </form>
+                <label class="schema-upload-button" for="schemaFileInput">
+                    Load SQLite file
+                    <input id="schemaFileInput" type="file" accept=".sqlite3,.sqlite,.db">
+                </label>
+                <p class="schema-sidebar-help">Accepted formats: .sqlite3, .sqlite, .db</p>
+                <p class="schema-sidebar-help">Saving structural edits keeps rows in unchanged fields. Views, indexes, triggers, and foreign-key constraints are not modeled.</p>
+                <p class="schema-library-status" id="schemaLibraryStatus" role="status" aria-live="polite"></p>
+                <div class="schema-database-list" id="schemaDatabaseList"></div>
             </aside>
+            <section class="schema-editor-main">
+                <nav class="schema-toolbar" aria-label="Schema tools">
+                    <button class="schema-tool" type="button" data-schema-view="tables" aria-pressed="true">Tables</button>
+                    <button class="schema-tool" type="button" data-schema-view="configure" aria-pressed="false">Configure</button>
+                    <button class="schema-tool" type="button" data-schema-view="relationships" aria-pressed="false">Relationships</button>
+                    <button class="schema-tool" id="openSchemaQuery" type="button" aria-pressed="false" disabled>Query</button>
+                    <label class="schema-name-field" for="schemaNameInput">
+                        Database name
+                        <input id="schemaNameInput" type="text" maxlength="128" disabled>
+                    </label>
+                    <button class="schema-tool schema-primary-tool" id="saveSchemaButton" type="button" disabled>Save changes</button>
+                    <span class="schema-status" id="schemaSaveStatus" role="status" aria-live="polite">Create or load a database</span>
+                </nav>
+                <section class="schema-query-panel" id="schemaQueryPanel" hidden aria-labelledby="schemaQueryHeading">
+                    <h3 id="schemaQueryHeading">Read-only query</h3>
+                    <p>Queries can read data but cannot change the database. Results are limited to 200 rows.</p>
+                    <label class="schema-query-label" for="schemaQueryInput">SQL statement</label>
+                    <textarea id="schemaQueryInput" spellcheck="false">SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name;</textarea>
+                    <div class="schema-query-controls">
+                        <button class="schema-action" id="runSchemaQuery" type="button" disabled>Run query</button>
+                        <span id="schemaQueryStatus" role="status" aria-live="polite"></span>
+                    </div>
+                    <div class="schema-query-results" id="schemaQueryResults" aria-live="polite"></div>
+                </section>
+                <div class="schema-workspace" id="schemaWorkspace">
+                    <section class="schema-canvas" id="schemaCanvas" aria-label="Schema diagram">
+                        <div class="schema-empty" id="schemaEmptyState">
+                            <strong>No database selected</strong>
+                            <span>Create a database or load a SQLite file to begin.</span>
+                        </div>
+                        <svg class="schema-connection-layer" id="schemaConnections" aria-label="Table relationships"></svg>
+                        <div class="schema-table-grid" id="schemaTableGrid"></div>
+                    </section>
+                    <aside class="schema-inspector" id="schemaInspector" aria-live="polite">
+                        <h3>Tables</h3>
+                        <p>Create a database or select one from the left to view and edit its tables.</p>
+                    </aside>
+                </div>
+            </section>
+        </div>
+    </dialog>
+
+    <dialog id="schemaDemoDialog" aria-labelledby="schemaDemoHeading">
+        <header class="schema-demo-header">
+            <div>
+                <h2 id="schemaDemoHeading">Database traffic demo</h2>
+                <p id="schemaDemoDatabaseName">Simulated requests passing through your schema.</p>
+            </div>
+            <button class="schema-close" id="closeSchemaDemo" type="button" aria-label="Close database traffic demo">Close</button>
+        </header>
+        <p class="schema-demo-disclaimer">Browser simulation only. This does not represent live production users or telemetry.</p>
+        <div class="schema-demo-flow" id="schemaDemoFlow">
+            <div class="schema-demo-endpoint">Incoming users</div>
+            <div class="schema-demo-track">
+                <div class="schema-demo-nodes" id="schemaDemoNodes"></div>
+                <div class="schema-demo-packets" id="schemaDemoPackets" aria-hidden="true"></div>
+            </div>
+            <div class="schema-demo-endpoint">SQLite database</div>
+        </div>
+        <div class="schema-demo-footer">
+            <span id="schemaDemoActiveUsers" role="status" aria-live="polite">Starting simulation...</span>
+            <span id="schemaDemoStatus"></span>
         </div>
     </dialog>
 
