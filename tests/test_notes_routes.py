@@ -20,7 +20,9 @@ from main.models.user import (
     RoverAgent,
     RoverAgentMessage,
     RoverAgentSession,
+    SchemaMetadata,
     UserApiKey,
+    UserSchema,
 )
 from main.services.ollama_service import decrypt_api_key
 from main.services.agent_history_cleanup import cleanup_expired_agent_history
@@ -293,9 +295,11 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'id="ollamaChatbotModelInput"' not in response.data
     assert b'id="ollamaApiKeySelect"' in response.data
     assert b'id="ollamaLoadApiKey"' in response.data
-    assert b"scripts/Design/Schema.js?v=1" in response.data
+    assert b"scripts/Design/Schema.js?v=2" in response.data
     assert b'id="openSchemaEditor"' in response.data
     assert b'id="schemaEditorDialog"' in response.data
+    assert b'data-schema-url="/api/schema"' in response.data
+    assert b'id="saveSchemaButton"' in response.data
     assert b'data-schema-view="tables"' in response.data
     assert b'data-schema-view="configure"' in response.data
     assert b'data-schema-view="relationships"' in response.data
@@ -308,6 +312,96 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert home_page.status_code == 200
     assert b'id="ollamaDrawer"' not in home_page.data
     assert b"scripts/Integrations/Ollama.js?v=8" not in home_page.data
+
+
+def test_user_schema_saves_connections_and_derived_metadata(notes_client):
+    schema = {
+        "tables": [
+            {
+                "id": "1",
+                "name": "Accounts",
+                "x": 40,
+                "y": 60,
+                "columns": [
+                    {
+                        "id": "11",
+                        "name": "id",
+                        "type": "AutoNumber",
+                        "primaryKey": True,
+                    }
+                ],
+            },
+            {
+                "id": "2",
+                "name": "Orders",
+                "x": 420,
+                "y": 60,
+                "columns": [
+                    {
+                        "id": "21",
+                        "name": "id",
+                        "type": "AutoNumber",
+                        "primaryKey": True,
+                    },
+                    {
+                        "id": "22",
+                        "name": "account_id",
+                        "type": "Number",
+                        "primaryKey": False,
+                    },
+                ],
+            },
+        ],
+        "relationships": [
+            {
+                "id": "31",
+                "sourceTableId": "1",
+                "targetTableId": "2",
+                "sourceColumnId": "11",
+                "targetColumnId": "22",
+                "color": "#2878b5",
+            }
+        ],
+    }
+
+    empty = notes_client.get("/api/schema")
+    assert empty.status_code == 200
+    assert empty.get_json()["schema"] == {"tables": [], "relationships": []}
+
+    saved = notes_client.put("/api/schema", json={"schema": schema})
+    assert saved.status_code == 200
+    saved_metadata = saved.get_json()["metadata"]
+    assert saved_metadata["table_count"] == 2
+    assert saved_metadata["column_count"] == 3
+    assert saved_metadata["relationship_count"] == 1
+    assert saved_metadata["table_names"] == ["Accounts", "Orders"]
+    assert saved_metadata["data_types"] == ["AutoNumber", "Number"]
+
+    loaded = notes_client.get("/api/schema")
+    assert loaded.status_code == 200
+    assert loaded.get_json()["schema"] == schema
+    with notes_client.application.app_context():
+        stored_schema = UserSchema.query.one()
+        stored_metadata = SchemaMetadata.query.one()
+        assert stored_schema.schema_data == schema
+        assert stored_metadata.table_count == 2
+        assert stored_metadata.column_count == 3
+        assert stored_metadata.relationship_count == 1
+        assert stored_metadata.table_names == ["Accounts", "Orders"]
+        assert stored_metadata.data_types == ["AutoNumber", "Number"]
+
+    invalid = {
+        **schema,
+        "relationships": [
+            {
+                **schema["relationships"][0],
+                "targetTableId": "missing-table",
+            }
+        ],
+    }
+    rejected = notes_client.put("/api/schema", json={"schema": invalid})
+    assert rejected.status_code == 400
+    assert notes_client.get("/api/schema").get_json()["schema"] == schema
 
 
 def test_triple_rover_page_keeps_only_the_navigation_and_three_agent_slots(notes_client):

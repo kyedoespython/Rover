@@ -22,7 +22,14 @@ from . import auth_bp
 from main.services.user_service import Account_Exists_Validator, Contents_Checker
 
 # import the schema for database manipulation
-from main.models.user import Accounts, Authentication, Notes, UserApiKey
+from main.models.user import (
+    Accounts,
+    Authentication,
+    Notes,
+    SchemaMetadata,
+    UserApiKey,
+    UserSchema,
+)
 
 # import auth services for auth code generation, storing hashed auth code, verifying auth code
 from main.services.auth_service import (
@@ -41,6 +48,7 @@ from main.services.notes_service import (
 from main.services.ollama_service import encrypt_api_key
 
 from datetime import datetime, timedelta, timezone
+from math import isfinite
 from sqlalchemy.exc import IntegrityError
 
 # main / extension imports
@@ -558,3 +566,239 @@ def Delete_Note(note_id):
     delete_note(note)
     flash("Note deleted.", "success")
     return redirect(url_for("auth.Notes_Page"))
+
+
+SCHEMA_DATA_TYPES = {
+    "AutoNumber",
+    "Short Text",
+    "Long Text",
+    "Number",
+    "Decimal",
+    "Date/Time",
+    "Yes/No",
+    "Currency",
+    "Attachment",
+}
+SCHEMA_LINE_COLORS = {
+    "#2878b5",
+    "#d64545",
+    "#2b8a3e",
+    "#9c36b5",
+    "#e67700",
+    "#00838f",
+    "#343a40",
+}
+
+
+def _validate_user_schema(schema_data):
+    if not isinstance(schema_data, dict):
+        return None, "Schema data must be an object."
+    tables = schema_data.get("tables")
+    relationships = schema_data.get("relationships")
+    if (
+        not isinstance(tables, list)
+        or len(tables) > 200
+        or not isinstance(relationships, list)
+        or len(relationships) > 1000
+    ):
+        return None, "Schema must contain at most 200 tables and 1000 relationships."
+
+    clean_tables = []
+    table_ids = set()
+    table_names = set()
+    column_ids = {}
+    for table in tables:
+        if not isinstance(table, dict):
+            return None, "Each table must be an object."
+        table_id = table.get("id")
+        name = table.get("name")
+        columns = table.get("columns")
+        x = table.get("x")
+        y = table.get("y")
+        if (
+            not isinstance(table_id, str)
+            or not table_id
+            or len(table_id) > 64
+            or table_id in table_ids
+            or not isinstance(name, str)
+            or not name.strip()
+            or len(name.strip()) > 64
+            or name.strip().casefold() in table_names
+            or not isinstance(columns, list)
+            or not 1 <= len(columns) <= 100
+            or isinstance(x, bool)
+            or not isinstance(x, (int, float))
+            or not isfinite(x)
+            or isinstance(y, bool)
+            or not isinstance(y, (int, float))
+            or not isfinite(y)
+            or not 0 <= x <= 10000
+            or not 0 <= y <= 10000
+        ):
+            return None, "A table has invalid, duplicate, or incomplete fields."
+
+        table_ids.add(table_id)
+        table_names.add(name.strip().casefold())
+        clean_columns = []
+        seen_column_ids = set()
+        for column in columns:
+            if not isinstance(column, dict):
+                return None, "Each field must be an object."
+            column_id = column.get("id")
+            column_name = column.get("name")
+            data_type = column.get("type")
+            primary_key = column.get("primaryKey")
+            if (
+                not isinstance(column_id, str)
+                or not column_id
+                or len(column_id) > 64
+                or column_id in seen_column_ids
+                or not isinstance(column_name, str)
+                or not column_name.strip()
+                or len(column_name.strip()) > 64
+                or not isinstance(data_type, str)
+                or data_type not in SCHEMA_DATA_TYPES
+                or not isinstance(primary_key, bool)
+            ):
+                return None, "A table field has invalid or incomplete values."
+            seen_column_ids.add(column_id)
+            clean_columns.append(
+                {
+                    "id": column_id,
+                    "name": column_name.strip(),
+                    "type": data_type,
+                    "primaryKey": primary_key,
+                }
+            )
+        column_ids[table_id] = seen_column_ids
+        clean_tables.append(
+            {
+                "id": table_id,
+                "name": name.strip(),
+                "x": int(x),
+                "y": int(y),
+                "columns": clean_columns,
+            }
+        )
+
+    clean_relationships = []
+    relationship_ids = set()
+    for relationship in relationships:
+        if not isinstance(relationship, dict):
+            return None, "Each relationship must be an object."
+        relationship_id = relationship.get("id")
+        source_table_id = relationship.get("sourceTableId")
+        target_table_id = relationship.get("targetTableId")
+        source_column_id = relationship.get("sourceColumnId")
+        target_column_id = relationship.get("targetColumnId")
+        color = relationship.get("color")
+        if (
+            not isinstance(relationship_id, str)
+            or not relationship_id
+            or len(relationship_id) > 64
+            or relationship_id in relationship_ids
+            or not isinstance(source_table_id, str)
+            or not isinstance(target_table_id, str)
+            or not isinstance(source_column_id, str)
+            or not isinstance(target_column_id, str)
+            or source_table_id not in table_ids
+            or target_table_id not in table_ids
+            or source_table_id == target_table_id
+            or source_column_id not in column_ids.get(source_table_id, set())
+            or target_column_id not in column_ids.get(target_table_id, set())
+            or not isinstance(color, str)
+            or color not in SCHEMA_LINE_COLORS
+        ):
+            return None, "A relationship references an invalid table, field, or line color."
+        relationship_ids.add(relationship_id)
+        clean_relationships.append(
+            {
+                "id": relationship_id,
+                "sourceTableId": source_table_id,
+                "targetTableId": target_table_id,
+                "sourceColumnId": source_column_id,
+                "targetColumnId": target_column_id,
+                "color": color,
+            }
+        )
+
+    return {"tables": clean_tables, "relationships": clean_relationships}, None
+
+
+@auth_bp.route("/api/schema", methods=["GET", "PUT"])
+@login_required
+@limiter.limit("30 per minute")
+def User_Schema():
+    schema = UserSchema.query.filter_by(user_id=current_user.user_id).first()
+    if request.method == "GET":
+        if schema is None:
+            return jsonify(
+                schema={"tables": [], "relationships": []},
+                metadata={
+                    "table_count": 0,
+                    "column_count": 0,
+                    "relationship_count": 0,
+                    "table_names": [],
+                    "data_types": [],
+                },
+            )
+        return jsonify(
+            schema=schema.schema_data,
+            metadata={
+                "table_count": schema.details.table_count,
+                "column_count": schema.details.column_count,
+                "relationship_count": schema.details.relationship_count,
+                "table_names": schema.details.table_names,
+                "data_types": schema.details.data_types,
+                "updated_at": schema.details.updated_at.isoformat(),
+            },
+        )
+
+    if not request.is_json:
+        return jsonify(error="A JSON request is required."), 415
+    if len(request.get_data(cache=True)) > 1_000_000:
+        return jsonify(error="Schema data must be smaller than 1 MB."), 413
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(error="The request body must be valid JSON."), 400
+    clean_schema, error = _validate_user_schema(payload.get("schema"))
+    if error:
+        return jsonify(error=error), 400
+
+    if schema is None:
+        schema = UserSchema(user_id=current_user.user_id, schema_data=clean_schema)
+        schema.details = SchemaMetadata(
+            table_count=0,
+            column_count=0,
+            relationship_count=0,
+            table_names=[],
+            data_types=[],
+        )
+        db.session.add(schema)
+    else:
+        schema.schema_data = clean_schema
+
+    tables = clean_schema["tables"]
+    schema.details.table_count = len(tables)
+    schema.details.column_count = sum(len(table["columns"]) for table in tables)
+    schema.details.relationship_count = len(clean_schema["relationships"])
+    schema.details.table_names = [table["name"] for table in tables]
+    schema.details.data_types = sorted(
+        {
+            column["type"]
+            for table in tables
+            for column in table["columns"]
+        }
+    )
+    db.session.commit()
+    return jsonify(
+        saved=True,
+        metadata={
+            "table_count": schema.details.table_count,
+            "column_count": schema.details.column_count,
+            "relationship_count": schema.details.relationship_count,
+            "table_names": schema.details.table_names,
+            "data_types": schema.details.data_types,
+            "updated_at": schema.details.updated_at.isoformat(),
+        },
+    )

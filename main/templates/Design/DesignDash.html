@@ -10,7 +10,7 @@
 
 {% block extra_js %}
     <script src="{{ url_for('static', filename='scripts/Design/Design.js') }}?v=3" defer></script>
-    <script src="{{ url_for('static', filename='scripts/Design/Schema.js') }}?v=1" defer></script>
+    <script src="{{ url_for('static', filename='scripts/Design/Schema.js') }}?v=2" defer></script>
     <script src="{{ url_for('static', filename='scripts/Integrations/Ollama.js') }}?v=10" defer></script>
 {% endblock %}
 
@@ -265,6 +265,18 @@
         cursor: pointer;
     }
 
+    #schemaEditorDialog .schema-close {
+        border-color: #b42318;
+        background: #b42318;
+        color: #fff;
+    }
+
+    #schemaEditorDialog .schema-close:hover {
+        border-color: #8f1d14;
+        background: #8f1d14;
+        color: #fff;
+    }
+
     #schemaEditorDialog .schema-close:hover,
     #schemaEditorDialog .schema-tool:hover,
     #schemaEditorDialog .schema-action:hover {
@@ -330,17 +342,21 @@
     }
 
     #schemaEditorDialog .schema-table-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(240px, 320px));
-        align-content: start;
-        gap: 1rem;
+        position: absolute;
+        inset: 0;
+        min-width: 100%;
+        min-height: 100%;
+        pointer-events: none;
     }
 
     #schemaEditorDialog .schema-table-card {
-        align-self: start;
+        position: absolute;
+        z-index: 2;
+        width: min(300px, calc(100vw - 80px));
         border: 1px solid #63728a;
         background: #fff;
         box-shadow: 0 3px 9px rgba(16, 24, 40, 0.1);
+        pointer-events: auto;
     }
 
     #schemaEditorDialog .schema-table-card.is-selected {
@@ -361,6 +377,29 @@
         text-align: left;
         font: 700 0.8rem 'Roboto Mono', monospace;
         cursor: pointer;
+        touch-action: none;
+        user-select: none;
+    }
+
+    #schemaEditorDialog .schema-connection-layer {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        left: 0;
+        overflow: visible;
+        pointer-events: none;
+    }
+
+    #schemaEditorDialog .schema-connection-path {
+        fill: none;
+        stroke-width: 4;
+        pointer-events: stroke;
+        cursor: help;
+        transition: stroke-width 0.12s ease;
+    }
+
+    #schemaEditorDialog .schema-connection-path:hover {
+        stroke-width: 7;
     }
 
     #schemaEditorDialog .schema-table-row {
@@ -473,6 +512,56 @@
         overflow-wrap: anywhere;
     }
 
+    #schemaEditorDialog .schema-line-palette {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
+        margin-top: 0.65rem;
+        padding: 0.6rem;
+        border: 1px solid #d5dbe4;
+        background: #f8f9fb;
+    }
+
+    #schemaEditorDialog .schema-line-swatch {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-width: 0;
+        padding: 0.35rem;
+        border: 1px solid transparent;
+        background: transparent;
+        color: #273248;
+        font: 0.64rem 'Roboto Mono', monospace;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    #schemaEditorDialog .schema-line-swatch[aria-pressed="true"] {
+        border-color: #111;
+        background: #fff;
+    }
+
+    #schemaEditorDialog .schema-line-color {
+        width: 1.4rem;
+        height: 0.25rem;
+        flex: 0 0 auto;
+        border-radius: 2px;
+    }
+
+    #schemaEditorDialog .schema-line-help {
+        margin: 0.5rem 0 0;
+        color: #68758a;
+        font-size: 0.64rem;
+        line-height: 1.45;
+    }
+
+    #schemaEditorDialog .schema-status {
+        align-self: center;
+        margin-left: auto;
+        color: #68758a;
+        font-size: 0.7rem;
+    }
+
     @media (max-width: 600px) {
         #designPage .design-nav {
             align-items: flex-start;
@@ -503,8 +592,8 @@
             padding: 0.7rem;
         }
 
-        #schemaEditorDialog .schema-table-grid {
-            grid-template-columns: minmax(0, 1fr);
+        #schemaEditorDialog .schema-table-card {
+            width: min(280px, calc(100vw - 80px));
         }
     }
 </style>
@@ -536,11 +625,11 @@
         </nav>
     </div>
 
-    <dialog id="schemaEditorDialog" aria-labelledby="schemaEditorHeading">
+    <dialog id="schemaEditorDialog" data-schema-url="{{ url_for('auth.User_Schema') }}" aria-labelledby="schemaEditorHeading">
         <header class="schema-header">
             <div>
                 <h2 class="schema-heading" id="schemaEditorHeading">Schema designer</h2>
-                <p class="schema-description">Build tables and relationships in this workspace. Changes are local to this page.</p>
+                <p class="schema-description">Build tables and relationships, then save them to your account.</p>
             </div>
             <button class="schema-close" id="closeSchemaEditor" type="button" aria-label="Close schema designer">Close</button>
         </header>
@@ -548,6 +637,8 @@
             <button class="schema-tool" type="button" data-schema-view="tables" aria-pressed="true">Tables</button>
             <button class="schema-tool" type="button" data-schema-view="configure" aria-pressed="false">Configure</button>
             <button class="schema-tool" type="button" data-schema-view="relationships" aria-pressed="false">Relationships</button>
+            <button class="schema-tool" id="saveSchemaButton" type="button">Save schema</button>
+            <span class="schema-status" id="schemaSaveStatus" role="status" aria-live="polite">Not loaded</span>
         </nav>
         <div class="schema-workspace">
             <section class="schema-canvas" id="schemaCanvas" aria-label="Schema diagram">
@@ -555,6 +646,7 @@
                     <strong>Blank schema diagram</strong>
                     <span>Choose Tables to add your first table.</span>
                 </div>
+                <svg class="schema-connection-layer" id="schemaConnections" aria-label="Table relationships"></svg>
                 <div class="schema-table-grid" id="schemaTableGrid"></div>
             </section>
             <aside class="schema-inspector" id="schemaInspector" aria-live="polite">

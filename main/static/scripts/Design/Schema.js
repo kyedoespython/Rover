@@ -2,18 +2,28 @@ function initializeSchemaEditor() {
     const dialog = document.getElementById("schemaEditorDialog");
     const openButton = document.getElementById("openSchemaEditor");
     const closeButton = document.getElementById("closeSchemaEditor");
+    const canvas = document.getElementById("schemaCanvas");
     const inspector = document.getElementById("schemaInspector");
     const tableGrid = document.getElementById("schemaTableGrid");
     const emptyState = document.getElementById("schemaEmptyState");
+    const connectionLayer = document.getElementById("schemaConnections");
+    const saveButton = document.getElementById("saveSchemaButton");
+    const saveStatus = document.getElementById("schemaSaveStatus");
     const viewButtons = document.querySelectorAll("[data-schema-view]");
+    const csrfInput = document.querySelector('#apiKeyForm input[name="csrf_token"]');
 
     if (
         !(dialog instanceof HTMLDialogElement) ||
         !(openButton instanceof HTMLButtonElement) ||
         !(closeButton instanceof HTMLButtonElement) ||
+        !(canvas instanceof HTMLElement) ||
         !(inspector instanceof HTMLElement) ||
         !(tableGrid instanceof HTMLElement) ||
         !(emptyState instanceof HTMLElement) ||
+        !(connectionLayer instanceof SVGSVGElement) ||
+        !(saveButton instanceof HTMLButtonElement) ||
+        !(saveStatus instanceof HTMLElement) ||
+        !(csrfInput instanceof HTMLInputElement) ||
         viewButtons.length === 0
     ) {
         return;
@@ -25,7 +35,19 @@ function initializeSchemaEditor() {
     let selectedTableId = null;
     let relationshipSourceId = null;
     let relationshipTargetId = null;
+    let selectedLineColor = "#2878b5";
     let nextId = 1;
+    let dragState = null;
+
+    const lineColors = [
+        { color: "#2878b5", name: "Blue line" },
+        { color: "#d64545", name: "Red line" },
+        { color: "#2b8a3e", name: "Green line" },
+        { color: "#9c36b5", name: "Purple line" },
+        { color: "#e67700", name: "Orange line" },
+        { color: "#00838f", name: "Teal line" },
+        { color: "#343a40", name: "Charcoal line" },
+    ];
 
     const createElement = (tagName, className, text) => {
         const element = document.createElement(tagName);
@@ -64,6 +86,61 @@ function initializeSchemaEditor() {
     const selectedTable = () =>
         tables.find((table) => table.id === selectedTableId) || null;
 
+    const drawConnections = () => {
+        connectionLayer.replaceChildren();
+        const width = Math.max(canvas.clientWidth, canvas.scrollWidth);
+        const height = Math.max(canvas.clientHeight, canvas.scrollHeight);
+        connectionLayer.setAttribute("width", String(width));
+        connectionLayer.setAttribute("height", String(height));
+        connectionLayer.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+        relationships.forEach((relationship) => {
+            const source = tableGrid.querySelector(
+                `[data-table-id="${CSS.escape(relationship.sourceTableId)}"]`,
+            );
+            const target = tableGrid.querySelector(
+                `[data-table-id="${CSS.escape(relationship.targetTableId)}"]`,
+            );
+            if (!(source instanceof HTMLElement) || !(target instanceof HTMLElement)) {
+                return;
+            }
+            const canvasRect = canvas.getBoundingClientRect();
+            const sourceRect = source.getBoundingClientRect();
+            const targetRect = target.getBoundingClientRect();
+            const sourceX = sourceRect.right - canvasRect.left + canvas.scrollLeft;
+            const sourceY = sourceRect.top - canvasRect.top + canvas.scrollTop + sourceRect.height / 2;
+            const targetX = targetRect.left - canvasRect.left + canvas.scrollLeft;
+            const targetY = targetRect.top - canvasRect.top + canvas.scrollTop + targetRect.height / 2;
+            const curve = Math.max(50, Math.abs(targetX - sourceX) * 0.45);
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.classList.add("schema-connection-path");
+            path.setAttribute(
+                "d",
+                `M ${sourceX} ${sourceY} C ${sourceX + curve} ${sourceY}, ${targetX - curve} ${targetY}, ${targetX} ${targetY}`,
+            );
+            path.setAttribute("stroke", relationship.color);
+            path.setAttribute("data-relationship-id", relationship.id);
+            const sourceTable = tables.find((table) => table.id === relationship.sourceTableId);
+            const targetTable = tables.find((table) => table.id === relationship.targetTableId);
+            const sourceColumn = sourceTable?.columns.find(
+                (column) => column.id === relationship.sourceColumnId,
+            );
+            const targetColumn = targetTable?.columns.find(
+                (column) => column.id === relationship.targetColumnId,
+            );
+            const colorName = lineColors.find(
+                (lineColor) => lineColor.color === relationship.color,
+            )?.name || "Colored line";
+            const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+            title.textContent =
+                `${colorName}: ${sourceTable?.name}.${sourceColumn?.name} → ` +
+                `${targetTable?.name}.${targetColumn?.name}. Drag a table onto another ` +
+                "table or edit this relationship in the Relationships panel.";
+            path.append(title);
+            connectionLayer.append(path);
+        });
+    };
+
     const renderTables = () => {
         tableGrid.replaceChildren();
         emptyState.hidden = tables.length > 0;
@@ -72,10 +149,14 @@ function initializeSchemaEditor() {
                 "article",
                 `schema-table-card${table.id === selectedTableId ? " is-selected" : ""}`,
             );
+            card.dataset.tableId = table.id;
+            card.style.left = `${table.x}px`;
+            card.style.top = `${table.y}px`;
             const selectTable = createElement("button", "schema-table-select");
             selectTable.type = "button";
             selectTable.dataset.action = "select-table";
             selectTable.dataset.tableId = table.id;
+            selectTable.title = "Drag this table onto another table to create a relationship.";
             const tableName = createElement("span", "", table.name || "Untitled table");
             const rowCount = createElement("span", "", `${table.columns.length} fields`);
             selectTable.append(tableName, rowCount);
@@ -94,6 +175,7 @@ function initializeSchemaEditor() {
             });
             tableGrid.append(card);
         });
+        drawConnections();
     };
 
     const renderTablesView = () => {
@@ -210,12 +292,44 @@ function initializeSchemaEditor() {
             createElement(
                 "p",
                 "",
-                "Connect fields between two different tables. A relationship is applied to this schema diagram.",
+                "Load your saved tables here, then drag one table onto another to connect them automatically.",
+            ),
+        );
+        const loadButton = createElement("button", "schema-action", "Load tables");
+        loadButton.type = "button";
+        loadButton.dataset.action = "load-schema";
+        inspector.append(loadButton);
+
+        inspector.append(createElement("h3", "", "Line colors"));
+        const palette = createElement("div", "schema-line-palette");
+        lineColors.forEach(({ color, name }) => {
+            const swatch = createElement("button", "schema-line-swatch", name);
+            swatch.type = "button";
+            swatch.dataset.action = "choose-line-color";
+            swatch.dataset.color = color;
+            swatch.title = `${name}. Select this color for new relationship lines.`;
+            swatch.setAttribute("aria-label", `${name}, select for new relationship lines`);
+            swatch.setAttribute(
+                "aria-pressed",
+                String(selectedLineColor === color),
+            );
+            const line = createElement("span", "schema-line-color");
+            line.style.backgroundColor = color;
+            line.setAttribute("aria-hidden", "true");
+            swatch.prepend(line);
+            palette.append(swatch);
+        });
+        inspector.append(palette);
+        inspector.append(
+            createElement(
+                "p",
+                "schema-line-help",
+                "Hover over a color or connection line to see its name and use. Each color has a generic line name.",
             ),
         );
         if (tables.length < 2) {
             inspector.append(
-                createElement("p", "", "Add at least two tables to create a relationship."),
+                createElement("p", "", "Load or add at least two tables to create a relationship."),
             );
             return;
         }
@@ -332,6 +446,104 @@ function initializeSchemaEditor() {
         }
     };
 
+    const markDirty = () => {
+        saveStatus.textContent = "Unsaved changes";
+    };
+
+    const createRelationship = (sourceTable, targetTable) => {
+        if (!sourceTable || !targetTable || sourceTable.id === targetTable.id) {
+            return;
+        }
+        const sourceColumn =
+            sourceTable.columns.find((column) => column.primaryKey) || sourceTable.columns[0];
+        const targetColumn =
+            targetTable.columns.find((column) => column.primaryKey) || targetTable.columns[0];
+        const exists = relationships.some((relationship) =>
+            relationship.sourceTableId === sourceTable.id &&
+            relationship.targetTableId === targetTable.id &&
+            relationship.sourceColumnId === sourceColumn.id &&
+            relationship.targetColumnId === targetColumn.id,
+        );
+        if (exists) {
+            return;
+        }
+        relationships.push({
+            id: String(nextId++),
+            sourceTableId: sourceTable.id,
+            targetTableId: targetTable.id,
+            sourceColumnId: sourceColumn.id,
+            targetColumnId: targetColumn.id,
+            color: selectedLineColor,
+        });
+        markDirty();
+    };
+
+    const loadSchema = async () => {
+        saveStatus.textContent = "Loading saved tables...";
+        try {
+            const response = await fetch(dialog.dataset.schemaUrl, {
+                credentials: "same-origin",
+                headers: { Accept: "application/json" },
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "Could not load the saved schema.");
+            }
+            tables.splice(0, tables.length, ...result.schema.tables);
+            relationships.splice(
+                0,
+                relationships.length,
+                ...result.schema.relationships,
+            );
+            selectedTableId = tables[0]?.id || null;
+            const numericIds = [
+                ...tables.map((table) => Number(table.id)),
+                ...tables.flatMap((table) => table.columns.map((column) => Number(column.id))),
+                ...relationships.map((relationship) => Number(relationship.id)),
+            ].filter(Number.isSafeInteger);
+            nextId = Math.max(0, ...numericIds) + 1;
+            relationshipSourceId = null;
+            relationshipTargetId = null;
+            render();
+            saveStatus.textContent = tables.length
+                ? `Loaded ${tables.length} table${tables.length === 1 ? "" : "s"}`
+                : "No saved tables yet";
+        } catch (error) {
+            saveStatus.textContent = error.message || "Could not load the saved schema.";
+        }
+    };
+
+    const saveSchema = async () => {
+        saveButton.disabled = true;
+        saveStatus.textContent = "Saving schema...";
+        try {
+            const response = await fetch(dialog.dataset.schemaUrl, {
+                method: "PUT",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfInput.value,
+                    Accept: "application/json",
+                },
+                body: JSON.stringify({
+                    schema: { tables, relationships },
+                }),
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "Could not save the schema.");
+            }
+            saveStatus.textContent =
+                `Saved ${result.metadata.table_count} tables, ` +
+                `${result.metadata.column_count} fields, and ` +
+                `${result.metadata.relationship_count} relationships`;
+        } catch (error) {
+            saveStatus.textContent = error.message || "Could not save the schema.";
+        } finally {
+            saveButton.disabled = false;
+        }
+    };
+
     const render = () => {
         viewButtons.forEach((button) => {
             button.setAttribute(
@@ -345,9 +557,12 @@ function initializeSchemaEditor() {
 
     const addTable = () => {
         const id = String(nextId++);
+        const tableIndex = tables.length;
         const table = {
             id,
-            name: `Table${tables.length + 1}`,
+            name: `Table${tableIndex + 1}`,
+            x: 24 + (tableIndex % 3) * 340,
+            y: 24 + Math.floor(tableIndex / 3) * 280,
             columns: [
                 {
                     id: String(nextId++),
@@ -360,6 +575,7 @@ function initializeSchemaEditor() {
         tables.push(table);
         selectedTableId = id;
         activeView = "configure";
+        markDirty();
         render();
     };
 
@@ -381,10 +597,12 @@ function initializeSchemaEditor() {
         }
         if (target.dataset.field === "table-name") {
             table.name = target.value.trim() || "Untitled table";
+            markDirty();
             renderTables();
         } else if (target.dataset.field === "column-name") {
             table.columns[Number(target.dataset.columnIndex)].name =
                 target.value.trim() || "Untitled field";
+            markDirty();
             renderTables();
         }
     });
@@ -416,8 +634,108 @@ function initializeSchemaEditor() {
         } else if (target.dataset.field === "column-primary") {
             column.primaryKey = target.checked;
         }
+        markDirty();
         renderTables();
     });
+
+    tableGrid.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+            return;
+        }
+        const button = target.closest('button[data-action="select-table"]');
+        if (!(button instanceof HTMLButtonElement) || dragState?.moved) {
+            return;
+        }
+        selectedTableId = button.dataset.tableId;
+        activeView = "configure";
+        render();
+    });
+
+    tableGrid.addEventListener("pointerdown", (event) => {
+        const target = event.target;
+        if (!(target instanceof Element) || !(event.target instanceof HTMLElement)) {
+            return;
+        }
+        const handle = target.closest(".schema-table-select");
+        if (!(handle instanceof HTMLButtonElement)) {
+            return;
+        }
+        const table = tables.find((item) => item.id === handle.dataset.tableId);
+        const card = handle.closest(".schema-table-card");
+        if (!table || !(card instanceof HTMLElement)) {
+            return;
+        }
+        dragState = {
+            pointerId: event.pointerId,
+            handle,
+            card,
+            table,
+            startX: event.clientX,
+            startY: event.clientY,
+            initialX: table.x,
+            initialY: table.y,
+            moved: false,
+        };
+        handle.setPointerCapture(event.pointerId);
+    });
+
+    tableGrid.addEventListener("pointermove", (event) => {
+        if (!dragState || dragState.pointerId !== event.pointerId || !(event.buttons & 1)) {
+            return;
+        }
+        const deltaX = event.clientX - dragState.startX;
+        const deltaY = event.clientY - dragState.startY;
+        if (Math.abs(deltaX) + Math.abs(deltaY) > 5) {
+            dragState.moved = true;
+        }
+        if (!dragState.moved) {
+            return;
+        }
+        dragState.table.x = Math.max(0, Math.round(dragState.initialX + deltaX));
+        dragState.table.y = Math.max(0, Math.round(dragState.initialY + deltaY));
+        dragState.card.style.left = `${dragState.table.x}px`;
+        dragState.card.style.top = `${dragState.table.y}px`;
+        drawConnections();
+    });
+
+    const finishTableDrag = (event) => {
+        if (!dragState || dragState.pointerId !== event.pointerId) {
+            return;
+        }
+        const completedDrag = dragState;
+        dragState = null;
+        if (completedDrag.handle.hasPointerCapture(event.pointerId)) {
+            completedDrag.handle.releasePointerCapture(event.pointerId);
+        }
+        if (!completedDrag.moved) {
+            return;
+        }
+        const targetTable = tables.find((table) => {
+            if (table.id === completedDrag.table.id) {
+                return false;
+            }
+            const card = tableGrid.querySelector(
+                `[data-table-id="${CSS.escape(table.id)}"]`,
+            );
+            if (!(card instanceof HTMLElement)) {
+                return false;
+            }
+            const rect = card.getBoundingClientRect();
+            return (
+                event.clientX >= rect.left &&
+                event.clientX <= rect.right &&
+                event.clientY >= rect.top &&
+                event.clientY <= rect.bottom
+            );
+        });
+        createRelationship(completedDrag.table, targetTable);
+        markDirty();
+        render();
+    };
+    tableGrid.addEventListener("pointerup", finishTableDrag);
+    tableGrid.addEventListener("pointercancel", finishTableDrag);
+    canvas.addEventListener("scroll", drawConnections);
 
     inspector.addEventListener("click", (event) => {
         const target = event.target;
@@ -432,6 +750,13 @@ function initializeSchemaEditor() {
         switch (button.dataset.action) {
             case "add-table":
                 addTable();
+                break;
+            case "load-schema":
+                loadSchema();
+                break;
+            case "choose-line-color":
+                selectedLineColor = button.dataset.color;
+                renderRelationshipsView();
                 break;
             case "select-table":
                 selectedTableId = button.dataset.tableId;
@@ -450,16 +775,32 @@ function initializeSchemaEditor() {
                         type: "Short Text",
                         primaryKey: false,
                     });
+                    markDirty();
                     render();
                 }
                 break;
             case "remove-column":
                 if (table && table.columns.length > 1) {
-                    table.columns.splice(Number(button.dataset.columnIndex), 1);
+                    const [removedColumn] = table.columns.splice(
+                        Number(button.dataset.columnIndex),
+                        1,
+                    );
+                    for (let index = relationships.length - 1; index >= 0; index -= 1) {
+                        if (
+                            (relationships[index].sourceTableId === table.id &&
+                                relationships[index].sourceColumnId === removedColumn.id) ||
+                            (relationships[index].targetTableId === table.id &&
+                                relationships[index].targetColumnId === removedColumn.id)
+                        ) {
+                            relationships.splice(index, 1);
+                        }
+                    }
+                    markDirty();
                     render();
                 }
                 break;
             case "apply-table":
+                markDirty();
                 renderTables();
                 inspector.insertBefore(
                     createElement("p", "", "Table changes applied to the diagram."),
@@ -480,22 +821,37 @@ function initializeSchemaEditor() {
                 ) {
                     return;
                 }
-                relationships.push({
-                    sourceTableId: sourceTable.value,
-                    targetTableId: targetTable.value,
-                    sourceColumnId: sourceColumn.value,
-                    targetColumnId: targetColumn.value,
-                });
+                const source = tables.find((table) => table.id === sourceTable.value);
+                const target = tables.find((table) => table.id === targetTable.value);
+                const existing = relationships.some((relationship) =>
+                    relationship.sourceTableId === sourceTable.value &&
+                    relationship.targetTableId === targetTable.value &&
+                    relationship.sourceColumnId === sourceColumn.value &&
+                    relationship.targetColumnId === targetColumn.value,
+                );
+                if (!existing) {
+                    relationships.push({
+                        id: String(nextId++),
+                        sourceTableId: sourceTable.value,
+                        targetTableId: targetTable.value,
+                        sourceColumnId: sourceColumn.value,
+                        targetColumnId: targetColumn.value,
+                        color: selectedLineColor,
+                    });
+                    markDirty();
+                }
                 render();
                 break;
             }
             case "remove-relationship":
                 relationships.splice(Number(button.dataset.relationshipIndex), 1);
+                markDirty();
                 render();
                 break;
         }
     });
 
+    saveButton.addEventListener("click", saveSchema);
     openButton.addEventListener("click", () => {
         dialog.showModal();
         render();
