@@ -1,46 +1,33 @@
-from sqlalchemy import MetaData
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_login import LoginManager
-from flask_session import Session
+import os
 
-# Flask_WTF, using for CSRF protection
-from flask_wtf.csrf import CSRFProtect
-
-# rate limiter packages
+import redis
+from dotenv import load_dotenv
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_login import LoginManager
+from flask_migrate import Migrate
+from flask_session import Session
+from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
 
-from dotenv import load_dotenv
-
-import os
-import redis
-
-# load up the packages
+# Extension instances are bound to Flask apps in the application factory.
 load_dotenv()
 db = SQLAlchemy()
 migrate = Migrate()
 
-# init of the csrf protection package
 csrf = CSRFProtect()
-
-# init of the login manager package from flask_login
 login_manager = LoginManager()
 
 redis_url = os.environ.get("REDIS_URL") or "redis://127.0.0.1:6379"
 redis_client = redis.from_url(redis_url)
 
-# create a session instance with redis client arg
 sess = Session()
 
-limiter = Limiter (
-    
+limiter = Limiter(
     key_func=get_remote_address,
     storage_uri=redis_url,
-
-    # global limits on requests / use if need
-    # default_limits=["100 per day", "50 per hour"]
 )
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -54,6 +41,7 @@ def load_user(user_id):
 
     if user is None:
         return None
+    # Legacy session IDs have no version; honor them only before invalidation.
     if not separator:
         return user if user.session_version == 0 else None
     if not raw_session_version.isdecimal():

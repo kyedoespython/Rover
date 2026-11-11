@@ -1,15 +1,18 @@
-from html import escape
-from hashlib import sha256
-from werkzeug.security import generate_password_hash
-from datetime import datetime, timedelta, timezone
-from main.extensions import db
-from flask import current_app
-from main.models.user import Accounts, Authentication, PasswordResetToken
-import resend
 import secrets
+from datetime import datetime, timedelta, timezone
+from hashlib import sha256
+from html import escape
+
+import resend
+from flask import current_app
 from sqlalchemy import update
+from werkzeug.security import generate_password_hash
+
+from main.extensions import db
+from main.models.user import Accounts, Authentication, PasswordResetToken
 
 AUTH_CODE_MAX_ATTEMPTS = 5
+
 
 def _send_email(to, subject, text, html=None):
     api_key = current_app.config.get("RESEND_API_KEY")
@@ -31,11 +34,9 @@ def _send_email(to, subject, text, html=None):
 
     return resend.Emails.send(email)
 
-# This function is a reusable signup attempt checker
-# It works by querying the database for the current sessions email address looking for the first instance
-# It then checks if the user var is false meaning no user with that email exists
-# If the email exists it sends the user an email.
+
 def SignupAttemptMail(email):
+    """Notify an existing account holder without revealing the duplicate to the requester."""
     user = Accounts.query.filter_by(email=email).first()
 
     if not user:
@@ -60,30 +61,28 @@ def SignupAttemptMail(email):
         )
 
 
-
-# Create the auth code via secrets
 def Create_Auth_Code(user_account):
-
-    # Create authentication data if this is the account's first code.
+    """Rotate a verification code, reset its attempt counter, and email the code."""
     if not user_account.authentication_data:
         auth_row = Authentication(user_id=user_account.user_id)
         db.session.add(auth_row)
     else:
         auth_row = user_account.authentication_data
 
-    auth_code_ = str(secrets.randbelow(9000000) + 1000000) # generate an auth code 7 digits long via randint
+    auth_code_ = str(secrets.randbelow(9_000_000) + 1_000_000)
 
-    auth_row.auth_code = generate_password_hash(auth_code_) # generate a hash for the auth code via werkzeug
-    auth_row.auth_code_expires = datetime.now(timezone.utc) + timedelta(minutes=10) # save the 10 minutes time to the database to ensure limit is 10 minutes
-    auth_row.last_code_sent_at = datetime.now(timezone.utc) # save the copy of the timestamp showing when the last authentication attempt was
+    # Store only a password hash; plaintext is sent only to the account email.
+    auth_row.auth_code = generate_password_hash(auth_code_)
+    auth_row.auth_code_expires = datetime.now(timezone.utc) + timedelta(minutes=10)
+    auth_row.last_code_sent_at = datetime.now(timezone.utc)
     auth_row.failed_attempts = 0
     db.session.commit()
 
-    # Send the auth code to the user's email.
-    return SendAuthCode_EMAIL(user_account, auth_code_) # return / send values into the function call to be used to send the email with the auth code inside of it
+    return SendAuthCode_EMAIL(user_account, auth_code_)
 
-# send the auth code in an email message, 
+
 def SendAuthCode_EMAIL(user_account, auth_code_):
+    """Send a verification code without exposing it in the application response."""
     try:
         _send_email(
             to=[user_account.email],
@@ -96,7 +95,7 @@ def SendAuthCode_EMAIL(user_account, auth_code_):
         )
 
         return True, "Auth code sent to your email."
-    
+
     except Exception:
         current_app.logger.exception(
             "Failed to send authentication code email to %s",
@@ -170,7 +169,10 @@ def SendVerificationConfirmationEmail(user_account):
             "Failed to send verification confirmation email to %s",
             user_account.email,
         )
-        return False, "Your account is verified, but the confirmation email could not be sent."
+        return (
+            False,
+            "Your account is verified, but the confirmation email could not be sent.",
+        )
 
     return True, "Your account is verified. A confirmation email has been sent."
 
@@ -179,9 +181,11 @@ def Create_Password_Reset_Token(user_account):
     token = secrets.token_urlsafe(32)
     token_hash = sha256(token.encode("ascii")).hexdigest()
     now = datetime.now(timezone.utc)
-    reset_record = PasswordResetToken.query.filter_by(
-        user_id=user_account.user_id
-    ).with_for_update().first()
+    reset_record = (
+        PasswordResetToken.query.filter_by(user_id=user_account.user_id)
+        .with_for_update()
+        .first()
+    )
 
     if reset_record is None:
         reset_record = PasswordResetToken(
@@ -308,15 +312,15 @@ def SendPasswordResetEmail(user_account, reset_url):
     return True
 
 
-# check if the auth code field from the web page is a valid input
 def AuthCode_check(auth_code):
+    """Validate the format of a submitted verification code."""
     if not auth_code:
         return False, "auth code cannot hold an empty value"
-    
+
     if not auth_code.isdigit():
         return False, "auth code must be a whole 7 digit number"
 
-    if not len(auth_code) == 7:
+    if len(auth_code) != 7:
         return False, "auth code must be 7 digits long"
 
     return True, "Valid code"

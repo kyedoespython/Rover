@@ -1,8 +1,10 @@
-from main.models.user import Accounts, Authentication
-from werkzeug.security import check_password_hash
 import re
+
 import phonenumbers
 
+from main.models.user import Accounts
+
+# These regions are the only countries accepted by the signup form.
 country_regions = {
     "United Kingdom": "GB",
     "United States": "US",
@@ -10,7 +12,7 @@ country_regions = {
     "France": "FR",
 }
 
-# check all account fields before insertion to validate via rules
+
 class Contents_Checker:
     def __init__(self, email, username, password, phone_number, country):
         self.email = email
@@ -22,7 +24,7 @@ class Contents_Checker:
     def Check_Email_Contents(self):
         if len(self.email) < 3:
             return False, "Email address must contain more than 3 characters"
-        if not "@" in self.email:
+        if "@" not in self.email:
             return False, "Email address must contain an @ symbol"
         return True, "Email is valid"
 
@@ -47,11 +49,10 @@ class Contents_Checker:
         if not contains_uppercase_char:
             return False, "Password must contain at least one upper case character"
 
-        if not re.search(r'[!@#$%^&*]', self.password):
+        if not re.search(r"[!@#$%^&*]", self.password):
             return False, "Password must contain a special character (!@#$%^&*)"
         return True, "Password is valid"
 
-    # check if a phone number has been given
     def Check_Phone_Number_Contents(self):
         if not self.phone_number:
             return True, "No phone number entered"
@@ -81,7 +82,7 @@ class Contents_Checker:
             return False, "Select a valid country"
         return True, "Country is valid"
 
-# check if account exists via email, username
+
 class Account_Exists_Validator:
     def __init__(self, email, username, phone_number=None):
         self.email = email

@@ -7,10 +7,12 @@ Rover uses Ollama for text generation in its single Rover AI panel and Triple Ro
 Set `OLLAMA_BASE_URL` and `OLLAMA_MODEL` in the application's private environment:
 
 - **Local Ollama:** point `OLLAMA_BASE_URL` at the Ollama server reachable by the web app. Local Ollama normally does not require an API key.
-- **Ollama Cloud:** use the official HTTPS Ollama Cloud endpoint and save an Ollama API key in Rover.
+- **Ollama Cloud:** production defaults to the official HTTPS endpoint (`https://ollama.com`) when `OLLAMA_BASE_URL` is unset. Save an Ollama API key in Rover. For local development, set `OLLAMA_BASE_URL=https://ollama.com` explicitly to use Cloud.
 - **Custom Ollama-compatible endpoint:** configure its URL as appropriate. Rover does not forward saved Ollama keys to local or custom endpoints.
 
 The Docker Compose default targets an Ollama service on the Docker host. Network reachability depends on where Rover and Ollama run; check the URL from the web container's network perspective.
+
+On Render, leave `OLLAMA_BASE_URL` unset to use Ollama Cloud by default, or set it to the endpoint your deployment can reach. Saved Cloud keys are sent only when the configured URL is the official HTTPS `ollama.com` endpoint; they are not sent to local or custom endpoints.
 
 ## Add a Cloud API key
 

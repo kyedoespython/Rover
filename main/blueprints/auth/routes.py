@@ -1,28 +1,24 @@
-from flask import current_app
-from flask import jsonify
-from flask import make_response
-from flask import render_template
-from flask import request
-from flask import flash
-from flask import redirect
-from flask import url_for
-from flask_login import current_user
-from flask_login import login_user
-from flask_login import logout_user
-from flask_login import login_required
+from datetime import datetime, timedelta, timezone
+from hashlib import sha256
+from math import isfinite
 
-from flask import session
+from flask import (
+    current_app,
+    flash,
+    jsonify,
+    make_response,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
+from flask_login import current_user, login_required, login_user, logout_user
+from sqlalchemy import case, func, update
+from sqlalchemy.exc import IntegrityError
+from werkzeug.security import check_password_hash, generate_password_hash
 
-# store passwords as hash via werkzeug
-from werkzeug.security import generate_password_hash
-from werkzeug.security import check_password_hash
-
-from . import auth_bp
-
-# import account validator checks from user service
-from main.services.user_service import Account_Exists_Validator, Contents_Checker
-
-# import the schema for database manipulation
+from main.extensions import db, limiter
 from main.models.user import (
     Accounts,
     Authentication,
@@ -31,19 +27,17 @@ from main.models.user import (
     UserApiKey,
     UserSchema,
 )
-
-# import auth services for auth code generation, storing hashed auth code, verifying auth code
 from main.services.auth_service import (
     AUTH_CODE_MAX_ATTEMPTS,
     AuthCode_check,
     Consume_Password_Reset_Token,
-    Create_Password_Reset_Token,
     Create_Auth_Code,
+    Create_Password_Reset_Token,
     Is_Password_Reset_Token_Valid,
     SendPasswordResetEmail,
     SendVerificationConfirmationEmail,
+    SignupAttemptMail,
 )
-from main.services.auth_service import SignupAttemptMail
 from main.services.notes_service import (
     create_note,
     delete_note,
@@ -52,23 +46,16 @@ from main.services.notes_service import (
     update_note,
 )
 from main.services.ollama_service import encrypt_api_key
+from main.services.user_service import Account_Exists_Validator, Contents_Checker
 
-from datetime import datetime, timedelta, timezone
-from hashlib import sha256
-from math import isfinite
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import case, func, update
+from . import auth_bp
 
-# main / extension imports
-from main.extensions import db
-from main.extensions import limiter
 
-# This is the signup route for the signup page
 @auth_bp.route("/Rover/Sign Up")
 def Signup():
     return render_template("Signup/Signup.html")
 
-# This is the signup handling route for getting data from the signup form
+
 @auth_bp.route("/Handle_signup", methods=["POST", "GET"])
 @limiter.limit("5/minute; 50 per day")
 def Handle_Signup():
@@ -79,7 +66,9 @@ def Handle_Signup():
         phone_number = request.form.get("telephone", "").strip()
         country = request.form.get("country", "").strip()
 
-        contents_checker = Contents_Checker(email, username, password, phone_number, country)
+        contents_checker = Contents_Checker(
+            email, username, password, phone_number, country
+        )
 
         is_valid, message = contents_checker.Check_Email_Contents()
         if not is_valid:
@@ -108,18 +97,19 @@ def Handle_Signup():
 
         account_checker = Account_Exists_Validator(email, username, phone_number)
 
-        # Obfuscate / hide which field caused the duplicate (Issue 6)
-        if account_checker.Email_Found() or account_checker.Username_Found() or account_checker.Phone_number_Found():
-            
-            # Call the service — it silently emails the existing owner (if any)
+        # Return the same response for every duplicate field to prevent enumeration.
+        if (
+            account_checker.Email_Found()
+            or account_checker.Username_Found()
+            or account_checker.Phone_number_Found()
+        ):
             SignupAttemptMail(email)
 
-            # Same response as a successful signup
             flash("Check your email inbox", "info")
             session.pop("pending_auth_email", None)
             return redirect(url_for("auth.Authenticate_User"))
 
-        # Convert empty string to None for phone number
+        # Store an omitted phone number as NULL rather than an empty unique value.
         clean_empty_phone_number = phone_number if phone_number else None
 
         AccountBlock = Accounts(
@@ -127,7 +117,7 @@ def Handle_Signup():
             username=username,
             password=generate_password_hash(password),
             phone_number=clean_empty_phone_number,
-            country_of_origin=country
+            country_of_origin=country,
         )
 
         db.session.add(AccountBlock)
@@ -136,41 +126,41 @@ def Handle_Signup():
         success, message = Create_Auth_Code(AccountBlock)
 
         if success:
-            flash("Account created successfully, Check your email inbox for your auth code", "success")
+            flash(
+                "Account created successfully, Check your email inbox for your auth code",
+                "success",
+            )
         else:
             flash(message, "error")
 
         db.session.commit()
 
-        session['pending_auth_email'] = email
+        session["pending_auth_email"] = email
         return redirect(url_for("auth.Authenticate_User"))
+
 
 @auth_bp.route("/Rover/Auth")
 def Authenticate_User():
     return render_template("Auth/Auth.html")
 
+
 @auth_bp.route("/HandleAuth", methods=["POST", "GET"])
-@limiter.limit("10/minute; 100 per day") # limit to 10 requests per minute and max 100 requests per day
+@limiter.limit("10/minute; 100 per day")
 def Handle_Auth():
     if request.method == "POST":
-
-        # get auth code with no spaces
         auth_code = request.form.get("authCode", "").strip()
 
-        # run the AuthCode_check function in user_service
         is_valid, message = AuthCode_check(auth_code)
         if not is_valid:
             flash(message, "error")
             return redirect(url_for("auth.Authenticate_User"))
 
-        # Get the pending email from the session
-        pending_email = session.get('pending_auth_email')
-        
+        pending_email = session.get("pending_auth_email")
+
         if not pending_email:
             flash("No authentication session found.", "error")
             return redirect(url_for("auth.Login"))
 
-        # Look up the user by the first instance of the users entered email
         user = Accounts.query.filter_by(email=pending_email).first()
 
         if not user:
@@ -206,7 +196,7 @@ def Handle_Auth():
             authentication.auth_code_expires = None
             authentication.failed_attempts = 0
             db.session.commit()
-            session.pop('pending_auth_email', None)
+            session.pop("pending_auth_email", None)
 
             sent, message = SendVerificationConfirmationEmail(user)
             flash(
@@ -247,49 +237,53 @@ def Handle_Auth():
         else:
             db.session.expire(authentication)
             if authentication.failed_attempts >= AUTH_CODE_MAX_ATTEMPTS:
-                flash("Too many invalid auth code attempts. Request a new code.", "error")
+                flash(
+                    "Too many invalid auth code attempts. Request a new code.", "error"
+                )
             else:
                 flash("Invalid auth code", "error")
         return redirect(url_for("auth.Authenticate_User"))
 
-# Route for resending auth token to user email, use POST method only using csrf protection
+
 @auth_bp.route("/Resend_Auth", methods=["POST"])
-@limiter.limit("10/minute; 100 per day") # limit to 10 requests per minute and max 100 requests a day
+@limiter.limit("10/minute; 100 per day")
 def ResendAuth():
-    # Get the email from the session (set during signup or login redirect)
-    pending_email = session.get('pending_auth_email')
-    
+    pending_email = session.get("pending_auth_email")
+
     if not pending_email:
         flash("No authentication session found. Please log in again.", "error")
         return redirect(url_for("auth.Login"))
 
-    # Find the user in the database
     user = Accounts.query.filter_by(email=pending_email).first()
 
     if not user:
         flash("Error finding account.", "error")
         return redirect(url_for("auth.Login"))
 
-    # 10 minute cooldown check for the resend auth code button
+    # Enforce the cooldown so repeated requests cannot spam verification emails.
     if user.authentication_data.last_code_sent_at:
-        last_sent = user.authentication_data.last_code_sent_at.replace(tzinfo=timezone.utc)
+        last_sent = user.authentication_data.last_code_sent_at.replace(
+            tzinfo=timezone.utc
+        )
         time_passed = datetime.now(timezone.utc) - last_sent
 
         if time_passed < timedelta(minutes=10):
             minutes_left = 10 - int(time_passed.total_seconds() // 60)
-            flash(f"You must wait {minutes_left} before you can request a new auth code", "error")
+            flash(
+                f"You must wait {minutes_left} before you can request a new auth code",
+                "error",
+            )
             return redirect(url_for("auth.Authenticate_User"))
 
-    # create an auth code for the user from user_service
     success, message = Create_Auth_Code(user)
-    
+
     if success:
         flash("A new auth code has been sent to your email.", "success")
     else:
         flash(message, "error")
 
-    # Redirect right back to the auth page
     return redirect(url_for("auth.Authenticate_User"))
+
 
 @auth_bp.route("/Rover/Login")
 def Login():
@@ -349,10 +343,15 @@ def Reset_Password():
     if request.method == "GET":
         token = request.args.get("token", "")
         if not Is_Password_Reset_Token_Valid(token):
-            flash("That password reset link is invalid or expired. Request a new one.", "error")
+            flash(
+                "That password reset link is invalid or expired. Request a new one.",
+                "error",
+            )
             return _password_reset_redirect("auth.Forgot_Password")
 
-        response = make_response(render_template("Auth/ResetPassword.html", token=token))
+        response = make_response(
+            render_template("Auth/ResetPassword.html", token=token)
+        )
         response.headers["Cache-Control"] = "no-store"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
@@ -360,7 +359,10 @@ def Reset_Password():
 
     token = request.form.get("token", "")
     if not Is_Password_Reset_Token_Valid(token):
-        flash("That password reset link is invalid or expired. Request a new one.", "error")
+        flash(
+            "That password reset link is invalid or expired. Request a new one.",
+            "error",
+        )
         return _password_reset_redirect("auth.Forgot_Password")
 
     password = request.form.get("password", "")
@@ -379,7 +381,10 @@ def Reset_Password():
         return _password_reset_redirect("auth.Reset_Password", token=token)
 
     if not Consume_Password_Reset_Token(token, password):
-        flash("That password reset link is invalid or expired. Request a new one.", "error")
+        flash(
+            "That password reset link is invalid or expired. Request a new one.",
+            "error",
+        )
         return _password_reset_redirect("auth.Forgot_Password")
 
     logout_user()
@@ -388,65 +393,66 @@ def Reset_Password():
 
 
 @auth_bp.route("/Handle_Login", methods=["POST", "GET"])
-@limiter.limit("5 per minute") # 5 login request per IP address per minute, no max per day
+@limiter.limit("5 per minute")
 def Handle_Login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
 
-        # Find the user in the database
         user = Accounts.query.filter_by(username=username).first()
 
-        # Check if user exists and password is correct
         if not user or not check_password_hash(user.password, password):
             flash("Invalid username or password.", "error")
             return redirect(url_for("auth.Login"))
 
-        # Check if they have verified their email (authenticated)
         if not user.authentication_data.authenticated:
-            
-            # FIX: Check if their code has expired before sending them to the auth page
             if user.authentication_data.auth_code_expires:
-                expiry = user.authentication_data.auth_code_expires.replace(tzinfo=timezone.utc)
+                expiry = user.authentication_data.auth_code_expires.replace(
+                    tzinfo=timezone.utc
+                )
                 if datetime.now(timezone.utc) > expiry:
                     flash("Your auth code expired. Please request a new one.", "error")
-                    # Here you'd ideally have a route to regenerate and resend the code
                     return redirect(url_for("auth.Login"))
-            
+
             flash("Please verify your email before logging in.", "error")
 
-            # Save their email so the auth page knows who they are
-            session['pending_auth_email'] = user.email 
+            session["pending_auth_email"] = user.email
             return redirect(url_for("auth.Authenticate_User"))
 
-        # Rate limit the users login attempts to 5 per 
+        # Temporarily lock accounts after repeated failed logins.
         if user.failed_login_attempts >= 5 and user.last_login_attempt:
             last_attempt = user.last_login_attempt.replace(tzinfo=timezone.utc)
             time_passed = datetime.now(timezone.utc) - last_attempt
 
             if time_passed < timedelta(minutes=15):
                 minutes_left = 15 - int(time_passed.total_seconds() // 60)
-                flash(f"Too many failed attempts to login, you can try again in {minutes_left} minutes", "error")
+                flash(
+                    f"Too many failed attempts to login, you can try again in {minutes_left} minutes",
+                    "error",
+                )
                 return redirect(url_for("auth.Login"))
             else:
-                user.failed_login_attemps = 0 # if 15 minutes has passed reset the failed login attempts to 0
+                user.failed_login_attemps = (
+                    0  # if 15 minutes has passed reset the failed login attempts to 0
+                )
                 user.last_login_attempt = datetime.now(timezone.utc)
-                db.session.commit() # commit change
+                db.session.commit()  # commit change
 
-        # log the user in
         login_user(user)
-        
+
         flash(f"Welcome back {user.username}!", "success")
-        
-        # take the user to the design page
+
         return redirect(url_for("auth.DesignDash"))
 
+
 @auth_bp.route("/DesignDashboard")
-@login_required # only logged in users can access the design dashboard
+@login_required  # only logged in users can access the design dashboard
 def DesignDash():
-    api_keys = UserApiKey.query.filter_by(user_id=current_user.user_id).order_by(
-        UserApiKey.created_at.desc()
-    ).all()
+    api_keys = (
+        UserApiKey.query.filter_by(user_id=current_user.user_id)
+        .order_by(UserApiKey.created_at.desc())
+        .all()
+    )
     return render_template("Design/DesignDash.html", api_keys=api_keys)
 
 
@@ -658,7 +664,9 @@ def Update_Note(note_id):
         flash("A note with that name already exists.", "error")
         return redirect(url_for("auth.Notes_Page"))
     except OSError:
-        current_app.logger.exception("Unable to update Markdown file for note %s", note_id)
+        current_app.logger.exception(
+            "Unable to update Markdown file for note %s", note_id
+        )
         flash("The note could not be updated. Please try again.", "error")
         return redirect(url_for("auth.Notes_Page", load_id=note_id))
 
@@ -847,7 +855,10 @@ def _validate_user_schema(schema_data):
             or not isinstance(color, str)
             or color not in SCHEMA_LINE_COLORS
         ):
-            return None, "A relationship references an invalid table, field, or line color."
+            return (
+                None,
+                "A relationship references an invalid table, field, or line color.",
+            )
         relationship_ids.add(relationship_id)
         clean_relationships.append(
             {
@@ -922,11 +933,7 @@ def User_Schema():
     schema.details.relationship_count = len(clean_schema["relationships"])
     schema.details.table_names = [table["name"] for table in tables]
     schema.details.data_types = sorted(
-        {
-            column["type"]
-            for table in tables
-            for column in table["columns"]
-        }
+        {column["type"] for table in tables for column in table["columns"]}
     )
     db.session.commit()
     return jsonify(

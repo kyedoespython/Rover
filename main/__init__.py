@@ -1,33 +1,21 @@
+import atexit
+import os
+
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
-import atexit
 
-from .extensions import db
-from .extensions import migrate
-from .extensions import login_manager
-from .extensions import sess
-from .extensions import redis_client
-from .extensions import csrf
-from .extensions import limiter
+from config import CONFIG_MAP, ProductionConfig
 
-# blueprints
 from .blueprints.auth import auth_bp
 from .blueprints.home import home_bp
 from .blueprints.Integrations.Ollama import ollama_bp
+from .extensions import csrf, db, limiter, login_manager, migrate, redis_client, sess
 
-# import config map, prod config
-from config import CONFIG_MAP, ProductionConfig
 
-import os
-
-# create the app
 def create_app(env: str | None = None):
+    """Create and configure the Flask application for one environment."""
 
-    # find the current environment used, no fallback
     env = env or os.environ.get("APP_ENV")
-
-    # check if env is empty
-    # provide runtime error if so
     if env is None:
         raise RuntimeError(
             "APP_ENV is not set. Refusing to start "
@@ -35,49 +23,39 @@ def create_app(env: str | None = None):
             "in your environment or .env file"
         )
 
-    # lookup class inside dispatch table
     config_class = CONFIG_MAP.get(env)
     if config_class is None:
-        raise RuntimeError(f"FLASK_ENV {env!r} is not recognised\nChoose from {list(CONFIG_MAP)}")
+        raise RuntimeError(
+            f"APP_ENV {env!r} is not recognized\nChoose from {list(CONFIG_MAP)}"
+        )
 
-    # if running the prod env and no screts crash the program
     if config_class is ProductionConfig:
         config_class.load_required()
 
-    # instaniate the app
     app = Flask(__name__)
-
-    # redis config loader from root config class
     app.config.from_object(config_class)
     if config_class is ProductionConfig:
+        # Respect Render's forwarded scheme and client IP behind its proxy.
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
-    # start extensions
     db.init_app(app)
     migrate.init_app(app, db)
-
-    # initialise csrf protection
     csrf.init_app(app)
-
-    # initialise limiter
     limiter.init_app(app)
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(home_bp)
     app.register_blueprint(ollama_bp)
 
-    # login manager section (specific page locks)
-    login_manager.init_app(app) # initialise
-
-    login_manager.login_view = "auth.Login" # redirect to login page
-
-    # error messages
-    login_manager.login_message = "You must be logged into an account to unlock this page"
+    login_manager.init_app(app)
+    login_manager.login_view = "auth.Login"
+    login_manager.login_message = (
+        "You must be logged into an account to unlock this page"
+    )
     login_manager.login_message_category = "error"
 
     app.config["SESSION_REDIS"] = redis_client
-
-    sess.init_app(app) # redis initialisation
+    sess.init_app(app)
 
     if not app.testing and app.config.get("AGENT_HISTORY_CLEANUP_ENABLED", True):
         from apscheduler.schedulers.background import BackgroundScheduler
@@ -93,6 +71,7 @@ def create_app(env: str | None = None):
                         deleted_count,
                     )
 
+        # Keep background cleanup out of tests to avoid nondeterministic work.
         scheduler = BackgroundScheduler(timezone="UTC", daemon=True)
         scheduler.add_job(
             cleanup_agent_history_job,
@@ -108,5 +87,4 @@ def create_app(env: str | None = None):
         app.extensions["rover_agent_history_scheduler"] = scheduler
         atexit.register(scheduler.shutdown, wait=False)
 
-    # register the blueprints for usage
     return app

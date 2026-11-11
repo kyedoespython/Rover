@@ -5,7 +5,8 @@ import pytest
 from flask import Flask
 
 from main.extensions import db
-from main.models.user import Accounts, Notes, NoteMetadata
+from main.models.user import Accounts, NoteMetadata, Notes
+from main.services import notes_service
 from main.services.notes_service import (
     create_note,
     delete_note,
@@ -13,7 +14,6 @@ from main.services.notes_service import (
     read_note_content,
     update_note,
 )
-from main.services import notes_service
 
 
 @pytest.fixture
@@ -56,7 +56,10 @@ def test_create_note_stores_markdown_and_metadata(notes_app):
         assert note.file_metadata.size_bytes == len("# Plan\n\nDraft".encode("utf-8"))
         assert read_note_content(note) == "# Plan\n\nDraft"
 
-        file_path = Path(notes_app.config["NOTE_STORAGE_DIR"]) / note.file_metadata.relative_path
+        file_path = (
+            Path(notes_app.config["NOTE_STORAGE_DIR"])
+            / note.file_metadata.relative_path
+        )
         assert file_path.is_file()
         assert file_path.read_text(encoding="utf-8") == "# Plan\n\nDraft"
         assert db.session.get(NoteMetadata, note.note_id) is not None
@@ -66,11 +69,17 @@ def test_update_replaces_markdown_and_keeps_metadata(notes_app):
     with notes_app.app_context():
         account = _create_account()
         note = create_note(account.user_id, "Plan", "Project plan", "Old text")
-        old_path = Path(notes_app.config["NOTE_STORAGE_DIR"]) / note.file_metadata.relative_path
+        old_path = (
+            Path(notes_app.config["NOTE_STORAGE_DIR"])
+            / note.file_metadata.relative_path
+        )
 
         update_note(note, "Plan v2", "Updated plan", "# Updated")
 
-        new_path = Path(notes_app.config["NOTE_STORAGE_DIR"]) / note.file_metadata.relative_path
+        new_path = (
+            Path(notes_app.config["NOTE_STORAGE_DIR"])
+            / note.file_metadata.relative_path
+        )
         assert note.note_name == "Plan v2"
         assert note.note_description == "Updated plan"
         assert note.file_metadata.size_bytes == len("# Updated".encode("utf-8"))
@@ -84,7 +93,10 @@ def test_delete_removes_note_metadata_and_markdown(notes_app):
     with notes_app.app_context():
         account = _create_account()
         note = create_note(account.user_id, "Temporary", "Delete me", "Content")
-        file_path = Path(notes_app.config["NOTE_STORAGE_DIR"]) / note.file_metadata.relative_path
+        file_path = (
+            Path(notes_app.config["NOTE_STORAGE_DIR"])
+            / note.file_metadata.relative_path
+        )
         note_id = note.note_id
 
         delete_note(note)

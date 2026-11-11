@@ -5,7 +5,6 @@ from sqlalchemy import text
 from main.extensions import db
 from main.models.user import RoverAgentMessage, RoverAgentSession
 
-
 RETENTION_PERIOD = timedelta(days=7)
 POSTGRES_CLEANUP_LOCK_ID = 743820194
 

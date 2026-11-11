@@ -17,9 +17,7 @@ def _storage_root() -> Path:
     return (Path(current_app.instance_path) / "note_storage").resolve()
 
 
-def _write_markdown_file(
-    user_id: int, content: str
-) -> tuple[Path, str, str, int, str]:
+def _write_markdown_file(user_id: int, content: str) -> tuple[Path, str, str, int, str]:
     root = _storage_root()
     user_directory = root / f"user_{user_id}"
     user_directory.mkdir(parents=True, exist_ok=True)

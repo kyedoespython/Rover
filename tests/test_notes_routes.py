@@ -1,11 +1,12 @@
-from pathlib import Path
-from datetime import datetime, timedelta, timezone
 import json
 import re
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from flask import Flask
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from main.blueprints.auth import auth_bp
 from main.blueprints.home import home_bp
@@ -26,12 +27,11 @@ from main.models.user import (
     UserApiKey,
     UserSchema,
 )
-from main.services.ollama_service import decrypt_api_key
+from main.services import notes_service
 from main.services.agent_history_cleanup import cleanup_expired_agent_history
 from main.services.auth_service import AUTH_CODE_MAX_ATTEMPTS, Create_Auth_Code
 from main.services.notes_service import create_note
-from main.services import notes_service
-from werkzeug.security import check_password_hash, generate_password_hash
+from main.services.ollama_service import decrypt_api_key
 
 
 @pytest.fixture
@@ -98,7 +98,10 @@ def test_notes_route_create_load_edit_and_delete(notes_client):
     with notes_client.application.app_context():
         note = Notes.query.filter_by(note_name="Route plan").one()
         note_id = note.note_id
-        file_path = Path(notes_client.application.config["NOTE_STORAGE_DIR"]) / note.file_metadata.relative_path
+        file_path = (
+            Path(notes_client.application.config["NOTE_STORAGE_DIR"])
+            / note.file_metadata.relative_path
+        )
 
     response = notes_client.get(f"/Rover/Notes?load_id={note_id}")
     assert response.status_code == 200
@@ -201,6 +204,8 @@ def test_notes_routes_reject_access_to_another_users_note(notes_client):
 
     with notes_client.application.app_context():
         note = db.session.get(Notes, note_id)
+        assert note is not None
+        assert note.note_content is None
         assert note_file_path.read_text(encoding="utf-8") == original_file_content
 
 
@@ -391,7 +396,10 @@ def test_signup_phone_country_mismatch_flashes_red_error(notes_client):
     assert b"scripts/Signup.js?v=1" in response.data
     assert b'data-calling-code="44"' in response.data
     with notes_client.application.app_context():
-        assert Accounts.query.filter_by(email="signup-mismatch@example.com").first() is None
+        assert (
+            Accounts.query.filter_by(email="signup-mismatch@example.com").first()
+            is None
+        )
 
 
 def test_password_reset_request_is_generic_and_reset_token_is_single_use(notes_client):
@@ -495,9 +503,7 @@ def test_notes_page_creates_default_note_and_sidebar_creates_named_notes(notes_c
     assert created.headers["Location"].endswith("/Rover/Notes")
 
     with notes_client.application.app_context():
-        created_note = Notes.query.filter_by(
-            note_name="A note from the sidebar"
-        ).one()
+        created_note = Notes.query.filter_by(note_name="A note from the sidebar").one()
         assert created_note.note_content is None
         assert created_note.file_metadata is not None
 
@@ -548,9 +554,9 @@ def test_note_names_are_unique_per_user(notes_client):
         db.session.commit()
         other_user_id = other_account.user_id
 
-        first_user_id = Accounts.query.filter_by(
-            email="route-notes@example.com"
-        ).one().user_id
+        first_user_id = (
+            Accounts.query.filter_by(email="route-notes@example.com").one().user_id
+        )
         create_note(first_user_id, "Shared name", "", "")
         create_note(other_user_id, "Shared name", "", "")
 
@@ -579,11 +585,14 @@ def test_api_key_is_saved_as_hash_and_returned_without_secret(notes_client):
         assert stored_key.key_hash != secret
         assert check_password_hash(stored_key.key_hash, secret)
         assert stored_key.key_ciphertext
-        assert decrypt_api_key(
-            stored_key.key_ciphertext,
-            stored_key.user_id,
-            stored_key.api_key_id,
-        ) == secret
+        assert (
+            decrypt_api_key(
+                stored_key.key_ciphertext,
+                stored_key.user_id,
+                stored_key.api_key_id,
+            )
+            == secret
+        )
         assert account.active_ollama_api_key_id == stored_key.api_key_id
 
     dashboard = notes_client.get("/DesignDashboard")
@@ -608,9 +617,14 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'id="ollamaEndSession"' in response.data
     assert b"scripts/Integrations/Ollama.js?v=11" in response.data
     assert response.data.count(b'id="ollamaDrawer"') == 1
-    assert b'class="button is-outlined design-side-button rover-ai-nav-button"' in response.data
+    assert (
+        b'class="button is-outlined design-side-button rover-ai-nav-button"'
+        in response.data
+    )
     assert b"ollama-drawer-toggle" not in response.data
-    assert response.data.index(b">Demo</button>") < response.data.index(b">Rover AI</button>")
+    assert response.data.index(b">Demo</button>") < response.data.index(
+        b">Rover AI</button>"
+    )
     assert b'aria-expanded="false"' in response.data
     assert b'class="ollama-drawer is-minimized"' in response.data
     assert b"Rover AI" in response.data
@@ -618,7 +632,10 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b"Markdown file (auto-loads into your draft)" in response.data
     assert b"Verify your account to enable Rover AI chat." in response.data
     assert b"#designPage .api-key-dialog .label" in response.data
-    assert b'id="ollamaChatInput"' in response.data and b" disabled required" in response.data
+    assert (
+        b'id="ollamaChatInput"' in response.data
+        and b" disabled required" in response.data
+    )
     assert b'id="ollamaChatbotModelSelect"' in response.data
     assert b'id="ollamaChatbotModelInput"' not in response.data
     assert b'id="ollamaApiKeySelect"' in response.data
@@ -732,7 +749,9 @@ def test_user_schema_saves_connections_and_derived_metadata(notes_client):
     assert notes_client.get("/api/schema").get_json()["schema"] == schema
 
 
-def test_triple_rover_page_keeps_only_the_navigation_and_three_agent_slots(notes_client):
+def test_triple_rover_page_keeps_only_the_navigation_and_three_agent_slots(
+    notes_client,
+):
     response = notes_client.get("/DesignDashboard/Agents")
 
     assert response.status_code == 200
@@ -858,14 +877,17 @@ def test_scheduled_agent_history_cleanup_uses_first_chat_timestamp(notes_client)
         assert deleted_count == 1
         assert db.session.get(RoverAgentSession, expired_session_id) is None
         assert db.session.get(RoverAgentSession, retained_session_id) is not None
-        assert RoverAgentMessage.query.filter_by(session_id=expired_session_id).count() == 0
+        assert (
+            RoverAgentMessage.query.filter_by(session_id=expired_session_id).count()
+            == 0
+        )
         assert RoverAgent.query.count() == len(agents)
 
 
 def test_settings_navigation_is_only_on_support_page(notes_client):
     support_page = notes_client.get("/Rover/Support")
     assert support_page.status_code == 200
-    assert b'justify-content: space-between' in support_page.data
+    assert b"justify-content: space-between" in support_page.data
     assert b'href="/Rover/Settings"' in support_page.data
 
     notes_page = notes_client.get("/Rover/Notes")
@@ -1018,10 +1040,10 @@ def test_rover_ai_api_key_loader_selects_key_and_lists_safe_labels(
 
 
 @patch("main.blueprints.Integrations.Ollama.routes.requests.get")
-def test_ollama_model_preference_is_per_user_and_checks_availability(mock_get, notes_client):
-    mock_get.return_value.json.return_value = {
-        "models": [{"name": "qwen3:latest"}]
-    }
+def test_ollama_model_preference_is_per_user_and_checks_availability(
+    mock_get, notes_client
+):
+    mock_get.return_value.json.return_value = {"models": [{"name": "qwen3:latest"}]}
     mock_get.return_value.raise_for_status.return_value = None
 
     unavailable = notes_client.post(
@@ -1044,7 +1066,9 @@ def test_ollama_model_preference_is_per_user_and_checks_availability(mock_get, n
 
 
 @patch("main.blueprints.Integrations.Ollama.routes.requests.post")
-def test_ollama_chat_uses_selected_model_and_decrypted_user_key(mock_post, notes_client):
+def test_ollama_chat_uses_selected_model_and_decrypted_user_key(
+    mock_post, notes_client
+):
     with notes_client.application.app_context():
         notes_client.application.config["OLLAMA_BASE_URL"] = "https://ollama.com"
 
@@ -1080,10 +1104,7 @@ def test_ollama_chat_uses_selected_model_and_decrypted_user_key(mock_post, notes
     )
 
     assert response.status_code == 200
-    events = [
-        json.loads(line)
-        for line in response.get_data(as_text=True).splitlines()
-    ]
+    events = [json.loads(line) for line in response.get_data(as_text=True).splitlines()]
     assert events == [
         {"token": "Hello "},
         {"token": "from Ollama"},
@@ -1124,10 +1145,7 @@ def test_ollama_local_does_not_send_saved_key(mock_post, notes_client):
     )
 
     assert response.status_code == 200
-    events = [
-        json.loads(line)
-        for line in response.get_data(as_text=True).splitlines()
-    ]
+    events = [json.loads(line) for line in response.get_data(as_text=True).splitlines()]
     assert events[-1]["message"] == "Local response"
     assert mock_post.call_args.kwargs["headers"] == {}
     assert mock_post.call_args.args[0] == "http://ollama.test/api/chat"
@@ -1160,7 +1178,9 @@ def test_ollama_chat_requires_session_and_rejects_long_message(notes_client):
 
 
 @patch("main.blueprints.Integrations.Ollama.routes.requests.post")
-def test_chat_session_history_is_deleted_when_user_ends_session(mock_post, notes_client):
+def test_chat_session_history_is_deleted_when_user_ends_session(
+    mock_post, notes_client
+):
     session_response = notes_client.get("/api/ollama/session")
     assert session_response.status_code == 200
     session_id = session_response.get_json()["session_id"]

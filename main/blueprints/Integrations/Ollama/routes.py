@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
 import json
+from datetime import datetime, timezone
 from math import isfinite
 from urllib.parse import urlsplit
 from uuid import uuid4
@@ -55,8 +55,7 @@ def _get_or_create_chatbot() -> Chatbot:
             user_id=current_user.user_id,
             chatbot_name="Rover AI",
             model_name=(
-                current_user.ollama_model
-                or current_app.config["OLLAMA_MODEL"]
+                current_user.ollama_model or current_app.config["OLLAMA_MODEL"]
             ),
         )
         db.session.add(chatbot)
@@ -109,6 +108,7 @@ def _selected_api_key():
     ).first()
 
 
+# User credentials are sent only to the official HTTPS Ollama Cloud endpoint.
 def _ollama_headers(api_key=None) -> dict[str, str]:
     if not _is_ollama_cloud():
         return {}
@@ -182,7 +182,8 @@ def _create_rover_agent_slots() -> list[RoverAgent]:
                 user_id=current_user.user_id,
                 slot_number=slot_number,
                 agent_name=f"Rover Agent {slot_number}",
-                model_name=current_user.ollama_model or current_app.config["OLLAMA_MODEL"],
+                model_name=current_user.ollama_model
+                or current_app.config["OLLAMA_MODEL"],
             )
             agent.configuration = RoverAgentMetadata()
             db.session.add(agent)
@@ -211,7 +212,10 @@ def _agent_history(chat_session: RoverAgentSession) -> list[dict[str, str]]:
 @login_required
 @limiter.limit("30 per minute")
 def status():
-    if not current_user.authentication_data or not current_user.authentication_data.authenticated:
+    if (
+        not current_user.authentication_data
+        or not current_user.authentication_data.authenticated
+    ):
         return jsonify(error="Verify your account to use the Ollama assistant."), 403
 
     chatbot = Chatbot.query.filter_by(user_id=current_user.user_id).first()
@@ -281,16 +285,18 @@ def ollama_api_keys():
     if not _account_is_verified():
         return jsonify(error="Verify your account to configure Ollama."), 403
 
-    api_keys = UserApiKey.query.filter_by(
-        user_id=current_user.user_id,
-        key_type="ollama",
-    ).filter(
-        UserApiKey.key_ciphertext.is_not(None)
-    ).order_by(UserApiKey.created_at.desc()).all()
+    api_keys = (
+        UserApiKey.query.filter_by(
+            user_id=current_user.user_id,
+            key_type="ollama",
+        )
+        .filter(UserApiKey.key_ciphertext.is_not(None))
+        .order_by(UserApiKey.created_at.desc())
+        .all()
+    )
     return jsonify(
         keys=[
-            {"id": api_key.api_key_id, "name": api_key.key_name}
-            for api_key in api_keys
+            {"id": api_key.api_key_id, "name": api_key.key_name} for api_key in api_keys
         ],
         active_api_key_id=current_user.active_ollama_api_key_id,
     )
@@ -314,13 +320,15 @@ def select_ollama_api_key():
     if key_id is not None:
         if isinstance(key_id, bool) or not isinstance(key_id, int):
             return jsonify(error="Choose a valid saved API key."), 400
-        selected_key = UserApiKey.query.filter_by(
-            api_key_id=key_id,
-            user_id=current_user.user_id,
-            key_type="ollama",
-        ).filter(
-            UserApiKey.key_ciphertext.is_not(None)
-        ).first()
+        selected_key = (
+            UserApiKey.query.filter_by(
+                api_key_id=key_id,
+                user_id=current_user.user_id,
+                key_type="ollama",
+            )
+            .filter(UserApiKey.key_ciphertext.is_not(None))
+            .first()
+        )
         if selected_key is None:
             return jsonify(error="The selected API key was not found."), 404
 
@@ -334,7 +342,9 @@ def select_ollama_api_key():
         return jsonify(error=str(error)), 400
     except requests.HTTPError as error:
         if error.response is not None and error.response.status_code in (401, 403):
-            return jsonify(error="Ollama rejected the API key. Check the saved key and try again."), 401
+            return jsonify(
+                error="Ollama rejected the API key. Check the saved key and try again."
+            ), 401
         return jsonify(error="Ollama is not reachable; the key was not changed."), 503
     except requests.RequestException:
         return jsonify(error="Ollama is not reachable; the key was not changed."), 503
@@ -346,10 +356,10 @@ def select_ollama_api_key():
         return jsonify(error="No Ollama models are available for this key."), 400
 
     chatbot = Chatbot.query.filter_by(user_id=current_user.user_id).first()
-    current_model = (
-        chatbot.model_name if chatbot else current_user.ollama_model
+    current_model = chatbot.model_name if chatbot else current_user.ollama_model
+    model_name = (
+        current_model if current_model in available_models else available_models[0]
     )
-    model_name = current_model if current_model in available_models else available_models[0]
     current_user.active_ollama_api_key_id = (
         selected_key.api_key_id if selected_key else None
     )
@@ -368,7 +378,10 @@ def select_ollama_api_key():
 @ollama_bp.get("/settings")
 @login_required
 def integration_settings():
-    if not current_user.authentication_data or not current_user.authentication_data.authenticated:
+    if (
+        not current_user.authentication_data
+        or not current_user.authentication_data.authenticated
+    ):
         return "Verify your account to configure Ollama.", 403
 
     selected_key = _selected_api_key()
@@ -381,8 +394,10 @@ def integration_settings():
             name == model_name or name.startswith(f"{model_name}:")
             for name in available_models
         )
-        status_message = "Connected to Ollama." if model_available else (
-            "Ollama is connected, but the selected model is unavailable."
+        status_message = (
+            "Connected to Ollama."
+            if model_available
+            else ("Ollama is connected, but the selected model is unavailable.")
         )
     except OllamaAuthenticationError as error:
         available_models = []
@@ -390,7 +405,9 @@ def integration_settings():
     except requests.HTTPError as error:
         available_models = []
         if error.response is not None and error.response.status_code in (401, 403):
-            status_message = "Ollama rejected the API key. Check the saved key and try again."
+            status_message = (
+                "Ollama rejected the API key. Check the saved key and try again."
+            )
         else:
             current_app.logger.exception("Unable to load Ollama integration settings")
             status_message = "Ollama is not reachable. Check its address and try again."
@@ -402,12 +419,15 @@ def integration_settings():
         available_models = []
         status_message = str(error)
 
-    api_keys = UserApiKey.query.filter_by(
-        user_id=current_user.user_id,
-        key_type="ollama",
-    ).filter(
-        UserApiKey.key_ciphertext.is_not(None)
-    ).order_by(UserApiKey.created_at.desc()).all()
+    api_keys = (
+        UserApiKey.query.filter_by(
+            user_id=current_user.user_id,
+            key_type="ollama",
+        )
+        .filter(UserApiKey.key_ciphertext.is_not(None))
+        .order_by(UserApiKey.created_at.desc())
+        .all()
+    )
     return render_template(
         "Settings/Integrations.html",
         current_model=model_name,
@@ -423,7 +443,10 @@ def integration_settings():
 @login_required
 @limiter.limit("10 per minute")
 def save_preferences():
-    if not current_user.authentication_data or not current_user.authentication_data.authenticated:
+    if (
+        not current_user.authentication_data
+        or not current_user.authentication_data.authenticated
+    ):
         return jsonify(error="Verify your account to configure Ollama."), 403
     if not request.is_json:
         return jsonify(error="A JSON request is required."), 415
@@ -434,7 +457,11 @@ def save_preferences():
 
     model_name = payload.get("model")
     key_id = payload.get("api_key_id")
-    if not isinstance(model_name, str) or not model_name.strip() or len(model_name) > 128:
+    if (
+        not isinstance(model_name, str)
+        or not model_name.strip()
+        or len(model_name) > 128
+    ):
         return jsonify(error="Choose a valid Ollama model."), 400
     model_name = model_name.strip()
 
@@ -462,10 +489,16 @@ def save_preferences():
         return jsonify(error=str(error)), 400
     except requests.HTTPError as error:
         if error.response is not None and error.response.status_code in (401, 403):
-            return jsonify(error="Ollama rejected the API key. Check the saved key and try again."), 401
-        return jsonify(error="Ollama is not reachable; preferences were not changed."), 503
+            return jsonify(
+                error="Ollama rejected the API key. Check the saved key and try again."
+            ), 401
+        return jsonify(
+            error="Ollama is not reachable; preferences were not changed."
+        ), 503
     except requests.RequestException:
-        return jsonify(error="Ollama is not reachable; preferences were not changed."), 503
+        return jsonify(
+            error="Ollama is not reachable; preferences were not changed."
+        ), 503
     except ValueError:
         current_app.logger.exception("Ollama returned invalid model list JSON")
         return jsonify(error="Ollama returned an invalid model list."), 502
@@ -512,8 +545,7 @@ def get_chat_session():
         chatbot_name=chatbot.chatbot_name,
         model=chatbot.model_name,
         messages=[
-            {"role": message.role, "content": message.content}
-            for message in messages
+            {"role": message.role, "content": message.content} for message in messages
         ],
         permissions={
             "read_folder": chatbot.configuration.allow_folder_read,
@@ -579,7 +611,9 @@ def save_chatbot_settings():
         return jsonify(error=str(error)), 400
     except requests.HTTPError as error:
         if error.response is not None and error.response.status_code in (401, 403):
-            return jsonify(error="Ollama rejected the API key. Check the saved key and try again."), 401
+            return jsonify(
+                error="Ollama rejected the API key. Check the saved key and try again."
+            ), 401
         return jsonify(error="Ollama is not reachable; settings were not changed."), 503
     except requests.RequestException:
         return jsonify(error="Ollama is not reachable; settings were not changed."), 503
@@ -650,8 +684,7 @@ def chat():
     )
     history.reverse()
     ollama_messages = [
-        {"role": message.role, "content": message.content}
-        for message in history
+        {"role": message.role, "content": message.content} for message in history
     ]
     ollama_messages.append({"role": "user", "content": content.strip()})
     selected_key = _selected_api_key()
@@ -685,7 +718,9 @@ def chat():
     except requests.HTTPError as error:
         close_response()
         if error.response is not None and error.response.status_code in (401, 403):
-            return jsonify(error="Ollama rejected the API key. Check the saved key and try again."), 502
+            return jsonify(
+                error="Ollama rejected the API key. Check the saved key and try again."
+            ), 502
         current_app.logger.exception("Ollama chat request failed")
         return jsonify(error="Ollama could not complete the request."), 502
     except requests.RequestException:
@@ -697,7 +732,9 @@ def chat():
         return jsonify(error=str(error)), 401
     except RuntimeError as error:
         close_response()
-        current_app.logger.exception("The selected Ollama API key could not be decrypted")
+        current_app.logger.exception(
+            "The selected Ollama API key could not be decrypted"
+        )
         return jsonify(error=str(error)), 503
 
     def stream_chat_response():
@@ -712,28 +749,48 @@ def chat():
                         line = line.decode("utf-8")
                     event = json.loads(line)
                 except (UnicodeDecodeError, ValueError):
-                    current_app.logger.exception("Ollama returned invalid streaming JSON")
-                    yield json.dumps({"error": "Ollama returned an invalid response."}) + "\n"
+                    current_app.logger.exception(
+                        "Ollama returned invalid streaming JSON"
+                    )
+                    yield (
+                        json.dumps({"error": "Ollama returned an invalid response."})
+                        + "\n"
+                    )
                     return
 
                 if not isinstance(event, dict):
-                    current_app.logger.error("Ollama returned an invalid streaming event")
-                    yield json.dumps({"error": "Ollama returned an invalid response."}) + "\n"
+                    current_app.logger.error(
+                        "Ollama returned an invalid streaming event"
+                    )
+                    yield (
+                        json.dumps({"error": "Ollama returned an invalid response."})
+                        + "\n"
+                    )
                     return
 
                 message = event.get("message")
                 part = message.get("content") if isinstance(message, dict) else None
                 if part is not None:
                     if not isinstance(part, str):
-                        current_app.logger.error("Ollama returned non-text message content")
-                        yield json.dumps({"error": "Ollama returned an invalid response."}) + "\n"
+                        current_app.logger.error(
+                            "Ollama returned non-text message content"
+                        )
+                        yield (
+                            json.dumps(
+                                {"error": "Ollama returned an invalid response."}
+                            )
+                            + "\n"
+                        )
                         return
                     if part:
                         assistant_parts.append(part)
                         yield json.dumps({"token": part}) + "\n"
                 if event.get("error"):
                     current_app.logger.error("Ollama stream reported an error")
-                    yield json.dumps({"error": "Ollama could not complete the request."}) + "\n"
+                    yield (
+                        json.dumps({"error": "Ollama could not complete the request."})
+                        + "\n"
+                    )
                     return
                 if event.get("done") is True:
                     stream_completed = True
@@ -741,14 +798,19 @@ def chat():
 
             if not stream_completed:
                 current_app.logger.error("Ollama response stream ended unexpectedly")
-                yield json.dumps(
-                    {"error": "Ollama ended the response before it was complete."}
-                ) + "\n"
+                yield (
+                    json.dumps(
+                        {"error": "Ollama ended the response before it was complete."}
+                    )
+                    + "\n"
+                )
                 return
 
             assistant_message = "".join(assistant_parts)
             if not assistant_message:
-                current_app.logger.error("Ollama response did not contain assistant content")
+                current_app.logger.error(
+                    "Ollama response did not contain assistant content"
+                )
                 yield json.dumps({"error": "Ollama returned an empty response."}) + "\n"
                 return
 
@@ -758,9 +820,12 @@ def chat():
                 ended_at=None,
             ).first()
             if chat_session is None:
-                yield json.dumps(
-                    {"error": "The chat session ended before the reply was saved."}
-                ) + "\n"
+                yield (
+                    json.dumps(
+                        {"error": "The chat session ended before the reply was saved."}
+                    )
+                    + "\n"
+                )
                 return
 
             db.session.add_all(
@@ -786,7 +851,9 @@ def chat():
         except SQLAlchemyError:
             db.session.rollback()
             current_app.logger.exception("Unable to save streamed Rover AI chat")
-            yield json.dumps({"error": "Rover could not save the completed chat."}) + "\n"
+            yield (
+                json.dumps({"error": "Rover could not save the completed chat."}) + "\n"
+            )
         finally:
             response.close()
 
@@ -847,12 +914,22 @@ def save_rover_agent_settings(agent_id: int):
     model_name = payload.get("model")
     system_prompt = payload.get("system_prompt", "")
     temperature = payload.get("temperature", 0.7)
-    if not isinstance(agent_name, str) or not agent_name.strip() or len(agent_name.strip()) > 64:
+    if (
+        not isinstance(agent_name, str)
+        or not agent_name.strip()
+        or len(agent_name.strip()) > 64
+    ):
         return jsonify(error="Enter an agent name between 1 and 64 characters."), 400
-    if not isinstance(model_name, str) or not model_name.strip() or len(model_name.strip()) > 128:
+    if (
+        not isinstance(model_name, str)
+        or not model_name.strip()
+        or len(model_name.strip()) > 128
+    ):
         return jsonify(error="Enter a valid Ollama model name."), 400
     if not isinstance(system_prompt, str) or len(system_prompt) > 2000:
-        return jsonify(error="Agent instructions must be 2000 characters or fewer."), 400
+        return jsonify(
+            error="Agent instructions must be 2000 characters or fewer."
+        ), 400
     if (
         isinstance(temperature, bool)
         or not isinstance(temperature, (int, float))
@@ -873,16 +950,24 @@ def save_rover_agent_settings(agent_id: int):
     except OllamaAuthenticationError as error:
         return jsonify(error=str(error)), 400
     except RuntimeError as error:
-        current_app.logger.exception("The selected Ollama API key could not be decrypted")
+        current_app.logger.exception(
+            "The selected Ollama API key could not be decrypted"
+        )
         return jsonify(error=str(error)), 503
     except requests.HTTPError as error:
         if error.response is not None and error.response.status_code in (401, 403):
-            return jsonify(error="Ollama rejected the API key. Check the saved key and try again."), 401
+            return jsonify(
+                error="Ollama rejected the API key. Check the saved key and try again."
+            ), 401
         current_app.logger.exception("Unable to validate a Triple Rover model")
-        return jsonify(error="Ollama is not reachable; agent settings were not changed."), 503
+        return jsonify(
+            error="Ollama is not reachable; agent settings were not changed."
+        ), 503
     except requests.RequestException:
         current_app.logger.exception("Unable to validate a Triple Rover model")
-        return jsonify(error="Ollama is not reachable; agent settings were not changed."), 503
+        return jsonify(
+            error="Ollama is not reachable; agent settings were not changed."
+        ), 503
     except ValueError:
         current_app.logger.exception("Ollama returned invalid model list JSON")
         return jsonify(error="Ollama returned an invalid model list."), 502
@@ -953,7 +1038,9 @@ def chat_with_rover_agent(agent_id: int):
         return jsonify(error="Ollama took too long to respond. Please try again."), 504
     except requests.HTTPError as error:
         if error.response is not None and error.response.status_code in (401, 403):
-            return jsonify(error="Ollama rejected the API key. Check the saved key and try again."), 502
+            return jsonify(
+                error="Ollama rejected the API key. Check the saved key and try again."
+            ), 502
         current_app.logger.exception("Triple Rover chat request failed")
         return jsonify(error="Ollama could not complete the request."), 502
     except requests.RequestException:
@@ -962,7 +1049,9 @@ def chat_with_rover_agent(agent_id: int):
     except OllamaAuthenticationError as error:
         return jsonify(error=str(error)), 401
     except RuntimeError as error:
-        current_app.logger.exception("The selected Ollama API key could not be decrypted")
+        current_app.logger.exception(
+            "The selected Ollama API key could not be decrypted"
+        )
         return jsonify(error=str(error)), 503
     except ValueError:
         current_app.logger.exception("Ollama returned an invalid response")
@@ -970,9 +1059,7 @@ def chat_with_rover_agent(agent_id: int):
 
     response_message = result.get("message") if isinstance(result, dict) else None
     assistant_message = (
-        response_message.get("content")
-        if isinstance(response_message, dict)
-        else None
+        response_message.get("content") if isinstance(response_message, dict) else None
     )
     if not isinstance(assistant_message, str) or not assistant_message.strip():
         current_app.logger.error("Ollama response did not contain agent content")

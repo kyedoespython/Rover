@@ -20,7 +20,7 @@ The application is intended to run locally and use Ollama as the AI backend, kee
 
 ## Ollama Integration
 
-The assistant connects to Ollama's HTTP API. Configure `OLLAMA_BASE_URL` and `OLLAMA_MODEL` for your setup. Docker Compose defaults to a local Ollama server at `http://host.docker.internal:11434` with the `llama3.2` model. Local Ollama does not require authentication. To use Ollama Cloud, set `OLLAMA_BASE_URL=https://ollama.com`, save an API key from [Ollama API key settings](https://ollama.com/settings/keys) in Rover, and select it under Settings → Integrations. Ollama Cloud's `/api/tags` endpoint supplies the available model list.
+The assistant connects to Ollama's HTTP API. Configure `OLLAMA_BASE_URL` and `OLLAMA_MODEL` for your setup. Development defaults to a local Ollama server; Docker Compose uses `http://host.docker.internal:11434` with the `llama3.2` model. Production defaults to the official Cloud endpoint (`https://ollama.com`) unless `OLLAMA_BASE_URL` is set explicitly. Local Ollama does not require authentication. To use Ollama Cloud, save an API key from [Ollama API key settings](https://ollama.com/settings/keys) in Rover, and select it under Settings → Integrations. Ollama Cloud's `/api/tags` endpoint supplies the available model list.
 
 Ollama API keys entered in Rover are encrypted at rest and sent as bearer credentials only to the official HTTPS `ollama.com` API. They are never forwarded to local or custom endpoints. Set a stable `OLLAMA_API_KEY_ENCRYPTION_KEY` in the deployment environment, separate from `SECRET_KEY`. If it is omitted, Rover derives the encryption key from `SECRET_KEY`; changing that value makes existing encrypted API keys unreadable. Previously saved hash-only keys must be entered again.
 

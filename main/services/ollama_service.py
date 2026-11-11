@@ -1,12 +1,13 @@
 import hashlib
 import os
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.exceptions import InvalidTag
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from flask import current_app
 
 
 def _encryption_key() -> bytes:
+    """Derive a stable AES key, falling back to SECRET_KEY for older deployments."""
     secret = current_app.config.get("OLLAMA_API_KEY_ENCRYPTION_KEY")
     if not secret:
         secret = current_app.config.get("SECRET_KEY")
