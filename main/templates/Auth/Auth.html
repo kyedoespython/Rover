@@ -12,11 +12,12 @@
 <style>
     #authPage,
     #authPage * {
-        font-family: 'Roboto Mono', monospace !important;
+        font-family: var(--rover-font-sans) !important;
     }
 
     #authPage {
         min-height: 100vh;
+        min-height: 100dvh;
         display: flex;
         flex-direction: column;
     }
@@ -32,7 +33,7 @@
     #authPage .auth-card {
         width: 100%;
         max-width: 450px;
-        padding: 2rem;
+        padding: clamp(1.25rem, 4vw, 2rem);
         background: white;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }

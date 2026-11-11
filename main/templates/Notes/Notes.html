@@ -16,11 +16,12 @@
 <style>
     #notesPage,
     #notesPage * {
-        font-family: 'Roboto Mono', monospace !important;
+        font-family: var(--rover-font-sans) !important;
     }
 
     #notesPage {
         height: 100vh;
+        height: 100dvh;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -311,6 +312,7 @@
     @media (max-width: 700px) {
         #notesPage {
             height: 100vh;
+            height: 100dvh;
         }
 
         #notesPage .notes-nav {

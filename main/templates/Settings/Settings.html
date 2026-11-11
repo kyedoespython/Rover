@@ -12,11 +12,12 @@
 
 <style>
     body, body * {
-        font-family: 'Roboto Mono', monospace !important;
+        font-family: var(--rover-font-sans) !important;
     }
 
     #settingsPage {
         min-height: 100vh;
+        min-height: 100dvh;
         display: flex;
         flex-direction: column;
     }
@@ -34,10 +35,10 @@
 
 <div id="settingsPage">
     <nav class="top-nav p-4" style="display: flex; justify-content: space-between; align-items: center;">
-        <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Home</a>
+        <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6">Home</a>
         <div style="display: flex; gap: 10px;">
-            <a href="{{ url_for('auth.Notes_Page') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Note</a>
-            <a href="{{ url_for('home.Contact') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Support</a>
+            <a href="{{ url_for('auth.Notes_Page') }}" class="button is-black is-outlined is-size-6">Note</a>
+            <a href="{{ url_for('home.Contact') }}" class="button is-black is-outlined is-size-6">Support</a>
         </div>
     </nav>
 

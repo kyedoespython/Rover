@@ -343,18 +343,16 @@ def test_issuing_new_auth_code_resets_failed_attempts(notes_client):
         assert authentication.auth_code_expires
 
 
-def test_home_uses_world_background_and_dark_hero(notes_client):
+def test_home_uses_metallic_dark_hero(notes_client):
     response = notes_client.get("/")
-    world_image = (
-        Path(__file__).parent.parent / "main" / "static" / "images" / "WorldImage.jpg"
-    )
 
     assert response.status_code == 200
-    assert b"images/WorldImage.jpg" in response.data
+    assert b"WorldImage.jpg" not in response.data
     assert b"Rover_backgroundVideo" not in response.data
-    assert world_image.stat().st_size < 1_000_000
-    assert b'class="home-hero-title"' in response.data
-    assert b"Ideas into<br>intelligent software." in response.data
+    assert b'class="landing-title"' in response.data
+    assert b'class="metal-tile"' in response.data
+    assert b"One workspace.<br>Clear direction.<br>Complete execution." in response.data
+    assert b"Rover_Logo.png" in response.data
 
 
 @pytest.mark.parametrize(
@@ -369,11 +367,13 @@ def test_home_uses_world_background_and_dark_hero(notes_client):
         "/Rover/Sign%20Up",
     ],
 )
-def test_site_pages_share_world_background(notes_client, path):
+def test_site_pages_share_silver_theme_and_responsive_viewport(notes_client, path):
     response = notes_client.get(path, follow_redirects=True)
 
     assert response.status_code == 200
-    assert b"images/WorldImage.jpg" in response.data
+    assert b'content="width=device-width, initial-scale=1.0"' in response.data
+    assert b"--rover-accent: #bcc6ca" in response.data
+    assert b"WorldImage.jpg" not in response.data
     assert b"RoverBackground" not in response.data
 
 

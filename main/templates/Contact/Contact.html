@@ -12,11 +12,12 @@
 
 <style>
     body, body * {
-        font-family: 'Roboto Mono', monospace !important;
+        font-family: var(--rover-font-sans) !important;
     }
 
     #supportPage {
         min-height: 100vh;
+        min-height: 100dvh;
         display: flex;
         flex-direction: column;
     }
@@ -38,7 +39,7 @@
     #supportPage .support-card {
         width: 100%;
         max-width: 640px;
-        margin-top: 6rem;
+        margin-top: clamp(1.25rem, 5vh, 4rem);
         padding: 1.5rem 2rem 1.25rem;
         background: white;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -96,6 +97,7 @@
         }
 
         #supportPage .support-card {
+            margin-top: 1rem;
             padding: 1.25rem 1.25rem 1rem;
         }
     }
@@ -103,8 +105,8 @@
 
 <div id="supportPage">
     <nav class="top-nav p-4" style="display: flex; justify-content: space-between; align-items: center;" aria-label="Main navigation">
-        <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Home</a>
-        <a href="{{ url_for('auth.Settings') }}" class="button is-black is-outlined is-size-6" style="font-family: Roboto Mono">Settings</a>
+        <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6">Home</a>
+        <a href="{{ url_for('auth.Settings') }}" class="button is-black is-outlined is-size-6">Settings</a>
     </nav>
 
     <div class="support-content">

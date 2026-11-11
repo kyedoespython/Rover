@@ -14,37 +14,59 @@
     <style>
         html,
         body {
+            width: 100%;
             min-height: 100%;
             overflow-x: hidden;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        img,
+        svg,
+        video,
+        canvas {
+            max-width: 100%;
+        }
+
+        img,
+        video {
+            height: auto;
         }
 
         :root {
             color-scheme: dark;
-            --rover-background: #0b1009;
-            --rover-surface: rgba(22, 26, 17, 0.94);
-            --rover-surface-raised: rgba(31, 36, 23, 0.97);
-            --rover-border: rgba(185, 174, 122, 0.24);
-            --rover-text: #f3efdc;
-            --rover-muted: #b7b49c;
-            --rover-accent: #8ca34e;
-            --rover-accent-hover: #c5d58a;
-            --rover-accent-strong: #526632;
-            --rover-accent-strong-hover: #627b3b;
-            --rover-control-bg: #1b2117;
-            --rover-control-hover: #2a331f;
-            --rover-control-border: #65724d;
+            --rover-background: #111416;
+            --rover-surface: rgba(5, 7, 8, 0.96);
+            --rover-surface-raised: rgba(16, 19, 21, 0.98);
+            --rover-border: rgba(194, 203, 207, 0.2);
+            --rover-text: #d7dddf;
+            --rover-muted: #a4adb0;
+            --rover-accent: #bcc6ca;
+            --rover-accent-hover: #f0f3f4;
+            --rover-accent-strong: #c5ced1;
+            --rover-accent-strong-hover: #e2e8ea;
+            --rover-control-bg: #0d1011;
+            --rover-control-hover: #1c2123;
+            --rover-control-border: #586165;
             --rover-danger: #d76b5f;
+            --rover-font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
         }
 
         body {
             margin: 0;
             overflow-y: auto;
-            background-image: url("{{ url_for('static', filename='images/WorldImage.jpg') }}");
+            background-image:
+                radial-gradient(ellipse at 18% 0%, rgba(194, 203, 207, 0.09), transparent 42%),
+                linear-gradient(135deg, #1a1e20 0%, #0c0f10 52%, #1a1e20 100%);
             background-color: var(--rover-background);
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
             color: var(--rover-text);
+            font-family: var(--rover-font-sans);
+            font-size: clamp(0.875rem, 0.84rem + 0.16vw, 1rem);
         }
 
         body::before {
@@ -52,8 +74,8 @@
             position: fixed;
             inset: 0;
             background:
-                radial-gradient(ellipse at 50% 35%, rgba(140, 163, 78, 0.14), transparent 58%),
-                linear-gradient(180deg, rgba(11, 16, 9, 0.34), rgba(11, 16, 9, 0.82));
+                radial-gradient(ellipse at 80% 65%, rgba(194, 203, 207, 0.04), transparent 42%),
+                linear-gradient(180deg, rgba(7, 9, 10, 0.12), rgba(7, 9, 10, 0.42));
             z-index: 1;
         }
 
@@ -61,6 +83,7 @@
             position: relative;
             z-index: 2;
             min-height: 100vh;
+            min-height: 100dvh;
             overflow: visible;
         }
 
@@ -152,7 +175,7 @@
         body #notesPage .note-open-button:hover,
         body #notesPage .note-open-button.is-active {
             border-color: var(--rover-accent) !important;
-            background: rgba(140, 163, 78, 0.16) !important;
+            background: rgba(194, 203, 207, 0.12) !important;
         }
 
         body #notesPage .heading-popup {
@@ -170,7 +193,7 @@
         body #notesPage .heading-popup button:hover,
         body #notesPage .heading-popup button:focus-visible {
             border-color: var(--rover-accent) !important;
-            background: rgba(140, 163, 78, 0.2) !important;
+            background: rgba(194, 203, 207, 0.16) !important;
         }
 
         body .ollama-drawer {
@@ -203,12 +226,12 @@
         body .ollama-chat-message[data-role="user"] {
             border-color: var(--rover-accent-hover) !important;
             background: var(--rover-accent-strong) !important;
-            color: #fff !important;
+            color: #101314 !important;
         }
 
         body .ollama-chat-form:focus-within {
             border-color: var(--rover-accent) !important;
-            box-shadow: 0 0 0 2px rgba(140, 163, 78, 0.2) !important;
+            box-shadow: 0 0 0 2px rgba(194, 203, 207, 0.2) !important;
         }
 
         body .ollama-chat-send {
@@ -237,13 +260,13 @@
         body select:focus,
         body #notesPage .note-content-editor:focus {
             border-color: var(--rover-accent) !important;
-            box-shadow: 0 0 0 0.15em rgba(140, 163, 78, 0.2) !important;
+            box-shadow: 0 0 0 0.15em rgba(194, 203, 207, 0.2) !important;
         }
 
         body .button.is-black,
         body .button.is-black.is-outlined {
-            border-color: rgba(197, 213, 138, 0.64) !important;
-            background: rgba(140, 163, 78, 0.14) !important;
+            border-color: rgba(194, 203, 207, 0.58) !important;
+            background: rgba(194, 203, 207, 0.11) !important;
             color: var(--rover-text) !important;
             transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
         }
@@ -251,12 +274,15 @@
         body .button.is-black:hover,
         body .button.is-black.is-outlined:hover {
             border-color: var(--rover-accent-hover) !important;
-            background: rgba(140, 163, 78, 0.24) !important;
+            background: rgba(194, 203, 207, 0.2) !important;
             color: #fff !important;
             transform: translateY(-1px);
         }
 
         body .top-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
             min-height: 3.75rem;
             border: 0;
             background: transparent !important;
@@ -270,10 +296,10 @@
             min-height: 2.55rem !important;
             padding: 0.55rem 0.95rem !important;
             border: 1px solid var(--rover-control-border) !important;
-            border-radius: 5px !important;
+            border-radius: 4px !important;
             background: var(--rover-control-bg) !important;
             color: var(--rover-text) !important;
-            font-family: "Segoe UI", Arial, sans-serif !important;
+            font-family: var(--rover-font-sans) !important;
             font-size: 0.85rem !important;
             font-weight: 600 !important;
             line-height: 1.2 !important;
@@ -298,7 +324,7 @@
         body #schemaEditorDialog .schema-tool[aria-pressed="true"] {
             border-color: var(--rover-accent-strong) !important;
             background: var(--rover-accent-strong) !important;
-            color: #fff !important;
+            color: #101314 !important;
         }
 
         body .button.is-black:not(.is-outlined):hover,
@@ -310,7 +336,7 @@
         body #schemaEditorDialog .schema-tool[aria-pressed="true"]:hover {
             border-color: var(--rover-accent-hover) !important;
             background: var(--rover-accent-strong-hover) !important;
-            color: #fff !important;
+            color: #101314 !important;
         }
 
         body .button.is-black.is-outlined,
@@ -323,7 +349,7 @@
         body .button.is-black.is-outlined:hover,
         body .button.is-outlined:hover {
             border-color: var(--rover-accent-hover) !important;
-            background: rgba(140, 163, 78, 0.18) !important;
+            background: rgba(194, 203, 207, 0.15) !important;
             color: #fff !important;
         }
 
@@ -350,7 +376,7 @@
 
         body a:not(.button) {
             color: var(--rover-accent-hover) !important;
-            text-decoration-color: rgba(197, 213, 138, 0.55);
+            text-decoration-color: rgba(194, 203, 207, 0.55);
             text-underline-offset: 0.18em;
         }
 
@@ -419,7 +445,7 @@
 
         body .ollama-chat-form:focus-within {
             border-color: var(--rover-accent-hover) !important;
-            box-shadow: 0 0 0 2px rgba(140, 163, 78, 0.24) !important;
+            box-shadow: 0 0 0 2px rgba(194, 203, 207, 0.24) !important;
         }
 
         body .ollama-chat-input {
@@ -492,7 +518,7 @@
         }
 
         body #schemaEditorDialog .schema-canvas {
-            background-image: radial-gradient(rgba(197, 213, 138, 0.16) 1px, transparent 1px) !important;
+            background-image: radial-gradient(rgba(194, 203, 207, 0.16) 1px, transparent 1px) !important;
         }
 
         body #schemaEditorDialog .schema-table-card,
@@ -501,7 +527,7 @@
         }
 
         body #schemaEditorDialog .schema-table-select {
-            background: rgba(140, 163, 78, 0.22) !important;
+            background: rgba(194, 203, 207, 0.16) !important;
             color: var(--rover-text) !important;
         }
 
@@ -529,7 +555,7 @@
 
         body #schemaEditorDialog .schema-line-swatch[aria-pressed="true"] {
             border-color: var(--rover-accent) !important;
-            background: rgba(140, 163, 78, 0.16) !important;
+            background: rgba(194, 203, 207, 0.12) !important;
         }
 
         body #agentsPage .rover-agent-card {
@@ -577,7 +603,7 @@
         body #agentsPage .rover-agent-message[data-role="user"] {
             border-color: var(--rover-accent-hover) !important;
             background: var(--rover-accent-strong) !important;
-            color: #fff !important;
+            color: #101314 !important;
         }
 
         body #agentsPage .rover-agent-status[data-state="ready"] {
@@ -608,7 +634,7 @@
         body #notesPage .heading-popup button:hover,
         body #notesPage .heading-popup button:focus-visible {
             border-color: var(--rover-accent-hover) !important;
-            background: rgba(140, 163, 78, 0.18) !important;
+            background: rgba(194, 203, 207, 0.14) !important;
             color: #fff !important;
         }
 
@@ -687,11 +713,59 @@
         }
 
         @media (max-width: 600px) {
+            body .top-nav {
+                gap: 0.5rem;
+                padding: 0.65rem 0.75rem !important;
+            }
+
+            body .top-nav > div {
+                gap: 0.4rem !important;
+            }
+
             body .top-nav .button,
             body .notes-nav .button {
                 min-height: 2.45rem !important;
                 padding: 0.45rem 0.6rem !important;
                 font-size: 0.76rem !important;
+            }
+        }
+
+        @media (max-width: 380px) {
+            body .top-nav .button,
+            body .notes-nav .button {
+                min-height: 2.25rem !important;
+                padding: 0.35rem 0.45rem !important;
+                font-size: 0.7rem !important;
+            }
+
+            .flash-message-stack {
+                right: 0.65rem;
+                width: calc(100vw - 1.3rem);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            body .button,
+            body button:not(.schema-line-swatch) {
+                transition: none !important;
+            }
+        }
+
+        @media (forced-colors: active) {
+            body .button,
+            body button:not(.schema-line-swatch),
+            body input,
+            body select,
+            body textarea {
+                border: 1px solid ButtonText !important;
+            }
+
+            body .button:focus-visible,
+            body button:focus-visible,
+            body input:focus-visible,
+            body select:focus-visible,
+            body textarea:focus-visible {
+                outline: 2px solid Highlight !important;
             }
         }
 
@@ -728,7 +802,7 @@
             background: var(--rover-surface-raised);
             border-radius: 3px 3px 0 0;
             color: var(--rover-text);
-            font: 700 0.7rem "Roboto Mono", monospace;
+            font: 700 0.7rem var(--rover-font-sans);
         }
 
         .ollama-mode-select {
@@ -739,7 +813,7 @@
             border-radius: 3px;
             background: var(--rover-control-bg);
             color: var(--rover-text);
-            font: 0.68rem "Roboto Mono", monospace;
+            font: 0.68rem var(--rover-font-sans);
         }
 
         .ollama-drawer-header {
@@ -762,13 +836,13 @@
         .ollama-assistant-title {
             margin: 0;
             color: var(--rover-text);
-            font: 700 0.95rem "Roboto Mono", monospace;
+            font: 700 0.95rem var(--rover-font-sans);
         }
 
         .ollama-assistant-model {
             margin: 0.25rem 0 0;
             color: var(--rover-muted);
-            font: 0.72rem "Roboto Mono", monospace;
+            font: 0.72rem var(--rover-font-sans);
         }
 
         .ollama-drawer-controls {
@@ -810,7 +884,7 @@
             padding: 0.65rem 0.85rem;
             border-bottom: 1px solid var(--rover-border);
             color: var(--rover-text);
-            font: 0.7rem "Roboto Mono", monospace;
+            font: 0.7rem var(--rover-font-sans);
         }
 
         .ollama-drawer-settings,
@@ -897,7 +971,7 @@
             border-radius: 4px;
             background: var(--rover-control-bg);
             color: var(--rover-text);
-            font: 0.72rem "Roboto Mono", monospace;
+            font: 0.72rem var(--rover-font-sans);
             cursor: pointer;
         }
 
@@ -913,7 +987,7 @@
             padding: 0.75rem 1rem;
             border-bottom: 1px solid var(--rover-border);
             color: var(--rover-muted);
-            font: 0.72rem "Roboto Mono", monospace;
+            font: 0.72rem var(--rover-font-sans);
         }
 
         .ollama-status-dot {
@@ -965,7 +1039,7 @@
             border-radius: 6px;
             background: var(--rover-surface-raised);
             color: var(--rover-text);
-            font: 0.78rem/1.55 "Roboto Mono", monospace;
+            font: 0.82rem/1.55 var(--rover-font-sans);
             white-space: pre-wrap;
             overflow-wrap: anywhere;
         }
@@ -982,7 +1056,7 @@
             border-radius: 4px;
             background: var(--rover-control-bg);
             color: var(--rover-text);
-            font: 0.68rem "Roboto Mono", monospace;
+            font: 0.68rem var(--rover-font-sans);
             cursor: pointer;
         }
 
@@ -994,7 +1068,7 @@
             border: 1px solid var(--rover-border);
             background: var(--rover-surface-raised);
             color: var(--rover-text);
-            font: 0.9rem/1.65 "Roboto Mono", monospace;
+            font: 0.9rem/1.65 var(--rover-font-sans);
             white-space: pre-wrap;
             overflow-wrap: anywhere;
             overflow-y: auto;
@@ -1013,7 +1087,7 @@
             border: 1px solid var(--rover-control-border);
             background: var(--rover-control-bg);
             color: var(--rover-text);
-            font: 0.75rem "Roboto Mono", monospace;
+            font: 0.75rem var(--rover-font-sans);
             cursor: pointer;
         }
 
@@ -1041,7 +1115,7 @@
         .ollama-chat-empty {
             margin: auto;
             color: var(--rover-muted);
-            font: 0.75rem/1.5 "Roboto Mono", monospace;
+            font: 0.75rem/1.5 var(--rover-font-sans);
             text-align: center;
         }
 
@@ -1059,7 +1133,7 @@
 
         .ollama-chat-form:focus-within {
             border-color: var(--rover-accent);
-            box-shadow: 0 0 0 2px rgba(140, 163, 78, 0.18);
+            box-shadow: 0 0 0 2px rgba(194, 203, 207, 0.18);
         }
 
         .ollama-chat-input {
@@ -1134,7 +1208,7 @@
 </head>
 
 <body>
-    <main class="is-flex is-flex-direction-column" style="min-height: 100vh;">
+    <main class="is-flex is-flex-direction-column" style="min-height: 100vh; min-height: 100dvh;">
         <div class="is-flex-grow-1">
             {% block content %}{% endblock %}
         </div>

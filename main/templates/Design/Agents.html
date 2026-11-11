@@ -13,10 +13,11 @@
     #agentsPage,
     #agentsPage * {
         box-sizing: border-box;
-        font-family: "Roboto Mono", monospace;
+        font-family: var(--rover-font-sans);
     }
 
     #agentsPage {
+        height: 100vh;
         height: 100dvh;
         display: flex;
         flex-direction: column;
@@ -49,7 +50,7 @@
     #agentsPage .agents-nav-group:last-child label {
         margin: 0;
         color: #111;
-        font: 0.65rem "Roboto Mono", monospace;
+        font: 0.65rem var(--rover-font-sans);
     }
 
     #agentsPage .agents-nav-link,
@@ -65,7 +66,7 @@
         border-radius: 4px;
         background: transparent;
         color: #111;
-        font: 0.72rem "Roboto Mono", monospace;
+        font: 0.72rem var(--rover-font-sans);
         text-decoration: none !important;
     }
 
@@ -82,7 +83,7 @@
         border-radius: 4px;
         background: #fff;
         color: #111;
-        font: 0.62rem "Roboto Mono", monospace;
+        font: 0.62rem var(--rover-font-sans);
     }
 
     #agentsPage .agents-grid {
@@ -283,7 +284,7 @@
         border-radius: 3px;
         background: #fff;
         color: #111;
-        font: 0.68rem/1.45 "Roboto Mono", monospace;
+        font: 0.68rem/1.45 var(--rover-font-sans);
     }
 
     .agents-page-status {
@@ -315,6 +316,19 @@
             grid-auto-rows: minmax(65dvh, 1fr);
             padding-right: 0.65rem;
             padding-left: 0.65rem;
+        }
+    }
+
+    @media (max-height: 520px) and (orientation: landscape) {
+        #agentsPage {
+            height: auto;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        #agentsPage .agents-grid {
+            overflow-y: auto;
+            grid-auto-rows: minmax(22rem, 1fr);
         }
     }
 </style>

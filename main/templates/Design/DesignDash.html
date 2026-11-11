@@ -18,11 +18,12 @@
 <style>
     #designPage,
     #designPage * {
-        font-family: 'Roboto Mono', monospace !important;
+        font-family: var(--rover-font-sans) !important;
     }
 
     #designPage {
         min-height: 100vh;
+        min-height: 100dvh;
         display: flex;
         flex-direction: column;
     }
@@ -109,6 +110,7 @@
     #designPage .api-key-dialog {
         width: min(100%, 480px);
         max-height: min(90vh, 760px);
+        max-height: min(90dvh, 760px);
         overflow-y: auto;
         padding: clamp(1.25rem, 4vw, 2rem);
         border: 1px solid #dedede;
@@ -230,7 +232,7 @@
         background: #f3f5f8;
         color: #111;
         box-shadow: 0 20px 70px rgba(0, 0, 0, 0.35);
-        font-family: 'Roboto Mono', monospace;
+        font-family: var(--rover-font-sans);
     }
 
     #schemaEditorDialog::backdrop {
@@ -276,7 +278,7 @@
         border-radius: 3px;
         background: #fff;
         color: #111;
-        font: 700 0.75rem 'Roboto Mono', monospace;
+        font: 700 0.75rem var(--rover-font-sans);
         cursor: pointer;
     }
 
@@ -331,7 +333,7 @@
         padding: 1.25rem;
         border: 1px solid #b9c3d1;
         background-color: #fff;
-        background-image: radial-gradient(rgba(197, 213, 138, 0.16) 1px, transparent 1px);
+        background-image: radial-gradient(rgba(194, 203, 207, 0.16) 1px, transparent 1px);
         background-size: 22px 22px;
     }
 
@@ -390,7 +392,7 @@
         background: #e6ebf2;
         color: #172033;
         text-align: left;
-        font: 700 0.8rem 'Roboto Mono', monospace;
+        font: 700 0.8rem var(--rover-font-sans);
         cursor: pointer;
         touch-action: none;
         user-select: none;
@@ -473,7 +475,7 @@
         border-radius: 3px;
         background: #fff;
         color: #111;
-        font: 0.72rem 'Roboto Mono', monospace;
+        font: 0.72rem var(--rover-font-sans);
     }
 
     #schemaEditorDialog .schema-column-editor {
@@ -546,7 +548,7 @@
         border: 1px solid transparent;
         background: transparent;
         color: #273248;
-        font: 0.64rem 'Roboto Mono', monospace;
+        font: 0.64rem var(--rover-font-sans);
         text-align: left;
         cursor: pointer;
     }
