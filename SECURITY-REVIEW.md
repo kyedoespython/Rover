@@ -15,3 +15,9 @@
 ## 4. Container Security
 - The application runs as a **non-root user** (verified by Scout).
 - The source code is baked into the image (no production bind mounts).
+
+## 5. Dependency and Application Review (2026-11-10)
+- **Application review:** Reviewed `main/models/user.py`, the Notes route and persistence boundaries, and relevant authentication, API-key, session, and CSRF configuration. No actionable vulnerabilities were identified in this bounded scope; this was not a full review of every route or service.
+- **Python dependency finding:** `pytest==8.4.2` was affected by PYSEC-2026-1845 / CVE-2025-71176 (vulnerable temporary-directory handling on Unix, with local denial-of-service or possible privilege escalation impact). Updated the pin to `pytest==9.0.3`, the fixed release.
+- **Verification:** `pip-audit` reported no known vulnerabilities in `requirements.txt` or the active `.venv` after the update. `npm audit --omit=dev` reported zero vulnerabilities.
+- **Remaining scope:** This review did not rerun Docker Scout or re-evaluate the container finding documented above.
