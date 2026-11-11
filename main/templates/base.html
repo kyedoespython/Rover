@@ -69,13 +69,13 @@
         }
 
         .ollama-drawer {
-            --ollama-drawer-width: 560px;
+            --ollama-drawer-width: 84vw;
             position: fixed;
             z-index: 1200;
             top: 3vh;
-            right: 1.5vw;
+            right: 1vw;
             width: min(var(--ollama-drawer-width), calc(100vw - 24px));
-            height: min(90dvh, 860px);
+            height: 94dvh;
             display: flex;
             flex-direction: column;
             border: 2px solid #111;
@@ -330,6 +330,7 @@
         }
 
         .ollama-chat-message {
+            position: relative;
             max-width: 92%;
             padding: 0.7rem 0.8rem;
             border: 1px solid #e4e4e4;
@@ -339,6 +340,57 @@
             font: 0.78rem/1.55 "Roboto Mono", monospace;
             white-space: pre-wrap;
             overflow-wrap: anywhere;
+        }
+
+        .ollama-chat-message-content {
+            display: block;
+        }
+
+        .ollama-message-expand {
+            display: block;
+            margin: 0.65rem 0 0 auto;
+            padding: 0.3rem 0.55rem;
+            border: 1px solid #999;
+            border-radius: 4px;
+            background: #fff;
+            color: #222;
+            font: 0.68rem "Roboto Mono", monospace;
+            cursor: pointer;
+        }
+
+        .ollama-expanded-response {
+            width: min(92vw, 1400px);
+            max-width: none;
+            max-height: 90dvh;
+            padding: clamp(1rem, 3vw, 2rem);
+            border: 2px solid #111;
+            background: #fff;
+            color: #222;
+            font: 0.9rem/1.65 "Roboto Mono", monospace;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            overflow-y: auto;
+        }
+
+        .ollama-expanded-response::backdrop {
+            background: rgba(0, 0, 0, 0.65);
+        }
+
+        .ollama-expanded-response-close {
+            position: sticky;
+            top: 0;
+            display: block;
+            margin: 0 0 1rem auto;
+            padding: 0.5rem 0.85rem;
+            border: 1px solid #111;
+            background: #111;
+            color: #fff;
+            font: 0.75rem "Roboto Mono", monospace;
+            cursor: pointer;
+        }
+
+        .ollama-expanded-response-content {
+            min-height: 4rem;
         }
 
         .ollama-chat-message[data-role="user"] {
@@ -427,11 +479,11 @@
             }
 
             .ollama-drawer {
-                --ollama-drawer-width: min(100vw, 560px);
+                --ollama-drawer-width: min(100vw, 1200px);
                 top: auto;
                 right: 0;
                 bottom: 0;
-                height: min(90dvh, 860px);
+                height: 94dvh;
             }
         }
     </style>

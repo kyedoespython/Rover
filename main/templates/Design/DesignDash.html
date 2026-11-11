@@ -10,7 +10,8 @@
 
 {% block extra_js %}
     <script src="{{ url_for('static', filename='scripts/Design/Design.js') }}?v=3" defer></script>
-    <script src="{{ url_for('static', filename='scripts/Integrations/Ollama.js') }}?v=9" defer></script>
+    <script src="{{ url_for('static', filename='scripts/Design/Schema.js') }}?v=1" defer></script>
+    <script src="{{ url_for('static', filename='scripts/Integrations/Ollama.js') }}?v=10" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -203,6 +204,275 @@
         font-size: 0.75rem;
     }
 
+    #schemaEditorDialog {
+        width: min(94vw, 1500px);
+        max-width: none;
+        height: min(88dvh, 960px);
+        max-height: none;
+        margin: auto;
+        padding: 0;
+        border: 2px solid #111;
+        background: #f3f5f8;
+        color: #111;
+        box-shadow: 0 20px 70px rgba(0, 0, 0, 0.35);
+        font-family: 'Roboto Mono', monospace;
+    }
+
+    #schemaEditorDialog::backdrop {
+        background: rgba(0, 0, 0, 0.62);
+        backdrop-filter: blur(2px);
+    }
+
+    #schemaEditorDialog[open] {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #schemaEditorDialog .schema-header {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #d5dbe4;
+        background: #fff;
+    }
+
+    #schemaEditorDialog .schema-heading {
+        margin: 0;
+        color: #111;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
+    #schemaEditorDialog .schema-description {
+        margin: 0.25rem 0 0;
+        color: #657187;
+        font-size: 0.75rem;
+    }
+
+    #schemaEditorDialog .schema-close,
+    #schemaEditorDialog .schema-tool,
+    #schemaEditorDialog .schema-action {
+        min-height: 2.4rem;
+        padding: 0.45rem 0.8rem;
+        border: 1px solid #111;
+        border-radius: 3px;
+        background: #fff;
+        color: #111;
+        font: 700 0.75rem 'Roboto Mono', monospace;
+        cursor: pointer;
+    }
+
+    #schemaEditorDialog .schema-close:hover,
+    #schemaEditorDialog .schema-tool:hover,
+    #schemaEditorDialog .schema-action:hover {
+        background: #111;
+        color: #fff;
+    }
+
+    #schemaEditorDialog .schema-toolbar {
+        display: flex;
+        flex: 0 0 auto;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid #d5dbe4;
+        background: #fff;
+    }
+
+    #schemaEditorDialog .schema-tool[aria-pressed="true"] {
+        background: #111;
+        color: #fff;
+    }
+
+    #schemaEditorDialog .schema-workspace {
+        display: grid;
+        flex: 1;
+        grid-template-columns: minmax(0, 1fr) minmax(260px, 330px);
+        gap: 1rem;
+        min-height: 0;
+        padding: 1rem;
+    }
+
+    #schemaEditorDialog .schema-canvas {
+        position: relative;
+        min-width: 0;
+        min-height: 0;
+        overflow: auto;
+        padding: 1.25rem;
+        border: 1px solid #b9c3d1;
+        background-color: #fff;
+        background-image: radial-gradient(#c9d1dc 1px, transparent 1px);
+        background-size: 22px 22px;
+    }
+
+    #schemaEditorDialog .schema-empty {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        gap: 0.5rem;
+        color: #68758a;
+        text-align: center;
+        font-size: 0.8rem;
+        pointer-events: none;
+    }
+
+    #schemaEditorDialog .schema-empty[hidden] {
+        display: none;
+    }
+
+    #schemaEditorDialog .schema-empty strong {
+        color: #202a3b;
+        font-size: 1rem;
+    }
+
+    #schemaEditorDialog .schema-table-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 320px));
+        align-content: start;
+        gap: 1rem;
+    }
+
+    #schemaEditorDialog .schema-table-card {
+        align-self: start;
+        border: 1px solid #63728a;
+        background: #fff;
+        box-shadow: 0 3px 9px rgba(16, 24, 40, 0.1);
+    }
+
+    #schemaEditorDialog .schema-table-card.is-selected {
+        outline: 2px solid #284f86;
+        outline-offset: 2px;
+    }
+
+    #schemaEditorDialog .schema-table-select {
+        display: flex;
+        width: 100%;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.65rem 0.75rem;
+        border: 0;
+        border-bottom: 1px solid #aeb8c7;
+        background: #e6ebf2;
+        color: #172033;
+        text-align: left;
+        font: 700 0.8rem 'Roboto Mono', monospace;
+        cursor: pointer;
+    }
+
+    #schemaEditorDialog .schema-table-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.5rem;
+        padding: 0.5rem 0.7rem;
+        border-bottom: 1px solid #edf0f4;
+        color: #273248;
+        font-size: 0.72rem;
+    }
+
+    #schemaEditorDialog .schema-table-row:last-child {
+        border-bottom: 0;
+    }
+
+    #schemaEditorDialog .schema-table-type {
+        color: #68758a;
+        font-size: 0.68rem;
+    }
+
+    #schemaEditorDialog .schema-inspector {
+        min-height: 0;
+        overflow-y: auto;
+        padding: 1rem;
+        border: 1px solid #d5dbe4;
+        background: #fff;
+    }
+
+    #schemaEditorDialog .schema-inspector h3 {
+        margin: 0 0 0.8rem;
+        color: #172033;
+        font-size: 0.9rem;
+    }
+
+    #schemaEditorDialog .schema-inspector p {
+        color: #68758a;
+        font-size: 0.72rem;
+        line-height: 1.5;
+    }
+
+    #schemaEditorDialog .schema-inspector label {
+        display: block;
+        margin: 0.75rem 0 0.3rem;
+        color: #303b4e;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+
+    #schemaEditorDialog .schema-inspector input,
+    #schemaEditorDialog .schema-inspector select {
+        width: 100%;
+        min-height: 2.25rem;
+        padding: 0.4rem 0.5rem;
+        border: 1px solid #b9c3d1;
+        border-radius: 3px;
+        background: #fff;
+        color: #111;
+        font: 0.72rem 'Roboto Mono', monospace;
+    }
+
+    #schemaEditorDialog .schema-column-editor {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(90px, 0.8fr) auto auto;
+        align-items: center;
+        gap: 0.35rem;
+        margin-top: 0.5rem;
+    }
+
+    #schemaEditorDialog .schema-column-editor label {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin: 0;
+        white-space: nowrap;
+    }
+
+    #schemaEditorDialog .schema-column-editor input[type="checkbox"] {
+        width: auto;
+        min-height: auto;
+    }
+
+    #schemaEditorDialog .schema-column-editor .schema-remove-column {
+        min-height: 2rem;
+        padding: 0.2rem 0.45rem;
+        border: 1px solid #b42318;
+        background: #fff;
+        color: #b42318;
+        cursor: pointer;
+    }
+
+    #schemaEditorDialog .schema-inspector .schema-action {
+        width: 100%;
+        margin-top: 0.8rem;
+        background: #111;
+        color: #fff;
+    }
+
+    #schemaEditorDialog .schema-inspector .schema-secondary-action {
+        background: #fff;
+        color: #111;
+    }
+
+    #schemaEditorDialog .schema-relationship {
+        margin-top: 0.65rem;
+        padding: 0.65rem;
+        border: 1px solid #d5dbe4;
+        color: #273248;
+        font-size: 0.68rem;
+        overflow-wrap: anywhere;
+    }
+
     @media (max-width: 600px) {
         #designPage .design-nav {
             align-items: flex-start;
@@ -216,6 +486,25 @@
             margin-top: clamp(3rem, 10vh, 6rem);
             padding-right: 1rem;
             padding-left: 1rem;
+        }
+
+        #schemaEditorDialog {
+            width: 96vw;
+            height: 94dvh;
+        }
+
+        #schemaEditorDialog .schema-workspace {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: minmax(180px, 1fr) minmax(180px, 0.8fr);
+            padding: 0.6rem;
+        }
+
+        #schemaEditorDialog .schema-canvas {
+            padding: 0.7rem;
+        }
+
+        #schemaEditorDialog .schema-table-grid {
+            grid-template-columns: minmax(0, 1fr);
         }
     }
 </style>
@@ -234,8 +523,7 @@
     <div class="design-layout">
         <nav class="design-side-nav" aria-label="Design sections">
             <button class="button is-outlined design-side-button" id="openApiKeyDialog" type="button" aria-haspopup="dialog" aria-controls="apiKeyDialog">API Key</button>
-            <button class="button is-outlined design-side-button" type="button">Schema</button>
-            <button class="button is-outlined design-side-button" type="button">Relationships</button>
+            <button class="button is-outlined design-side-button" id="openSchemaEditor" type="button" aria-haspopup="dialog" aria-controls="schemaEditorDialog">Schema</button>
             <button class="button is-outlined design-side-button" type="button">Craft</button>
             <button class="button is-outlined design-side-button" type="button">Demo</button>
             <button
@@ -247,6 +535,35 @@
             >Rover AI</button>
         </nav>
     </div>
+
+    <dialog id="schemaEditorDialog" aria-labelledby="schemaEditorHeading">
+        <header class="schema-header">
+            <div>
+                <h2 class="schema-heading" id="schemaEditorHeading">Schema designer</h2>
+                <p class="schema-description">Build tables and relationships in this workspace. Changes are local to this page.</p>
+            </div>
+            <button class="schema-close" id="closeSchemaEditor" type="button" aria-label="Close schema designer">Close</button>
+        </header>
+        <nav class="schema-toolbar" aria-label="Schema tools">
+            <button class="schema-tool" type="button" data-schema-view="tables" aria-pressed="true">Tables</button>
+            <button class="schema-tool" type="button" data-schema-view="configure" aria-pressed="false">Configure</button>
+            <button class="schema-tool" type="button" data-schema-view="relationships" aria-pressed="false">Relationships</button>
+        </nav>
+        <div class="schema-workspace">
+            <section class="schema-canvas" id="schemaCanvas" aria-label="Schema diagram">
+                <div class="schema-empty" id="schemaEmptyState">
+                    <strong>Blank schema diagram</strong>
+                    <span>Choose Tables to add your first table.</span>
+                </div>
+                <div class="schema-table-grid" id="schemaTableGrid"></div>
+            </section>
+            <aside class="schema-inspector" id="schemaInspector" aria-live="polite">
+                <h3>Tables</h3>
+                <p>Add tables to the diagram, then select one to customize its fields.</p>
+                <button class="schema-action" id="addSchemaTable" type="button">Add table</button>
+            </aside>
+        </div>
+    </dialog>
 
     <div class="api-key-backdrop" id="apiKeyDialog" hidden>
         <section class="api-key-dialog" role="dialog" aria-modal="true" aria-labelledby="apiKeyDialogTitle" aria-describedby="apiKeyDialogDescription" tabindex="-1">

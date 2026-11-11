@@ -5,6 +5,8 @@
     data-chat-url="{{ url_for('Ollama.chat') }}"
     data-session-url="{{ url_for('Ollama.get_chat_session') }}"
     data-end-session-url="{{ url_for('Ollama.end_chat_session') }}"
+    data-keys-url="{{ url_for('Ollama.ollama_api_keys') }}"
+    data-select-key-url="{{ url_for('Ollama.select_ollama_api_key') }}"
     data-chatbot-settings-url="{{ url_for('Ollama.save_chatbot_settings') }}"
     data-permissions-url="{{ url_for('Ollama.save_chatbot_permissions') }}"
     data-verified="{{ 'true' if current_user.authentication_data and current_user.authentication_data.authenticated else 'false' }}"
@@ -36,6 +38,13 @@
     </header>
     <details class="ollama-drawer-settings">
         <summary>Chatbot settings and computer permissions</summary>
+        <form id="ollamaApiKeyForm">
+            <label for="ollamaApiKeySelect">Saved Ollama API key</label>
+            <select id="ollamaApiKeySelect" name="api_key_id">
+                <option value="">No API key (local Ollama)</option>
+            </select>
+            <button id="ollamaLoadApiKey" type="submit">Load API key</button>
+        </form>
         <form id="ollamaChatbotSettingsForm">
             <label for="ollamaChatbotNameInput">Chatbot name</label>
             <input id="ollamaChatbotNameInput" name="name" type="text" maxlength="64" value="Rover AI" required>

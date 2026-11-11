@@ -274,6 +274,97 @@ def status():
     )
 
 
+@ollama_bp.get("/keys")
+@login_required
+@limiter.limit("30 per minute")
+def ollama_api_keys():
+    if not _account_is_verified():
+        return jsonify(error="Verify your account to configure Ollama."), 403
+
+    api_keys = UserApiKey.query.filter_by(
+        user_id=current_user.user_id,
+        key_type="ollama",
+    ).filter(
+        UserApiKey.key_ciphertext.is_not(None)
+    ).order_by(UserApiKey.created_at.desc()).all()
+    return jsonify(
+        keys=[
+            {"id": api_key.api_key_id, "name": api_key.key_name}
+            for api_key in api_keys
+        ],
+        active_api_key_id=current_user.active_ollama_api_key_id,
+    )
+
+
+@ollama_bp.post("/key")
+@login_required
+@limiter.limit("10 per minute")
+def select_ollama_api_key():
+    if not _account_is_verified():
+        return jsonify(error="Verify your account to configure Ollama."), 403
+    if not request.is_json:
+        return jsonify(error="A JSON request is required."), 415
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(error="The request body must be valid JSON."), 400
+
+    key_id = payload.get("api_key_id")
+    selected_key = None
+    if key_id is not None:
+        if isinstance(key_id, bool) or not isinstance(key_id, int):
+            return jsonify(error="Choose a valid saved API key."), 400
+        selected_key = UserApiKey.query.filter_by(
+            api_key_id=key_id,
+            user_id=current_user.user_id,
+            key_type="ollama",
+        ).filter(
+            UserApiKey.key_ciphertext.is_not(None)
+        ).first()
+        if selected_key is None:
+            return jsonify(error="The selected API key was not found."), 404
+
+    try:
+        headers = _ollama_headers(selected_key)
+        db.session.commit()
+        available_models = _available_models(headers)
+    except OllamaAuthenticationError as error:
+        return jsonify(error=str(error)), 400
+    except RuntimeError as error:
+        return jsonify(error=str(error)), 400
+    except requests.HTTPError as error:
+        if error.response is not None and error.response.status_code in (401, 403):
+            return jsonify(error="Ollama rejected the API key. Check the saved key and try again."), 401
+        return jsonify(error="Ollama is not reachable; the key was not changed."), 503
+    except requests.RequestException:
+        return jsonify(error="Ollama is not reachable; the key was not changed."), 503
+    except ValueError:
+        current_app.logger.exception("Ollama returned invalid model list JSON")
+        return jsonify(error="Ollama returned an invalid model list."), 502
+
+    if not available_models:
+        return jsonify(error="No Ollama models are available for this key."), 400
+
+    chatbot = Chatbot.query.filter_by(user_id=current_user.user_id).first()
+    current_model = (
+        chatbot.model_name if chatbot else current_user.ollama_model
+    )
+    model_name = current_model if current_model in available_models else available_models[0]
+    current_user.active_ollama_api_key_id = (
+        selected_key.api_key_id if selected_key else None
+    )
+    current_user.ollama_model = model_name
+    if chatbot is not None:
+        chatbot.model_name = model_name
+    db.session.commit()
+    return jsonify(
+        model=model_name,
+        available_models=available_models,
+        api_key_id=selected_key.api_key_id if selected_key else None,
+        api_key_name=selected_key.key_name if selected_key else None,
+    )
+
+
 @ollama_bp.get("/settings")
 @login_required
 def integration_settings():

@@ -17,6 +17,9 @@ function initializeOllamaDrawer() {
     const settingsForm = document.getElementById("ollamaChatbotSettingsForm");
     const nameInput = document.getElementById("ollamaChatbotNameInput");
     const modelSelect = document.getElementById("ollamaChatbotModelSelect");
+    const apiKeyForm = document.getElementById("ollamaApiKeyForm");
+    const apiKeySelect = document.getElementById("ollamaApiKeySelect");
+    const loadApiKeyButton = document.getElementById("ollamaLoadApiKey");
     const settingsStatus = document.getElementById("ollamaSettingsStatus");
     const permissionsForm = document.getElementById("ollamaPermissionsForm");
     const readPermission = document.getElementById("ollamaAllowFolderRead");
@@ -45,6 +48,9 @@ function initializeOllamaDrawer() {
         !(settingsForm instanceof HTMLFormElement) ||
         !(nameInput instanceof HTMLInputElement) ||
         !(modelSelect instanceof HTMLSelectElement) ||
+        !(apiKeyForm instanceof HTMLFormElement) ||
+        !(apiKeySelect instanceof HTMLSelectElement) ||
+        !(loadApiKeyButton instanceof HTMLButtonElement) ||
         !(settingsStatus instanceof HTMLElement) ||
         !(permissionsForm instanceof HTMLFormElement) ||
         !(readPermission instanceof HTMLInputElement) ||
@@ -79,14 +85,40 @@ function initializeOllamaDrawer() {
 
     const appendMessage = (role, content) => {
         document.getElementById("ollamaChatEmpty")?.remove();
-        const message = document.createElement("p");
+        const message = document.createElement("div");
         message.className = "ollama-chat-message";
         message.dataset.role = role;
-        message.textContent = content;
+        const messageContent = document.createElement("span");
+        messageContent.className = "ollama-chat-message-content";
+        messageContent.textContent = content;
+        message.append(messageContent);
+        if (role === "assistant") {
+            const expandButton = document.createElement("button");
+            expandButton.className = "ollama-message-expand";
+            expandButton.type = "button";
+            expandButton.textContent = "Expand response";
+            expandButton.addEventListener("click", () => {
+                expandedResponse.textContent = messageContent.textContent;
+                expandedDialog.showModal();
+            });
+            message.append(expandButton);
+        }
         messagesPanel.append(message);
         messagesPanel.scrollTop = messagesPanel.scrollHeight;
         return message;
     };
+
+    const expandedDialog = document.createElement("dialog");
+    expandedDialog.className = "ollama-expanded-response";
+    const expandedCloseButton = document.createElement("button");
+    expandedCloseButton.className = "ollama-expanded-response-close";
+    expandedCloseButton.type = "button";
+    expandedCloseButton.textContent = "Close";
+    expandedCloseButton.addEventListener("click", () => expandedDialog.close());
+    const expandedResponse = document.createElement("div");
+    expandedResponse.className = "ollama-expanded-response-content";
+    expandedDialog.append(expandedCloseButton, expandedResponse);
+    document.body.append(expandedDialog);
 
     const clearMessages = () => {
         messages.length = 0;
@@ -106,6 +138,9 @@ function initializeOllamaDrawer() {
         endSessionButton.disabled = !canChat || !active;
         newSessionButton.hidden = !canChat || active;
         settingsForm.querySelectorAll("input, select, button").forEach((control) => {
+            control.disabled = !canChat || !active;
+        });
+        apiKeyForm.querySelectorAll("select, button").forEach((control) => {
             control.disabled = !canChat || !active;
         });
         permissionsForm.querySelectorAll("input, button").forEach((control) => {
@@ -155,6 +190,35 @@ function initializeOllamaDrawer() {
                 : models[0];
         modelSelect.value = selectedModel;
         return selectedModel;
+    };
+
+    const loadApiKeys = async () => {
+        try {
+            const response = await fetch(drawer.dataset.keysUrl, {
+                credentials: "same-origin",
+                headers: { Accept: "application/json" },
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "Could not load saved Ollama API keys.");
+            }
+            apiKeySelect.replaceChildren();
+            const localOption = document.createElement("option");
+            localOption.value = "";
+            localOption.textContent = "No API key (local Ollama)";
+            apiKeySelect.append(localOption);
+            result.keys.forEach((key) => {
+                const option = document.createElement("option");
+                option.value = String(key.id);
+                option.textContent = key.name;
+                apiKeySelect.append(option);
+            });
+            apiKeySelect.value = result.active_api_key_id === null
+                ? ""
+                : String(result.active_api_key_id);
+        } catch (error) {
+            settingsStatus.textContent = error.message || "Could not load saved Ollama API keys.";
+        }
     };
 
     const refreshStatus = async () => {
@@ -231,6 +295,7 @@ function initializeOllamaDrawer() {
             });
             setSessionActive(true);
             setStatus("ready", "Rover AI session is active.");
+            loadApiKeys();
             refreshStatus();
         } catch (error) {
             setStatus("error", error.message);
@@ -248,7 +313,7 @@ function initializeOllamaDrawer() {
             return;
         }
 
-        const maximum = Math.min(760, window.innerWidth - 24);
+        const maximum = Math.min(window.innerWidth * 0.94, window.innerWidth - 24);
         drawer.style.setProperty(
             "--ollama-drawer-width",
             `${Math.max(300, Math.min(maximum, width))}px`,
@@ -360,7 +425,7 @@ function initializeOllamaDrawer() {
             const currentWidth = drawer.getBoundingClientRect().width;
             drawer.style.setProperty(
                 "--ollama-drawer-width",
-                `${Math.min(760, currentWidth + Math.abs(dragDistance))}px`,
+                `${Math.min(window.innerWidth * 0.94, currentWidth + Math.abs(dragDistance))}px`,
             );
             dragStartX = event.clientX;
         }
@@ -399,11 +464,36 @@ function initializeOllamaDrawer() {
 
     dragHandle.addEventListener("dblclick", () => {
         const currentWidth = drawer.getBoundingClientRect().width;
-        const defaultWidth = Math.min(560, window.innerWidth - 24);
+        const defaultWidth = Math.min(window.innerWidth * 0.84, window.innerWidth - 24);
         drawer.style.setProperty(
             "--ollama-drawer-width",
-            `${currentWidth > defaultWidth + 20 ? defaultWidth : Math.min(680, window.innerWidth - 24)}px`,
+            `${currentWidth > defaultWidth + 20 ? defaultWidth : Math.min(window.innerWidth * 0.94, window.innerWidth - 24)}px`,
         );
+    });
+
+    apiKeyForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!sessionActive) {
+            return;
+        }
+        loadApiKeyButton.disabled = true;
+        settingsStatus.textContent = "Loading saved Ollama API key...";
+        const rawKeyId = apiKeySelect.value;
+        try {
+            const result = await requestJson(drawer.dataset.selectKeyUrl, {
+                api_key_id: rawKeyId ? Number(rawKeyId) : null,
+            });
+            modelName.textContent = result.model;
+            updateModelOptions(result.available_models, result.model);
+            settingsStatus.textContent = result.api_key_name
+                ? `${result.api_key_name} loaded into Rover AI.`
+                : "Local Ollama selected.";
+            setStatus("ready", "Ollama key and models loaded.");
+        } catch (error) {
+            settingsStatus.textContent = error.message;
+        } finally {
+            loadApiKeyButton.disabled = !sessionActive;
+        }
     });
 
     settingsForm.addEventListener("submit", async (event) => {
@@ -549,7 +639,10 @@ function initializeOllamaDrawer() {
             if (typeof event.token === "string") {
                 fullMessage += event.token;
                 for (const character of event.token) {
-                    messageElement.textContent += character;
+                    const content = messageElement.querySelector(
+                        ".ollama-chat-message-content",
+                    );
+                    content.textContent += character;
                     messagesPanel.scrollTop = messagesPanel.scrollHeight;
                     await new Promise((resolve) => window.setTimeout(resolve, 6));
                 }

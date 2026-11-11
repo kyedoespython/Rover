@@ -276,7 +276,7 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'class="ollama-mode-section"' in response.data
     assert b'id="ollamaMinimize"' in response.data
     assert b'id="ollamaEndSession"' in response.data
-    assert b"scripts/Integrations/Ollama.js?v=9" in response.data
+    assert b"scripts/Integrations/Ollama.js?v=10" in response.data
     assert response.data.count(b'id="ollamaDrawer"') == 1
     assert b'class="button is-outlined design-side-button rover-ai-nav-button"' in response.data
     assert b"ollama-drawer-toggle" not in response.data
@@ -291,6 +291,15 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'id="ollamaChatInput"' in response.data and b" disabled required" in response.data
     assert b'id="ollamaChatbotModelSelect"' in response.data
     assert b'id="ollamaChatbotModelInput"' not in response.data
+    assert b'id="ollamaApiKeySelect"' in response.data
+    assert b'id="ollamaLoadApiKey"' in response.data
+    assert b"scripts/Design/Schema.js?v=1" in response.data
+    assert b'id="openSchemaEditor"' in response.data
+    assert b'id="schemaEditorDialog"' in response.data
+    assert b'data-schema-view="tables"' in response.data
+    assert b'data-schema-view="configure"' in response.data
+    assert b'data-schema-view="relationships"' in response.data
+    assert response.data.count(b">Relationships</button>") == 1
 
     other_page = notes_client.get("/Rover/Settings", follow_redirects=True)
     assert other_page.status_code == 200
@@ -532,6 +541,58 @@ def test_integration_settings_page_lists_models_and_saved_keys(mock_get, notes_c
         "Bearer cloud-api-secret"
     )
     assert b"Integrations" in notes_client.get("/Rover/Settings").data
+
+
+@patch("main.blueprints.Integrations.Ollama.routes.requests.get")
+def test_rover_ai_api_key_loader_selects_key_and_lists_safe_labels(
+    mock_get,
+    notes_client,
+):
+    with notes_client.application.app_context():
+        notes_client.application.config["OLLAMA_BASE_URL"] = "https://ollama.com"
+
+    saved_key = notes_client.post(
+        "/Rover/Design/API-Keys",
+        json={
+            "name": "Work Ollama",
+            "type": "ollama",
+            "api_key": "private-work-key",
+        },
+    ).get_json()["api_key"]
+    with notes_client.application.app_context():
+        account = Accounts.query.filter_by(email="route-notes@example.com").one()
+        account.active_ollama_api_key_id = None
+        account.ollama_model = "removed-model"
+        db.session.commit()
+
+    key_list = notes_client.get("/api/ollama/keys")
+    assert key_list.status_code == 200
+    assert key_list.get_json() == {
+        "keys": [{"id": saved_key["id"], "name": "Work Ollama"}],
+        "active_api_key_id": None,
+    }
+    assert b"private-work-key" not in key_list.data
+
+    mock_get.return_value.json.return_value = {
+        "models": [{"name": "qwen3:latest"}, {"name": "llama3.2"}]
+    }
+    mock_get.return_value.raise_for_status.return_value = None
+    loaded = notes_client.post(
+        "/api/ollama/key",
+        json={"api_key_id": saved_key["id"]},
+    )
+
+    assert loaded.status_code == 200
+    assert loaded.get_json() == {
+        "model": "qwen3:latest",
+        "available_models": ["qwen3:latest", "llama3.2"],
+        "api_key_id": saved_key["id"],
+        "api_key_name": "Work Ollama",
+    }
+    with notes_client.application.app_context():
+        account = Accounts.query.filter_by(email="route-notes@example.com").one()
+        assert account.active_ollama_api_key_id == saved_key["id"]
+        assert account.ollama_model == "qwen3:latest"
 
 
 @patch("main.blueprints.Integrations.Ollama.routes.requests.get")
