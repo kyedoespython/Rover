@@ -15,22 +15,6 @@
         font-family: 'Roboto Mono', monospace !important;
     }
 
-    body {
-        background-image: url("{{ url_for('static', filename='images/RoverBackground.jpg') }}");
-        background-color: #f2f2f2;
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-    }
-
-    body::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        background-color: rgba(255, 255, 255, 0.7);
-        z-index: -1;
-    }
-
     #supportPage {
         min-height: 100vh;
         display: flex;
@@ -92,7 +76,7 @@
     }
 
     #supportPage .support-link {
-        color: rgb(4, 68, 206);
+        color: var(--rover-accent-hover);
     }
 
     #supportPage .hover_designNow {

@@ -9,6 +9,8 @@ import resend
 import secrets
 from sqlalchemy import update
 
+AUTH_CODE_MAX_ATTEMPTS = 5
+
 def _send_email(to, subject, text, html=None):
     api_key = current_app.config.get("RESEND_API_KEY")
     if not api_key:
@@ -62,12 +64,10 @@ def SignupAttemptMail(email):
 # Create the auth code via secrets
 def Create_Auth_Code(user_account):
 
-    # if the user has no authenctication data, make sure they do by commiting
+    # Create authentication data if this is the account's first code.
     if not user_account.authentication_data:
         auth_row = Authentication(user_id=user_account.user_id)
         db.session.add(auth_row)
-        db.session.commit()
-    
     else:
         auth_row = user_account.authentication_data
 
@@ -76,6 +76,7 @@ def Create_Auth_Code(user_account):
     auth_row.auth_code = generate_password_hash(auth_code_) # generate a hash for the auth code via werkzeug
     auth_row.auth_code_expires = datetime.now(timezone.utc) + timedelta(minutes=10) # save the 10 minutes time to the database to ensure limit is 10 minutes
     auth_row.last_code_sent_at = datetime.now(timezone.utc) # save the copy of the timestamp showing when the last authentication attempt was
+    auth_row.failed_attempts = 0
     db.session.commit()
 
     # Send the auth code to the user's email.

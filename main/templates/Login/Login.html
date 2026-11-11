@@ -15,8 +15,8 @@
         position: fixed;
         top: 0; left: 0;
         width: 100vw; height: 100vh;
-        background-image: url("{{ url_for('static', filename='images/RoverBackground.jpg') }}");
-        background-color: #f2f2f2;
+        background-image: url("{{ url_for('static', filename='images/WorldImage.jpg') }}");
+        background-color: var(--rover-background);
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
@@ -26,7 +26,7 @@
         position: fixed;
         top: 0; left: 0;
         width: 100vw; height: 100vh;
-        background-color: rgba(255, 255, 255, 0.7);
+        background-color: rgba(11, 16, 9, 0.72);
         z-index: 1;
         pointer-events: none;
     }
@@ -41,18 +41,18 @@
     }
 
     .input {
-        background-color: white !important;
-        color: black !important;
-        border: 1px solid #dbdbdb !important;
+        background-color: var(--rover-control-bg) !important;
+        color: var(--rover-text) !important;
+        border: 1px solid var(--rover-control-border) !important;
         box-shadow: none !important;
     }
     .input::placeholder {
-        color: #999 !important;
+        color: var(--rover-muted) !important;
         opacity: 1;
     }
     .input:focus {
-        border-color: black !important;
-        box-shadow: 0 0 0 0.125em rgba(0, 0, 0, 0.1) !important;
+        border-color: var(--rover-accent) !important;
+        box-shadow: 0 0 0 0.125em rgba(140, 163, 78, 0.2) !important;
     }
 
     .hover_designNow {
@@ -60,8 +60,8 @@
         box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
     }
     .hover_designNow:hover {
-        background-color: rgb(4, 68, 206) !important;
-        color: white !important;
+        background-color: var(--rover-accent-strong-hover) !important;
+        color: var(--rover-text) !important;
     }
 </style>
 
@@ -80,7 +80,7 @@
     </nav>
 
     <div style="flex: 1; display: flex; justify-content: center; align-items: center; padding: 1rem;">
-        <div class="box" style="width: 100%; max-width: 450px; background-color: white; box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1); padding: 2rem;">
+        <div class="box" style="width: 100%; max-width: 450px; background-color: var(--rover-surface); box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1); padding: 2rem;">
             <h1 class="title is-2 has-text-centered has-text-black mb-5">Login</h1>
 
             <form method="POST" action="{{ url_for('auth.Handle_Login') }}">
@@ -108,10 +108,10 @@
             </form>
 
             <p class="has-text-centered mt-4 has-text-black">
-                Don't have an account? <a href="{{ url_for('auth.Signup') }}" style="color: rgb(4, 68, 206); font-weight: bold;">Sign Up</a>
+                Don't have an account? <a href="{{ url_for('auth.Signup') }}" style="color: var(--rover-accent-hover); font-weight: bold;">Sign Up</a>
             </p>
             <p class="has-text-centered mt-3">
-                <a href="{{ url_for('auth.Forgot_Password') }}" style="color: rgb(4, 68, 206); font-weight: bold;">Forgot password?</a>
+                <a href="{{ url_for('auth.Forgot_Password') }}" style="color: var(--rover-accent-hover); font-weight: bold;">Forgot password?</a>
             </p>
         </div>
     </div>

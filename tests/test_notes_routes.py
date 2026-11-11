@@ -28,6 +28,7 @@ from main.models.user import (
 )
 from main.services.ollama_service import decrypt_api_key
 from main.services.agent_history_cleanup import cleanup_expired_agent_history
+from main.services.auth_service import AUTH_CODE_MAX_ATTEMPTS, Create_Auth_Code
 from main.services.notes_service import create_note
 from main.services import notes_service
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -155,31 +156,220 @@ def test_notes_route_create_load_edit_and_delete(notes_client):
         assert db.session.get(Notes, note_id) is None
 
 
-def test_home_uses_the_rover_background_video_and_dark_hero(notes_client):
-    response = notes_client.get("/")
-    optimized_video = (
-        Path(__file__).parent.parent
-        / "main"
-        / "static"
-        / "Videos"
-        / "Rover_backgroundVideo_720p.mp4"
+def test_authenticated_routes_reject_anonymous_clients(notes_client):
+    anonymous_client = notes_client.application.test_client()
+
+    assert anonymous_client.get("/Rover/Notes").status_code == 401
+    assert anonymous_client.get("/DesignDashboard").status_code == 401
+    assert anonymous_client.get("/api/ollama/session").status_code == 401
+
+
+def test_notes_routes_reject_access_to_another_users_note(notes_client):
+    with notes_client.application.app_context():
+        other_account = Accounts(
+            email="private-note-owner@example.com",
+            username="PrivateNoteOwner",
+            password=generate_password_hash("test-password"),
+            country_of_origin="United States",
+        )
+        db.session.add(other_account)
+        db.session.flush()
+        other_note = create_note(
+            other_account.user_id,
+            "Private note",
+            "",
+            "Only the owner should see this content.",
+        )
+        note_id = other_note.note_id
+        note_file_path = (
+            Path(notes_client.application.config["NOTE_STORAGE_DIR"])
+            / other_note.file_metadata.relative_path
+        )
+        original_file_content = note_file_path.read_text(encoding="utf-8")
+
+    loaded = notes_client.get(f"/Rover/Notes?load_id={note_id}")
+    updated = notes_client.post(
+        f"/Rover/Notes/{note_id}/update",
+        data={"note_content": "Changed by another user"},
     )
-    optimized_backgrounds = [
-        Path(__file__).parent.parent / "main" / "static" / "images" / name
-        for name in ("RoverBackground_optimized.jpg", "RoverBackground_mobile.jpg")
-    ]
+    deleted = notes_client.post(f"/Rover/Notes/{note_id}/delete")
+
+    assert loaded.status_code == 404
+    assert b"Only the owner should see this content." not in loaded.data
+    assert updated.status_code == 404
+    assert deleted.status_code == 404
+
+    with notes_client.application.app_context():
+        note = db.session.get(Notes, note_id)
+        assert note_file_path.read_text(encoding="utf-8") == original_file_content
+
+
+def test_notes_write_rejects_missing_csrf_token(notes_client):
+    notes_client.application.config["WTF_CSRF_ENABLED"] = True
+
+    response = notes_client.post(
+        "/Rover/Notes",
+        data={
+            "note_name": "CSRF attempt",
+            "note_description": "",
+            "note_content": "Must not be stored",
+        },
+    )
+
+    assert response.status_code == 400
+    with notes_client.application.app_context():
+        assert Notes.query.filter_by(note_name="CSRF attempt").first() is None
+
+
+def test_auth_code_attempt_limit_is_per_account_across_ips(notes_client):
+    with notes_client.application.app_context():
+        account = Accounts(
+            email="pending-verification@example.com",
+            username="PendingVerification",
+            password=generate_password_hash("test-password"),
+            country_of_origin="United States",
+        )
+        db.session.add(account)
+        db.session.flush()
+        authentication = Authentication(
+            user_id=account.user_id,
+            auth_code=generate_password_hash("1234567"),
+            auth_code_expires=datetime.now(timezone.utc) + timedelta(minutes=10),
+        )
+        db.session.add(authentication)
+        db.session.commit()
+        user_id = account.user_id
+        auth_id = authentication.auth_id
+
+    with notes_client.session_transaction() as session:
+        session["pending_auth_email"] = "pending-verification@example.com"
+
+    for attempt in range(AUTH_CODE_MAX_ATTEMPTS):
+        response = notes_client.post(
+            "/HandleAuth",
+            data={"authCode": "0000000"},
+            environ_overrides={"REMOTE_ADDR": f"198.51.100.{attempt + 1}"},
+        )
+        assert response.status_code == 302
+
+    with notes_client.application.app_context():
+        authentication = db.session.get(Authentication, auth_id)
+        account = db.session.get(Accounts, user_id)
+        assert authentication.failed_attempts == AUTH_CODE_MAX_ATTEMPTS
+        assert authentication.auth_code is None
+        assert authentication.auth_code_expires is None
+        assert not authentication.authenticated
+
+    notes_client.post("/HandleAuth", data={"authCode": "1234567"})
+    with notes_client.application.app_context():
+        assert not db.session.get(Authentication, auth_id).authenticated
+
+
+def test_duplicate_signup_cannot_bind_session_to_pending_account(notes_client):
+    email = "pending-owner@example.com"
+    with notes_client.application.app_context():
+        account = Accounts(
+            email=email,
+            username="PendingOwner",
+            password=generate_password_hash("original-password"),
+            country_of_origin="United States",
+        )
+        db.session.add(account)
+        db.session.flush()
+        db.session.add(
+            Authentication(
+                user_id=account.user_id,
+                auth_code=generate_password_hash("7654321"),
+                auth_code_expires=datetime.now(timezone.utc) + timedelta(minutes=10),
+            )
+        )
+        db.session.commit()
+
+    with notes_client.session_transaction() as session:
+        session["pending_auth_email"] = "previous-pending@example.com"
+
+    with patch("main.blueprints.auth.routes.SignupAttemptMail") as signup_attempt:
+        response = notes_client.post(
+            "/Handle_signup",
+            data={
+                "email": email,
+                "username": "NewPendingOwner",
+                "password": "Strong!Password",
+                "telephone": "",
+                "country": "United States",
+            },
+        )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/Rover/Auth")
+    signup_attempt.assert_called_once_with(email)
+    with notes_client.session_transaction() as session:
+        assert "pending_auth_email" not in session
+
+
+def test_issuing_new_auth_code_resets_failed_attempts(notes_client):
+    with notes_client.application.app_context():
+        account = Accounts(
+            email="auth-code-reset@example.com",
+            username="AuthCodeReset",
+            password=generate_password_hash("test-password"),
+            country_of_origin="United States",
+        )
+        db.session.add(account)
+        db.session.flush()
+        authentication = Authentication(
+            user_id=account.user_id,
+            failed_attempts=AUTH_CODE_MAX_ATTEMPTS,
+        )
+        db.session.add(authentication)
+        db.session.commit()
+        db.session.expire(account, ["authentication_data"])
+
+        with patch(
+            "main.services.auth_service.SendAuthCode_EMAIL",
+            return_value=(True, "Auth code sent to your email."),
+        ):
+            success, _ = Create_Auth_Code(account)
+
+        db.session.refresh(authentication)
+        assert success
+        assert authentication.failed_attempts == 0
+        assert authentication.auth_code
+        assert authentication.auth_code_expires
+
+
+def test_home_uses_world_background_and_dark_hero(notes_client):
+    response = notes_client.get("/")
+    world_image = (
+        Path(__file__).parent.parent / "main" / "static" / "images" / "WorldImage.jpg"
+    )
 
     assert response.status_code == 200
-    assert b'id="Rover_backgroundVideo"' in response.data
-    assert b"Videos/Rover_backgroundVideo_720p.mp4" in response.data
-    assert b'preload="none"' in response.data
-    assert b"images/RoverBackground_optimized.jpg" in response.data
-    assert b"images/RoverBackground_mobile.jpg" in response.data
-    assert optimized_video.stat().st_size < 5_000_000
-    assert optimized_backgrounds[0].stat().st_size < 300_000
-    assert optimized_backgrounds[1].stat().st_size < 100_000
+    assert b"images/WorldImage.jpg" in response.data
+    assert b"Rover_backgroundVideo" not in response.data
+    assert world_image.stat().st_size < 1_000_000
     assert b'class="home-hero-title"' in response.data
     assert b"Ideas into<br>intelligent software." in response.data
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/",
+        "/Rover/Notes",
+        "/DesignDashboard",
+        "/Rover/Support",
+        "/Rover/Settings",
+        "/Rover/Login",
+        "/Rover/Sign%20Up",
+    ],
+)
+def test_site_pages_share_world_background(notes_client, path):
+    response = notes_client.get(path, follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b"images/WorldImage.jpg" in response.data
+    assert b"RoverBackground" not in response.data
 
 
 def test_signup_phone_country_mismatch_flashes_red_error(notes_client):

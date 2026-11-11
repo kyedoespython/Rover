@@ -20,26 +20,26 @@
 
         :root {
             color-scheme: dark;
-            --rover-background: #080b10;
-            --rover-surface: rgba(15, 19, 26, 0.94);
-            --rover-surface-raised: rgba(23, 29, 39, 0.97);
-            --rover-border: rgba(164, 188, 220, 0.2);
-            --rover-text: #f3f6fb;
-            --rover-muted: #a8b5c7;
-            --rover-accent: #3184ed;
-            --rover-accent-hover: #8fc5ff;
-            --rover-accent-strong: #1f6bc6;
-            --rover-accent-strong-hover: #2a74cc;
-            --rover-control-bg: #141b25;
-            --rover-control-hover: #1b2b3f;
-            --rover-control-border: #46698f;
-            --rover-danger: #e05a66;
+            --rover-background: #0b1009;
+            --rover-surface: rgba(22, 26, 17, 0.94);
+            --rover-surface-raised: rgba(31, 36, 23, 0.97);
+            --rover-border: rgba(185, 174, 122, 0.24);
+            --rover-text: #f3efdc;
+            --rover-muted: #b7b49c;
+            --rover-accent: #8ca34e;
+            --rover-accent-hover: #c5d58a;
+            --rover-accent-strong: #526632;
+            --rover-accent-strong-hover: #627b3b;
+            --rover-control-bg: #1b2117;
+            --rover-control-hover: #2a331f;
+            --rover-control-border: #65724d;
+            --rover-danger: #d76b5f;
         }
 
         body {
             margin: 0;
             overflow-y: auto;
-            background-image: url("{{ url_for('static', filename='images/RoverBackground_optimized.jpg') }}");
+            background-image: url("{{ url_for('static', filename='images/WorldImage.jpg') }}");
             background-color: var(--rover-background);
             background-size: cover;
             background-position: center;
@@ -47,24 +47,13 @@
             color: var(--rover-text);
         }
 
-        #Rover_backgroundVideo {
-            position: fixed;
-            z-index: 0;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0.48;
-            pointer-events: none;
-        }
-
         body::before {
             content: "";
             position: fixed;
             inset: 0;
             background:
-                radial-gradient(ellipse at 50% 35%, rgba(39, 78, 145, 0.24), transparent 58%),
-                linear-gradient(180deg, rgba(8, 11, 16, 0.48), rgba(8, 11, 16, 0.88));
+                radial-gradient(ellipse at 50% 35%, rgba(140, 163, 78, 0.14), transparent 58%),
+                linear-gradient(180deg, rgba(11, 16, 9, 0.34), rgba(11, 16, 9, 0.82));
             z-index: 1;
         }
 
@@ -106,7 +95,7 @@
 
         .flash-message-info {
             border-left-color: var(--rover-accent);
-            color: #a7c7ff;
+            color: var(--rover-accent-hover);
         }
 
         body .bg-image,
@@ -137,7 +126,7 @@
         body #notesPage .note-editor-panel,
         body #designPage .design-side-nav {
             border: 1px solid var(--rover-border) !important;
-            border-radius: 10px !important;
+            border-radius: 6px !important;
             background: var(--rover-surface) !important;
             color: var(--rover-text) !important;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.32) !important;
@@ -148,7 +137,7 @@
         body #notesPage .textarea,
         body #notesPage .note-content-editor {
             border-color: var(--rover-border) !important;
-            background: rgba(12, 11, 17, 0.82) !important;
+            background: var(--rover-control-bg) !important;
             color: var(--rover-text) !important;
         }
 
@@ -163,7 +152,7 @@
         body #notesPage .note-open-button:hover,
         body #notesPage .note-open-button.is-active {
             border-color: var(--rover-accent) !important;
-            background: rgba(49, 132, 237, 0.16) !important;
+            background: rgba(140, 163, 78, 0.16) !important;
         }
 
         body #notesPage .heading-popup {
@@ -181,7 +170,7 @@
         body #notesPage .heading-popup button:hover,
         body #notesPage .heading-popup button:focus-visible {
             border-color: var(--rover-accent) !important;
-            background: rgba(49, 132, 237, 0.2) !important;
+            background: rgba(140, 163, 78, 0.2) !important;
         }
 
         body .ollama-drawer {
@@ -212,14 +201,14 @@
         }
 
         body .ollama-chat-message[data-role="user"] {
-            border-color: rgba(151, 187, 255, 0.5) !important;
-            background: #2859a8 !important;
+            border-color: var(--rover-accent-hover) !important;
+            background: var(--rover-accent-strong) !important;
             color: #fff !important;
         }
 
         body .ollama-chat-form:focus-within {
             border-color: var(--rover-accent) !important;
-            box-shadow: 0 0 0 2px rgba(49, 132, 237, 0.2) !important;
+            box-shadow: 0 0 0 2px rgba(140, 163, 78, 0.2) !important;
         }
 
         body .ollama-chat-send {
@@ -234,13 +223,13 @@
         body textarea,
         body #notesPage .note-content-editor {
             border-color: var(--rover-border) !important;
-            background-color: rgba(12, 11, 17, 0.82) !important;
+            background-color: var(--rover-control-bg) !important;
             color: var(--rover-text) !important;
         }
 
         body input::placeholder,
         body textarea::placeholder {
-            color: #9aa8bb !important;
+            color: var(--rover-muted) !important;
         }
 
         body .input:focus,
@@ -248,13 +237,13 @@
         body select:focus,
         body #notesPage .note-content-editor:focus {
             border-color: var(--rover-accent) !important;
-            box-shadow: 0 0 0 0.15em rgba(49, 132, 237, 0.2) !important;
+            box-shadow: 0 0 0 0.15em rgba(140, 163, 78, 0.2) !important;
         }
 
         body .button.is-black,
         body .button.is-black.is-outlined {
-            border-color: rgba(143, 197, 255, 0.64) !important;
-            background: rgba(49, 132, 237, 0.14) !important;
+            border-color: rgba(197, 213, 138, 0.64) !important;
+            background: rgba(140, 163, 78, 0.14) !important;
             color: var(--rover-text) !important;
             transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
         }
@@ -262,7 +251,7 @@
         body .button.is-black:hover,
         body .button.is-black.is-outlined:hover {
             border-color: var(--rover-accent-hover) !important;
-            background: rgba(49, 132, 237, 0.24) !important;
+            background: rgba(140, 163, 78, 0.24) !important;
             color: #fff !important;
             transform: translateY(-1px);
         }
@@ -327,14 +316,14 @@
         body .button.is-black.is-outlined,
         body .button.is-outlined {
             border-color: var(--rover-control-border) !important;
-            background: #101720 !important;
-            color: #e8f0fc !important;
+            background: var(--rover-control-bg) !important;
+            color: var(--rover-text) !important;
         }
 
         body .button.is-black.is-outlined:hover,
         body .button.is-outlined:hover {
             border-color: var(--rover-accent-hover) !important;
-            background: rgba(49, 132, 237, 0.18) !important;
+            background: rgba(140, 163, 78, 0.18) !important;
             color: #fff !important;
         }
 
@@ -361,7 +350,7 @@
 
         body a:not(.button) {
             color: var(--rover-accent-hover) !important;
-            text-decoration-color: rgba(143, 192, 255, 0.55);
+            text-decoration-color: rgba(197, 213, 138, 0.55);
             text-underline-offset: 0.18em;
         }
 
@@ -395,7 +384,7 @@
         body .ollama-drawer-settings select,
         body .ollama-chat-input {
             border-color: var(--rover-border) !important;
-            background: rgba(8, 11, 16, 0.86) !important;
+            background: var(--rover-control-bg) !important;
             color: var(--rover-text) !important;
         }
 
@@ -417,20 +406,20 @@
         }
 
         body .ollama-chat-message[data-role="user"] {
-            border-color: rgba(106, 170, 255, 0.6) !important;
-            background: #245c9e !important;
+            border-color: var(--rover-accent-hover) !important;
+            background: var(--rover-accent-strong) !important;
             color: #fff !important;
         }
 
         body .ollama-chat-form {
             border-color: var(--rover-border) !important;
-            background: rgba(11, 15, 21, 0.98) !important;
+            background: var(--rover-surface-raised) !important;
             box-shadow: none !important;
         }
 
         body .ollama-chat-form:focus-within {
             border-color: var(--rover-accent-hover) !important;
-            box-shadow: 0 0 0 2px rgba(49, 132, 237, 0.24) !important;
+            box-shadow: 0 0 0 2px rgba(140, 163, 78, 0.24) !important;
         }
 
         body .ollama-chat-input {
@@ -439,20 +428,20 @@
 
         body input::placeholder,
         body textarea::placeholder {
-            color: #9aa8bb !important;
+            color: var(--rover-muted) !important;
         }
 
         body #supportPage .input,
         body #supportPage .select select,
         body #supportPage .textarea {
             border-color: var(--rover-border) !important;
-            background: rgba(8, 11, 16, 0.86) !important;
+            background: var(--rover-control-bg) !important;
             color: var(--rover-text) !important;
         }
 
         body #supportPage .input::placeholder,
         body #supportPage .textarea::placeholder {
-            color: #9aa8bb !important;
+            color: var(--rover-muted) !important;
         }
 
         body #integrationsPage .integrations-content,
@@ -503,16 +492,16 @@
         }
 
         body #schemaEditorDialog .schema-canvas {
-            background-image: radial-gradient(rgba(143, 192, 255, 0.16) 1px, transparent 1px) !important;
+            background-image: radial-gradient(rgba(197, 213, 138, 0.16) 1px, transparent 1px) !important;
         }
 
         body #schemaEditorDialog .schema-table-card,
         body #schemaEditorDialog .schema-inspector {
-            background: rgba(13, 18, 26, 0.98) !important;
+            background: var(--rover-surface) !important;
         }
 
         body #schemaEditorDialog .schema-table-select {
-            background: rgba(48, 101, 164, 0.22) !important;
+            background: rgba(140, 163, 78, 0.22) !important;
             color: var(--rover-text) !important;
         }
 
@@ -540,7 +529,7 @@
 
         body #schemaEditorDialog .schema-line-swatch[aria-pressed="true"] {
             border-color: var(--rover-accent) !important;
-            background: rgba(49, 132, 237, 0.16) !important;
+            background: rgba(140, 163, 78, 0.16) !important;
         }
 
         body #agentsPage .rover-agent-card {
@@ -575,19 +564,19 @@
         body #agentsPage .rover-agent-settings textarea,
         body #agentsPage .rover-agent-input {
             border-color: var(--rover-border) !important;
-            background: rgba(8, 11, 16, 0.86) !important;
+            background: var(--rover-control-bg) !important;
             color: var(--rover-text) !important;
         }
 
         body #agentsPage .rover-agent-message {
             border-color: var(--rover-border) !important;
-            background: #171f2a !important;
+            background: var(--rover-surface-raised) !important;
             color: var(--rover-text) !important;
         }
 
         body #agentsPage .rover-agent-message[data-role="user"] {
-            border-color: rgba(106, 170, 255, 0.6) !important;
-            background: #245c9e !important;
+            border-color: var(--rover-accent-hover) !important;
+            background: var(--rover-accent-strong) !important;
             color: #fff !important;
         }
 
@@ -619,7 +608,7 @@
         body #notesPage .heading-popup button:hover,
         body #notesPage .heading-popup button:focus-visible {
             border-color: var(--rover-accent-hover) !important;
-            background: rgba(49, 132, 237, 0.18) !important;
+            background: rgba(140, 163, 78, 0.18) !important;
             color: #fff !important;
         }
 
@@ -706,18 +695,6 @@
             }
         }
 
-        @media (prefers-reduced-motion: reduce), (max-width: 768px) {
-            #Rover_backgroundVideo {
-                display: none;
-            }
-        }
-
-        @media (max-width: 768px) {
-            body {
-                background-image: url("{{ url_for('static', filename='images/RoverBackground_mobile.jpg') }}");
-            }
-        }
-
         .ollama-drawer {
             --ollama-drawer-width: 420px;
             position: fixed;
@@ -728,10 +705,10 @@
             height: 86dvh;
             display: flex;
             flex-direction: column;
-            border: 2px solid #111;
+            border: 1px solid var(--rover-border);
             border-radius: 5px;
-            background: rgba(255, 255, 255, 0.97);
-            box-shadow: -8px 0 28px rgba(0, 0, 0, 0.14);
+            background: var(--rover-surface);
+            box-shadow: -8px 0 28px rgba(0, 0, 0, 0.4);
             transform: translateX(0);
             transition: transform 0.22s ease;
         }
@@ -747,10 +724,10 @@
             justify-content: space-between;
             gap: 0.75rem;
             padding: 0.65rem 0.85rem;
-            border-bottom: 1px solid #e5e5e5;
-            background: rgba(255, 255, 255, 0.97);
+            border-bottom: 1px solid var(--rover-border);
+            background: var(--rover-surface-raised);
             border-radius: 3px 3px 0 0;
-            color: #111;
+            color: var(--rover-text);
             font: 700 0.7rem "Roboto Mono", monospace;
         }
 
@@ -758,10 +735,10 @@
             min-width: 0;
             min-height: 2rem;
             padding: 0.3rem 0.5rem;
-            border: 1px solid #111;
+            border: 1px solid var(--rover-control-border);
             border-radius: 3px;
-            background: #fff;
-            color: #111;
+            background: var(--rover-control-bg);
+            color: var(--rover-text);
             font: 0.68rem "Roboto Mono", monospace;
         }
 
@@ -772,7 +749,7 @@
             justify-content: space-between;
             gap: 0.75rem;
             padding: 1rem 1rem 1rem 1.5rem;
-            border-bottom: 1px solid #e5e5e5;
+            border-bottom: 1px solid var(--rover-border);
             cursor: grab;
             touch-action: none;
             user-select: none;
@@ -784,13 +761,13 @@
 
         .ollama-assistant-title {
             margin: 0;
-            color: #111;
+            color: var(--rover-text);
             font: 700 0.95rem "Roboto Mono", monospace;
         }
 
         .ollama-assistant-model {
             margin: 0.25rem 0 0;
-            color: #666;
+            color: var(--rover-muted);
             font: 0.72rem "Roboto Mono", monospace;
         }
 
@@ -802,28 +779,28 @@
         .ollama-drawer-control {
             min-width: 2rem;
             min-height: 2rem;
-            border: 1px solid #d5d5d5;
+            border: 1px solid var(--rover-control-border);
             border-radius: 4px;
-            background: #fff;
-            color: #111;
+            background: var(--rover-control-bg);
+            color: var(--rover-text);
             cursor: pointer;
         }
 
         .ollama-drawer-control:hover {
-            border-color: #111;
-            background: #f5f5f5;
+            border-color: var(--rover-accent-hover);
+            background: var(--rover-control-hover);
         }
 
         .ollama-end-session {
-            border-color: #b42318;
-            color: #b42318;
+            border-color: var(--rover-danger);
+            color: var(--rover-danger);
             font-weight: 700;
         }
 
         .ollama-end-session:hover {
-            border-color: #b42318;
-            background: #b42318;
-            color: #fff;
+            border-color: var(--rover-danger);
+            background: var(--rover-danger);
+            color: var(--rover-text);
         }
 
         .ollama-drawer-settings {
@@ -831,8 +808,8 @@
             max-height: 32%;
             overflow-y: auto;
             padding: 0.65rem 0.85rem;
-            border-bottom: 1px solid #eee;
-            color: #222;
+            border-bottom: 1px solid var(--rover-border);
+            color: var(--rover-text);
             font: 0.7rem "Roboto Mono", monospace;
         }
 
@@ -842,7 +819,7 @@
         }
 
         .ollama-drawer-settings summary {
-            color: #222;
+            color: var(--rover-text);
             font-weight: 700;
             cursor: pointer;
         }
@@ -851,7 +828,7 @@
             display: block;
             min-width: 0;
             margin-top: 0.45rem;
-            color: #222;
+            color: var(--rover-text);
         }
 
         .ollama-drawer-settings input[type="text"],
@@ -862,10 +839,10 @@
             min-height: 2rem;
             margin-top: 0.2rem;
             padding: 0.35rem 0.5rem;
-            border: 1px solid #d5d5d5;
+            border: 1px solid var(--rover-control-border);
             border-radius: 4px;
-            color: #111;
-            background: white;
+            color: var(--rover-text);
+            background: var(--rover-control-bg);
             font: inherit;
         }
 
@@ -877,10 +854,10 @@
             min-height: 1.9rem;
             margin-top: 0.5rem;
             padding: 0.3rem 0.55rem;
-            border: 1px solid #555;
+            border: 1px solid var(--rover-control-border);
             border-radius: 4px;
-            background: #fff;
-            color: #222;
+            background: var(--rover-control-bg);
+            color: var(--rover-text);
             font: inherit;
             cursor: pointer;
         }
@@ -907,7 +884,7 @@
         .ollama-settings-status,
         .ollama-folder-name {
             margin: 0.4rem 0 0;
-            color: #666;
+            color: var(--rover-muted);
             line-height: 1.4;
             overflow-wrap: anywhere;
         }
@@ -916,10 +893,10 @@
             display: block;
             margin: 0.5rem auto;
             padding: 0.4rem 0.65rem;
-            border: 1px solid #555;
+            border: 1px solid var(--rover-control-border);
             border-radius: 4px;
-            background: white;
-            color: #222;
+            background: var(--rover-control-bg);
+            color: var(--rover-text);
             font: 0.72rem "Roboto Mono", monospace;
             cursor: pointer;
         }
@@ -934,8 +911,8 @@
             align-items: center;
             gap: 0.5rem;
             padding: 0.75rem 1rem;
-            border-bottom: 1px solid #eee;
-            color: #666;
+            border-bottom: 1px solid var(--rover-border);
+            color: var(--rover-muted);
             font: 0.72rem "Roboto Mono", monospace;
         }
 
@@ -984,10 +961,10 @@
             position: relative;
             max-width: 92%;
             padding: 0.7rem 0.8rem;
-            border: 1px solid #e4e4e4;
+            border: 1px solid var(--rover-border);
             border-radius: 6px;
-            background: #fff;
-            color: #222;
+            background: var(--rover-surface-raised);
+            color: var(--rover-text);
             font: 0.78rem/1.55 "Roboto Mono", monospace;
             white-space: pre-wrap;
             overflow-wrap: anywhere;
@@ -1001,10 +978,10 @@
             display: block;
             margin: 0.65rem 0 0 auto;
             padding: 0.3rem 0.55rem;
-            border: 1px solid #999;
+            border: 1px solid var(--rover-control-border);
             border-radius: 4px;
-            background: #fff;
-            color: #222;
+            background: var(--rover-control-bg);
+            color: var(--rover-text);
             font: 0.68rem "Roboto Mono", monospace;
             cursor: pointer;
         }
@@ -1014,9 +991,9 @@
             max-width: none;
             max-height: 90dvh;
             padding: clamp(1rem, 3vw, 2rem);
-            border: 2px solid #111;
-            background: #fff;
-            color: #222;
+            border: 1px solid var(--rover-border);
+            background: var(--rover-surface-raised);
+            color: var(--rover-text);
             font: 0.9rem/1.65 "Roboto Mono", monospace;
             white-space: pre-wrap;
             overflow-wrap: anywhere;
@@ -1033,9 +1010,9 @@
             display: block;
             margin: 0 0 1rem auto;
             padding: 0.5rem 0.85rem;
-            border: 1px solid #111;
-            background: #111;
-            color: #fff;
+            border: 1px solid var(--rover-control-border);
+            background: var(--rover-control-bg);
+            color: var(--rover-text);
             font: 0.75rem "Roboto Mono", monospace;
             cursor: pointer;
         }
@@ -1046,9 +1023,9 @@
 
         .ollama-chat-message[data-role="user"] {
             align-self: flex-end;
-            border-color: #111;
-            background: #111;
-            color: #fff;
+            border-color: var(--rover-accent-hover);
+            background: var(--rover-control-hover);
+            color: var(--rover-text);
         }
 
         .ollama-chat-message[data-role="assistant"] {
@@ -1063,7 +1040,7 @@
 
         .ollama-chat-empty {
             margin: auto;
-            color: #777;
+            color: var(--rover-muted);
             font: 0.75rem/1.5 "Roboto Mono", monospace;
             text-align: center;
         }
@@ -1074,15 +1051,15 @@
             gap: 0.4rem;
             margin: 0.75rem;
             padding: 0.6rem;
-            border: 1px solid #d0d7de;
+            border: 1px solid var(--rover-border);
             border-radius: 8px;
-            background: #fff;
+            background: var(--rover-surface-raised);
             box-shadow: 0 1px 3px rgba(31, 35, 40, 0.08);
         }
 
         .ollama-chat-form:focus-within {
-            border-color: #0969da;
-            box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.18);
+            border-color: var(--rover-accent);
+            box-shadow: 0 0 0 2px rgba(140, 163, 78, 0.18);
         }
 
         .ollama-chat-input {
@@ -1094,7 +1071,7 @@
             padding: 0.3rem 0.35rem;
             border: 0;
             background: transparent;
-            color: #1f2328;
+            color: var(--rover-text);
             font: 0.85rem/1.5 "Segoe UI", Arial, sans-serif;
         }
 
@@ -1103,23 +1080,23 @@
         }
 
         .ollama-chat-input::placeholder {
-            color: #656d76;
+            color: var(--rover-muted);
         }
 
         .ollama-chat-send {
             justify-self: end;
             min-height: 2rem;
             padding: 0.35rem 0.8rem;
-            border: 1px solid #1f2328;
+            border: 1px solid var(--rover-accent-strong);
             border-radius: 6px;
-            background: #1f2328;
-            color: #fff;
+            background: var(--rover-accent-strong);
+            color: var(--rover-text);
             font: 600 0.75rem "Segoe UI", Arial, sans-serif;
             cursor: pointer;
         }
 
         .ollama-chat-send:focus-visible {
-            outline: 2px solid #0969da;
+            outline: 2px solid var(--rover-accent-hover);
             outline-offset: 2px;
         }
 
@@ -1157,11 +1134,6 @@
 </head>
 
 <body>
-    <video id="Rover_backgroundVideo" muted loop playsinline preload="none"
-        poster="{{ url_for('static', filename='images/RoverBackground_optimized.jpg') }}" aria-hidden="true" tabindex="-1">
-        <source data-src="{{ url_for('static', filename='Videos/Rover_backgroundVideo_720p.mp4') }}" type="video/mp4">
-    </video>
-
     <main class="is-flex is-flex-direction-column" style="min-height: 100vh;">
         <div class="is-flex-grow-1">
             {% block content %}{% endblock %}
@@ -1179,50 +1151,5 @@
             </div>
         {% endif %}
     {% endwith %}
-    <script>
-        document.querySelectorAll(".flash-message").forEach((message) => {
-            window.setTimeout(() => message.remove(), 30_000);
-        });
-
-        const backgroundVideo = document.getElementById("Rover_backgroundVideo");
-        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-        const connection = navigator.connection;
-        const deviceMemory = navigator.deviceMemory;
-        const hardwareConcurrency = navigator.hardwareConcurrency;
-        const constrainedDevice =
-            connection?.saveData ||
-            ["slow-2g", "2g", "3g"].includes(connection?.effectiveType) ||
-            (Number.isFinite(deviceMemory) && deviceMemory <= 2) ||
-            (Number.isFinite(hardwareConcurrency) && hardwareConcurrency <= 2);
-        const useBackgroundVideo =
-            backgroundVideo &&
-            !reducedMotion.matches &&
-            !window.matchMedia("(max-width: 768px), (pointer: coarse)").matches &&
-            !constrainedDevice;
-        const backgroundVideoSource = backgroundVideo?.querySelector("source[data-src]");
-
-        if (!useBackgroundVideo || !backgroundVideoSource) {
-            backgroundVideo?.remove();
-        } else {
-            const updateBackgroundPlayback = () => {
-                if (document.visibilityState === "visible") {
-                    if (!backgroundVideoSource.hasAttribute("src")) {
-                        backgroundVideoSource.src = backgroundVideoSource.dataset.src;
-                        backgroundVideo.load();
-                    }
-
-                    backgroundVideo.play()?.catch(() => {
-                        document.removeEventListener("visibilitychange", updateBackgroundPlayback);
-                        backgroundVideo.remove();
-                    });
-                } else {
-                    backgroundVideo.pause();
-                }
-            };
-
-            document.addEventListener("visibilitychange", updateBackgroundPlayback);
-            updateBackgroundPlayback();
-        }
-    </script>
 </body>
 </html>

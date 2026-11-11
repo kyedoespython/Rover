@@ -34,6 +34,7 @@ from main.models.user import (
 
 # import auth services for auth code generation, storing hashed auth code, verifying auth code
 from main.services.auth_service import (
+    AUTH_CODE_MAX_ATTEMPTS,
     AuthCode_check,
     Consume_Password_Reset_Token,
     Create_Password_Reset_Token,
@@ -56,7 +57,7 @@ from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from math import isfinite
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import func
+from sqlalchemy import case, func, update
 
 # main / extension imports
 from main.extensions import db
@@ -115,7 +116,7 @@ def Handle_Signup():
 
             # Same response as a successful signup
             flash("Check your email inbox", "info")
-            session['pending_auth_email'] = email
+            session.pop("pending_auth_email", None)
             return redirect(url_for("auth.Authenticate_User"))
 
         # Convert empty string to None for phone number
@@ -172,34 +173,39 @@ def Handle_Auth():
         # Look up the user by the first instance of the users entered email
         user = Accounts.query.filter_by(email=pending_email).first()
 
-        # if the user or authentication data is empty, present an error via flash message
-        # then redirect the user back to the login page
-        if not user or not user.authentication_data:
+        if not user:
             flash("Error finding account.", "error")
             return redirect(url_for("auth.Login"))
 
-        # check if the expiry time of the auth code exists in the database
-        if not user.authentication_data.auth_code_expires:
-            flash("This code is no longer valid", "error")
+        authentication = (
+            Authentication.query.filter_by(user_id=user.user_id)
+            .with_for_update()
+            .one_or_none()
+        )
+        if not authentication:
+            flash("Error finding account.", "error")
             return redirect(url_for("auth.Authenticate_User"))
 
-        # compare timestamps in UTC (24 hour clock)
-        expiry = user.authentication_data.auth_code_expires.replace(tzinfo=timezone.utc)
+        if (
+            authentication.authenticated
+            or not authentication.auth_code
+            or not authentication.auth_code_expires
+            or authentication.failed_attempts >= AUTH_CODE_MAX_ATTEMPTS
+        ):
+            flash("This code is no longer valid. Request a new code.", "error")
+            return redirect(url_for("auth.Authenticate_User"))
+
+        expiry = authentication.auth_code_expires.replace(tzinfo=timezone.utc)
         if datetime.now(timezone.utc) > expiry:
             flash("Your auth code has expired", "error")
             return redirect(url_for("auth.Authenticate_User"))
 
-        # check the auth code matches the hash
-        if check_password_hash(user.authentication_data.auth_code, auth_code):
-            user.authentication_data.authenticated = True
-            
-            # Clear the code and expiry so it can't be reused
-            user.authentication_data.auth_code = None
-            user.authentication_data.auth_code_expires = None
-            
+        if check_password_hash(authentication.auth_code, auth_code):
+            authentication.authenticated = True
+            authentication.auth_code = None
+            authentication.auth_code_expires = None
+            authentication.failed_attempts = 0
             db.session.commit()
-            
-            # Clear the session
             session.pop('pending_auth_email', None)
 
             sent, message = SendVerificationConfirmationEmail(user)
@@ -209,9 +215,42 @@ def Handle_Auth():
             )
             return redirect(url_for("auth.Login"))
 
+        attempts_exhausted = (
+            Authentication.failed_attempts + 1 >= AUTH_CODE_MAX_ATTEMPTS
+        )
+        result = db.session.execute(
+            update(Authentication)
+            .where(
+                Authentication.user_id == user.user_id,
+                Authentication.authenticated.is_(False),
+                Authentication.auth_code == authentication.auth_code,
+                Authentication.auth_code_expires == authentication.auth_code_expires,
+                Authentication.failed_attempts < AUTH_CODE_MAX_ATTEMPTS,
+            )
+            .values(
+                failed_attempts=Authentication.failed_attempts + 1,
+                auth_code=case(
+                    (attempts_exhausted, None),
+                    else_=Authentication.auth_code,
+                ),
+                auth_code_expires=case(
+                    (attempts_exhausted, None),
+                    else_=Authentication.auth_code_expires,
+                ),
+            )
+            .execution_options(synchronize_session=False)
+        )
+        db.session.commit()
+
+        if result.rowcount != 1:
+            flash("This code is no longer valid. Request a new code.", "error")
         else:
-            flash("Invalid auth code", "error")
-            return redirect(url_for("auth.Authenticate_User"))
+            db.session.expire(authentication)
+            if authentication.failed_attempts >= AUTH_CODE_MAX_ATTEMPTS:
+                flash("Too many invalid auth code attempts. Request a new code.", "error")
+            else:
+                flash("Invalid auth code", "error")
+        return redirect(url_for("auth.Authenticate_User"))
 
 # Route for resending auth token to user email, use POST method only using csrf protection
 @auth_bp.route("/Resend_Auth", methods=["POST"])
@@ -397,7 +436,7 @@ def Handle_Login():
         # log the user in
         login_user(user)
         
-        flash(f"Welcome to Rover {user.username}!", "success")
+        flash(f"Welcome back {user.username}!", "success")
         
         # take the user to the design page
         return redirect(url_for("auth.DesignDash"))

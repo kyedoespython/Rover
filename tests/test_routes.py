@@ -41,7 +41,7 @@ def test_successful_login_flash_uses_username_from_database():
         )
         assert response.status_code == 302
         with client.session_transaction() as session:
-            assert ("success", "Welcome to Rover RoverUser!") in session["_flashes"]
+            assert ("success", "Welcome back RoverUser!") in session["_flashes"]
 
     with app.app_context():
         db.session.remove()

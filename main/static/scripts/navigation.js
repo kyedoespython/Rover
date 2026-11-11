@@ -15,6 +15,8 @@
     let activeRequest;
     let navigationId = 0;
 
+    scheduleFlashMessageDismissal(document);
+
     // Keep only assets that belong to the currently rendered Flask template.
     const currentStylesheets = new Map(
         [...document.head.querySelectorAll('link[rel="stylesheet"]')].map((link) => {
@@ -84,6 +86,15 @@
         }
     }
 
+    function scheduleFlashMessageDismissal(root) {
+        for (const message of root.querySelectorAll(".flash-message")) {
+            const delay = message.classList.contains("flash-message-success")
+                ? 5_000
+                : 30_000;
+            window.setTimeout(() => message.remove(), delay);
+        }
+    }
+
     function syncFlashMessages(page) {
         const currentMessages = document.querySelector(".flash-message-stack");
         const nextMessages = page.querySelector(".flash-message-stack");
@@ -94,6 +105,10 @@
             currentMessages.remove();
         } else if (nextMessages) {
             document.body.append(nextMessages);
+        }
+
+        if (nextMessages) {
+            scheduleFlashMessageDismissal(nextMessages);
         }
     }
 
