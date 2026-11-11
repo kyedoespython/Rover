@@ -300,37 +300,40 @@ function initializeSchemaEditor() {
         loadButton.dataset.action = "load-schema";
         inspector.append(loadButton);
 
-        inspector.append(createElement("h3", "", "Line colors"));
-        const palette = createElement("div", "schema-line-palette");
-        lineColors.forEach(({ color, name }) => {
-            const swatch = createElement("button", "schema-line-swatch", name);
-            swatch.type = "button";
-            swatch.dataset.action = "choose-line-color";
-            swatch.dataset.color = color;
-            swatch.title = `${name}. Select this color for new relationship lines.`;
-            swatch.setAttribute("aria-label", `${name}, select for new relationship lines`);
-            swatch.setAttribute(
-                "aria-pressed",
-                String(selectedLineColor === color),
+        const appendLinePalette = () => {
+            inspector.append(createElement("h3", "", "Line colors"));
+            const palette = createElement("div", "schema-line-palette");
+            lineColors.forEach(({ color, name }) => {
+                const swatch = createElement("button", "schema-line-swatch", name);
+                swatch.type = "button";
+                swatch.dataset.action = "choose-line-color";
+                swatch.dataset.color = color;
+                swatch.title = `${name}. Select this color for new relationship lines.`;
+                swatch.setAttribute("aria-label", `${name}, select for new relationship lines`);
+                swatch.setAttribute(
+                    "aria-pressed",
+                    String(selectedLineColor === color),
+                );
+                const line = createElement("span", "schema-line-color");
+                line.style.backgroundColor = color;
+                line.setAttribute("aria-hidden", "true");
+                swatch.prepend(line);
+                palette.append(swatch);
+            });
+            inspector.append(palette);
+            inspector.append(
+                createElement(
+                    "p",
+                    "schema-line-help",
+                    "Hover over a color or connection line to see its name and use. Each color has a generic line name.",
+                ),
             );
-            const line = createElement("span", "schema-line-color");
-            line.style.backgroundColor = color;
-            line.setAttribute("aria-hidden", "true");
-            swatch.prepend(line);
-            palette.append(swatch);
-        });
-        inspector.append(palette);
-        inspector.append(
-            createElement(
-                "p",
-                "schema-line-help",
-                "Hover over a color or connection line to see its name and use. Each color has a generic line name.",
-            ),
-        );
+        };
         if (tables.length < 2) {
             inspector.append(
                 createElement("p", "", "Load or add at least two tables to create a relationship."),
             );
+            appendLinePalette();
             return;
         }
 
@@ -434,6 +437,7 @@ function initializeSchemaEditor() {
                 inspector.append(row);
             });
         }
+        appendLinePalette();
     };
 
     const renderInspector = () => {
