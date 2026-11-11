@@ -5,15 +5,29 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _environment_boolean(name: str, default: bool) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise RuntimeError(f"{name} must be set to a boolean value")
+
+
 # shared defaults for all environments
 class Config:
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # redis session config (session)
-    SESSION_TYPE = os.environ.get("SESSION_TYPE")
-    SESSION_PERMANENT = os.environ.get("SESSION_PERMANENT")
-    SESSION_USE_SIGNER = os.environ.get("SESSION_USE_SIGNER")
+    SESSION_TYPE = os.environ.get("SESSION_TYPE") or "redis"
+    SESSION_PERMANENT = _environment_boolean("SESSION_PERMANENT", False)
+    SESSION_USE_SIGNER = _environment_boolean("SESSION_USE_SIGNER", False)
 
     # cookie settings
     SESSION_COOKIE_SECURE = False
@@ -51,7 +65,7 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
 
     # Get the redis url, fallback uses localhost, dev uses same fallback
-    REDIS_URL = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")
+    REDIS_URL = os.environ.get("REDIS_URL") or "redis://127.0.0.1:6379"
 
 # running fast database tests
 class TestingConfig(Config):
@@ -80,6 +94,7 @@ class ProductionConfig(Config):
         secret = os.environ.get("SECRET_KEY")
         db_uri = os.environ.get("DATABASE_URL")
         redis_url = os.environ.get("REDIS_URL")
+        session_type = (os.environ.get("SESSION_TYPE") or "redis").strip().lower()
         resend_api_key = os.environ.get("RESEND_API_KEY")
         public_base_url = os.environ.get("PUBLIC_BASE_URL")
         rover_domain = os.environ.get("ROVER_DOMAIN")
@@ -94,6 +109,8 @@ class ProductionConfig(Config):
             raise RuntimeError("DATABASE_URL env variable is required")
         if not redis_url:
             raise RuntimeError("REDIS_URL env variable is required")
+        if session_type != "redis":
+            raise RuntimeError("SESSION_TYPE must be 'redis' in production")
         if not resend_api_key:
             raise RuntimeError("RESEND_API_KEY env variable is required")
         if not public_base_url and not rover_domain:
@@ -105,6 +122,7 @@ class ProductionConfig(Config):
         cls.SECRET_KEY = secret
         cls.SQLALCHEMY_DATABASE_URI = db_uri
         cls.REDIS_URL = redis_url
+        cls.SESSION_TYPE = session_type
         cls.RESEND_API_KEY = resend_api_key
         cls.PUBLIC_BASE_URL = public_base_url or f"https://{rover_domain.strip('/')}"
 

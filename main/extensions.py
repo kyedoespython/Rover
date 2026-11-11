@@ -27,7 +27,7 @@ csrf = CSRFProtect()
 # init of the login manager package from flask_login
 login_manager = LoginManager()
 
-redis_url = os.environ.get("REDIS_URL")
+redis_url = os.environ.get("REDIS_URL") or "redis://127.0.0.1:6379"
 redis_client = redis.from_url(redis_url)
 
 # create a session instance with redis client arg
@@ -36,7 +36,7 @@ sess = Session()
 limiter = Limiter (
     
     key_func=get_remote_address,
-    storage_uri=os.environ.get("REDIS_URL", "redis://127.0.0.1:6379"),
+    storage_uri=redis_url,
 
     # global limits on requests / use if need
     # default_limits=["100 per day", "50 per hour"]
