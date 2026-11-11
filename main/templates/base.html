@@ -31,7 +31,7 @@
 
         body {
             margin: 0;
-            background-image: url("{{ url_for('static', filename='images/RoverBackground.jpg') }}");
+            background-image: url("{{ url_for('static', filename='images/RoverBackground_optimized.jpg') }}");
             background-color: var(--rover-background);
             background-size: cover;
             background-position: center;
@@ -47,7 +47,6 @@
             height: 100%;
             object-fit: cover;
             opacity: 0.48;
-            filter: brightness(0.48) saturate(0.7);
             pointer-events: none;
         }
 
@@ -267,9 +266,15 @@
             backdrop-filter: blur(16px);
         }
 
-        @media (prefers-reduced-motion: reduce) {
+        @media (prefers-reduced-motion: reduce), (max-width: 768px) {
             #Rover_backgroundVideo {
                 display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                background-image: url("{{ url_for('static', filename='images/RoverBackground_mobile.jpg') }}");
             }
         }
 
@@ -712,9 +717,9 @@
 </head>
 
 <body>
-    <video id="Rover_backgroundVideo" autoplay muted loop playsinline preload="metadata"
-        poster="{{ url_for('static', filename='images/RoverBackground.jpg') }}" aria-hidden="true" tabindex="-1">
-        <source src="{{ url_for('static', filename='Videos/Rover_backgroundVideo.mp4') }}" type="video/mp4">
+    <video id="Rover_backgroundVideo" muted loop playsinline preload="none"
+        poster="{{ url_for('static', filename='images/RoverBackground_optimized.jpg') }}" aria-hidden="true" tabindex="-1">
+        <source data-src="{{ url_for('static', filename='Videos/Rover_backgroundVideo_720p.mp4') }}" type="video/mp4">
     </video>
 
     <main class="is-flex is-flex-direction-column" style="min-height: 100vh;">
@@ -741,8 +746,42 @@
 
         const backgroundVideo = document.getElementById("Rover_backgroundVideo");
         const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-        if (backgroundVideo && reducedMotion.matches) {
-            backgroundVideo.pause();
+        const connection = navigator.connection;
+        const deviceMemory = navigator.deviceMemory;
+        const hardwareConcurrency = navigator.hardwareConcurrency;
+        const constrainedDevice =
+            connection?.saveData ||
+            ["slow-2g", "2g", "3g"].includes(connection?.effectiveType) ||
+            (Number.isFinite(deviceMemory) && deviceMemory <= 2) ||
+            (Number.isFinite(hardwareConcurrency) && hardwareConcurrency <= 2);
+        const useBackgroundVideo =
+            backgroundVideo &&
+            !reducedMotion.matches &&
+            !window.matchMedia("(max-width: 768px), (pointer: coarse)").matches &&
+            !constrainedDevice;
+        const backgroundVideoSource = backgroundVideo?.querySelector("source[data-src]");
+
+        if (!useBackgroundVideo || !backgroundVideoSource) {
+            backgroundVideo?.remove();
+        } else {
+            const updateBackgroundPlayback = () => {
+                if (document.visibilityState === "visible") {
+                    if (!backgroundVideoSource.hasAttribute("src")) {
+                        backgroundVideoSource.src = backgroundVideoSource.dataset.src;
+                        backgroundVideo.load();
+                    }
+
+                    backgroundVideo.play()?.catch(() => {
+                        document.removeEventListener("visibilitychange", updateBackgroundPlayback);
+                        backgroundVideo.remove();
+                    });
+                } else {
+                    backgroundVideo.pause();
+                }
+            };
+
+            document.addEventListener("visibilitychange", updateBackgroundPlayback);
+            updateBackgroundPlayback();
         }
     </script>
 </body>

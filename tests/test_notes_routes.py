@@ -157,10 +157,27 @@ def test_notes_route_create_load_edit_and_delete(notes_client):
 
 def test_home_uses_the_rover_background_video_and_dark_hero(notes_client):
     response = notes_client.get("/")
+    optimized_video = (
+        Path(__file__).parent.parent
+        / "main"
+        / "static"
+        / "Videos"
+        / "Rover_backgroundVideo_720p.mp4"
+    )
+    optimized_backgrounds = [
+        Path(__file__).parent.parent / "main" / "static" / "images" / name
+        for name in ("RoverBackground_optimized.jpg", "RoverBackground_mobile.jpg")
+    ]
 
     assert response.status_code == 200
     assert b'id="Rover_backgroundVideo"' in response.data
-    assert b"Videos/Rover_backgroundVideo.mp4" in response.data
+    assert b"Videos/Rover_backgroundVideo_720p.mp4" in response.data
+    assert b'preload="none"' in response.data
+    assert b"images/RoverBackground_optimized.jpg" in response.data
+    assert b"images/RoverBackground_mobile.jpg" in response.data
+    assert optimized_video.stat().st_size < 5_000_000
+    assert optimized_backgrounds[0].stat().st_size < 300_000
+    assert optimized_backgrounds[1].stat().st_size < 100_000
     assert b'class="home-hero-title"' in response.data
     assert b"Ideas into<br>intelligent software." in response.data
 

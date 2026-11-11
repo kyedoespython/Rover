@@ -25,6 +25,9 @@ tests/
 
 # Local frontend install; built/static assets are copied from main/static
 node_modules/
+# Keep the high-bitrate source out of production images.
+main/static/Videos/Rover_backgroundVideo.mp4
+main/static/images/RoverBackground.jpg
 
 # OS artifacts
 .DS_Store
