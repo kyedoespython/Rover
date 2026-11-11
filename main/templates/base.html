@@ -19,14 +19,18 @@
 
         :root {
             color-scheme: dark;
-            --rover-background: #0c0b10;
-            --rover-surface: rgba(22, 20, 29, 0.9);
-            --rover-surface-raised: rgba(30, 27, 39, 0.94);
-            --rover-border: rgba(208, 220, 242, 0.16);
-            --rover-text: #f5f2fa;
-            --rover-muted: #aaa4b7;
-            --rover-accent: #5b8ff0;
-            --rover-accent-hover: #91b6ff;
+            --rover-background: #080b10;
+            --rover-surface: rgba(15, 19, 26, 0.94);
+            --rover-surface-raised: rgba(23, 29, 39, 0.97);
+            --rover-border: rgba(164, 188, 220, 0.2);
+            --rover-text: #f3f6fb;
+            --rover-muted: #a8b5c7;
+            --rover-accent: #4b91ee;
+            --rover-accent-hover: #8fc0ff;
+            --rover-control-bg: #141b25;
+            --rover-control-hover: #1b2b3f;
+            --rover-control-border: #46566d;
+            --rover-danger: #e05a66;
         }
 
         body {
@@ -261,9 +265,441 @@
         }
 
         body .top-nav {
-            border-bottom: 1px solid rgba(225, 219, 240, 0.1);
-            background: rgba(12, 11, 16, 0.62);
-            backdrop-filter: blur(16px);
+            min-height: 3.75rem;
+            border-bottom: 1px solid rgba(164, 188, 220, 0.2);
+            background: rgba(7, 10, 15, 0.94);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+            backdrop-filter: blur(14px);
+        }
+
+        body .button,
+        body button:not(.schema-line-swatch) {
+            min-height: 2.55rem !important;
+            padding: 0.55rem 0.95rem !important;
+            border: 1px solid var(--rover-control-border) !important;
+            border-radius: 5px !important;
+            background: var(--rover-control-bg) !important;
+            color: var(--rover-text) !important;
+            font-family: "Segoe UI", Arial, sans-serif !important;
+            font-size: 0.85rem !important;
+            font-weight: 600 !important;
+            line-height: 1.2 !important;
+            box-shadow: none !important;
+            text-decoration: none !important;
+            transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+        }
+
+        body .button:hover,
+        body button:not(.schema-line-swatch):hover:not(:disabled) {
+            border-color: var(--rover-accent-hover) !important;
+            background: var(--rover-control-hover) !important;
+            color: #fff !important;
+        }
+
+        body .button.is-black:not(.is-outlined),
+        body button[type="submit"],
+        body .button.home-cta,
+        body .ollama-chat-send,
+        body .rover-agent-save,
+        body .rover-agent-send,
+        body #schemaEditorDialog .schema-tool[aria-pressed="true"] {
+            border-color: var(--rover-accent) !important;
+            background: #286fc5 !important;
+            color: #fff !important;
+        }
+
+        body .button.is-black:not(.is-outlined):hover,
+        body button[type="submit"]:hover:not(:disabled),
+        body .button.home-cta:hover,
+        body .ollama-chat-send:hover:not(:disabled),
+        body .rover-agent-save:hover:not(:disabled),
+        body .rover-agent-send:hover:not(:disabled),
+        body #schemaEditorDialog .schema-tool[aria-pressed="true"]:hover {
+            border-color: var(--rover-accent-hover) !important;
+            background: #347fdb !important;
+            color: #fff !important;
+        }
+
+        body .button.is-black.is-outlined,
+        body .button.is-outlined {
+            border-color: var(--rover-control-border) !important;
+            background: #101720 !important;
+            color: #e8f0fc !important;
+        }
+
+        body .button.is-black.is-outlined:hover,
+        body .button.is-outlined:hover {
+            border-color: var(--rover-accent-hover) !important;
+            background: rgba(53, 117, 194, 0.2) !important;
+            color: #fff !important;
+        }
+
+        body .button.is-black,
+        body .button.is-black:hover {
+            transform: none !important;
+        }
+
+        body .button:focus-visible,
+        body button:not(.schema-line-swatch):focus-visible,
+        body a:not(.button):focus-visible,
+        body input:focus-visible,
+        body select:focus-visible,
+        body textarea:focus-visible {
+            outline: 2px solid var(--rover-accent-hover) !important;
+            outline-offset: 2px;
+        }
+
+        body .button:disabled,
+        body button:disabled {
+            cursor: not-allowed !important;
+            opacity: 0.56;
+        }
+
+        body a:not(.button) {
+            color: var(--rover-accent-hover) !important;
+            text-decoration-color: rgba(143, 192, 255, 0.55);
+            text-underline-offset: 0.18em;
+        }
+
+        body button.delete-note-button,
+        body button.schema-close,
+        body button.schema-remove-column,
+        body .ollama-end-session {
+            border-color: rgba(224, 90, 102, 0.72) !important;
+            background: rgba(224, 90, 102, 0.12) !important;
+            color: #ff9aa2 !important;
+        }
+
+        body button.delete-note-button:hover:not(:disabled),
+        body button.schema-close:hover,
+        body button.schema-remove-column:hover,
+        body .ollama-end-session:hover {
+            border-color: var(--rover-danger) !important;
+            background: rgba(224, 90, 102, 0.24) !important;
+            color: #ffd9dc !important;
+        }
+
+        body .ollama-drawer {
+            border: 1px solid var(--rover-border) !important;
+            border-radius: 5px !important;
+            background: var(--rover-surface) !important;
+            box-shadow: -12px 0 36px rgba(0, 0, 0, 0.42) !important;
+        }
+
+        body .ollama-mode-select,
+        body .ollama-drawer-settings input,
+        body .ollama-drawer-settings select,
+        body .ollama-chat-input {
+            border-color: var(--rover-border) !important;
+            background: rgba(8, 11, 16, 0.86) !important;
+            color: var(--rover-text) !important;
+        }
+
+        body .ollama-drawer-control {
+            min-width: 2.4rem !important;
+            min-height: 2.4rem !important;
+            padding: 0 !important;
+        }
+
+        body .ollama-end-session {
+            background: rgba(224, 90, 102, 0.12) !important;
+        }
+
+        body .ollama-chat-message[data-role="assistant"],
+        body .ollama-expanded-response {
+            border-color: var(--rover-border) !important;
+            background: var(--rover-surface-raised) !important;
+            color: var(--rover-text) !important;
+        }
+
+        body .ollama-chat-message[data-role="user"] {
+            border-color: rgba(106, 170, 255, 0.6) !important;
+            background: #245c9e !important;
+            color: #fff !important;
+        }
+
+        body .ollama-chat-form {
+            border-color: var(--rover-border) !important;
+            background: rgba(11, 15, 21, 0.98) !important;
+            box-shadow: none !important;
+        }
+
+        body .ollama-chat-form:focus-within {
+            border-color: var(--rover-accent-hover) !important;
+            box-shadow: 0 0 0 2px rgba(75, 145, 238, 0.24) !important;
+        }
+
+        body .ollama-chat-input {
+            color: var(--rover-text) !important;
+        }
+
+        body input::placeholder,
+        body textarea::placeholder {
+            color: #9aa8bb !important;
+        }
+
+        body #supportPage .input,
+        body #supportPage .select select,
+        body #supportPage .textarea {
+            border-color: var(--rover-border) !important;
+            background: rgba(8, 11, 16, 0.86) !important;
+            color: var(--rover-text) !important;
+        }
+
+        body #supportPage .input::placeholder,
+        body #supportPage .textarea::placeholder {
+            color: #9aa8bb !important;
+        }
+
+        body #integrationsPage .integrations-content,
+        body #designPage .api-key-dialog {
+            border: 1px solid var(--rover-border) !important;
+            border-radius: 10px !important;
+            background: var(--rover-surface) !important;
+            color: var(--rover-text) !important;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.32) !important;
+        }
+
+        body #integrationsPage .current-model,
+        body #designPage .saved-api-key {
+            border-color: var(--rover-border) !important;
+            background: var(--rover-surface-raised) !important;
+            color: var(--rover-text) !important;
+        }
+
+        body #designPage .api-key-close {
+            width: 2.4rem;
+            min-height: 2.4rem !important;
+            padding: 0 !important;
+            background: transparent !important;
+            color: var(--rover-muted) !important;
+        }
+
+        body #designPage .api-key-close:hover {
+            background: var(--rover-control-hover) !important;
+            color: #fff !important;
+        }
+
+        body #schemaEditorDialog,
+        body #schemaEditorDialog .schema-header,
+        body #schemaEditorDialog .schema-toolbar,
+        body #schemaEditorDialog .schema-canvas,
+        body #schemaEditorDialog .schema-table-card,
+        body #schemaEditorDialog .schema-table-select,
+        body #schemaEditorDialog .schema-inspector,
+        body #schemaEditorDialog .schema-relationship,
+        body #schemaEditorDialog .schema-line-palette {
+            border-color: var(--rover-border) !important;
+            background-color: var(--rover-surface-raised) !important;
+            color: var(--rover-text) !important;
+        }
+
+        body #schemaEditorDialog {
+            border-radius: 10px;
+        }
+
+        body #schemaEditorDialog .schema-canvas {
+            background-image: radial-gradient(rgba(143, 192, 255, 0.16) 1px, transparent 1px) !important;
+        }
+
+        body #schemaEditorDialog .schema-table-card,
+        body #schemaEditorDialog .schema-inspector {
+            background: rgba(13, 18, 26, 0.98) !important;
+        }
+
+        body #schemaEditorDialog .schema-table-select {
+            background: rgba(48, 101, 164, 0.22) !important;
+            color: var(--rover-text) !important;
+        }
+
+        body #schemaEditorDialog .schema-table-row,
+        body #schemaEditorDialog .schema-inspector h3,
+        body #schemaEditorDialog .schema-inspector label,
+        body #schemaEditorDialog .schema-empty strong {
+            color: var(--rover-text) !important;
+        }
+
+        body #schemaEditorDialog .schema-description,
+        body #schemaEditorDialog .schema-table-type,
+        body #schemaEditorDialog .schema-inspector p,
+        body #schemaEditorDialog .schema-empty,
+        body #schemaEditorDialog .schema-line-help,
+        body #schemaEditorDialog .schema-status {
+            color: var(--rover-muted) !important;
+        }
+
+        body #schemaEditorDialog .schema-line-swatch {
+            border-color: transparent !important;
+            background: transparent !important;
+            color: var(--rover-text) !important;
+        }
+
+        body #schemaEditorDialog .schema-line-swatch[aria-pressed="true"] {
+            border-color: var(--rover-accent) !important;
+            background: rgba(75, 145, 238, 0.16) !important;
+        }
+
+        body #agentsPage .rover-agent-card {
+            border: 1px solid var(--rover-border) !important;
+            border-radius: 10px;
+            background: var(--rover-surface) !important;
+            color: var(--rover-text) !important;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        body #agentsPage .rover-agent-header,
+        body #agentsPage .rover-agent-settings,
+        body #agentsPage .rover-agent-chat-form {
+            border-color: var(--rover-border) !important;
+            background: var(--rover-surface-raised) !important;
+            color: var(--rover-text) !important;
+        }
+
+        body #agentsPage .rover-agent-title,
+        body #agentsPage .rover-agent-settings summary,
+        body #agentsPage .rover-agent-settings label {
+            color: var(--rover-text) !important;
+        }
+
+        body #agentsPage .rover-agent-model,
+        body #agentsPage .rover-agent-settings-status,
+        body #agentsPage .rover-agent-empty {
+            color: var(--rover-muted) !important;
+        }
+
+        body #agentsPage .rover-agent-settings input,
+        body #agentsPage .rover-agent-settings textarea,
+        body #agentsPage .rover-agent-input {
+            border-color: var(--rover-border) !important;
+            background: rgba(8, 11, 16, 0.86) !important;
+            color: var(--rover-text) !important;
+        }
+
+        body #agentsPage .rover-agent-message {
+            border-color: var(--rover-border) !important;
+            background: #171f2a !important;
+            color: var(--rover-text) !important;
+        }
+
+        body #agentsPage .rover-agent-message[data-role="user"] {
+            border-color: rgba(106, 170, 255, 0.6) !important;
+            background: #245c9e !important;
+            color: #fff !important;
+        }
+
+        body #agentsPage .rover-agent-status[data-state="ready"] {
+            color: #79d6ac !important;
+        }
+
+        body #agentsPage .rover-agent-status[data-state="busy"] {
+            color: #ffd27b !important;
+        }
+
+        body #agentsPage .rover-agent-status[data-state="error"],
+        body #agentsPage .agents-page-status {
+            color: #ff969e !important;
+        }
+
+        body #notesPage .heading-popup {
+            border-radius: 8px !important;
+            background: var(--rover-surface-raised) !important;
+        }
+
+        body #notesPage .heading-popup button {
+            border-color: var(--rover-control-border) !important;
+            background: var(--rover-control-bg) !important;
+            color: var(--rover-text) !important;
+            justify-content: flex-start;
+        }
+
+        body #notesPage .heading-popup button:hover,
+        body #notesPage .heading-popup button:focus-visible {
+            border-color: var(--rover-accent-hover) !important;
+            background: rgba(53, 117, 194, 0.2) !important;
+            color: #fff !important;
+        }
+
+        body #notesPage .note-open-button span,
+        body #notesPage .empty-notes,
+        body #notesPage .empty-editor,
+        body #notesPage .notes-pagination {
+            color: var(--rover-muted) !important;
+        }
+
+        body #designPage .api-key-dialog-description,
+        body #designPage .api-key-row-meta,
+        body #designPage .saved-api-key-type {
+            color: var(--rover-muted) !important;
+        }
+
+        body #designPage .api-key-status[data-state="error"],
+        body #integrationsPage .integrations-status[data-state="error"] {
+            color: #ff969e !important;
+        }
+
+        body #designPage .api-key-status[data-state="success"],
+        body #integrationsPage .integrations-status[data-state="success"] {
+            color: #79d6ac !important;
+        }
+
+        body #integrationsPage .integrations-status {
+            color: var(--rover-muted) !important;
+        }
+
+        body .ollama-assistant-model,
+        body .ollama-settings-status,
+        body .ollama-folder-name,
+        body .ollama-chat-empty {
+            color: var(--rover-muted) !important;
+        }
+
+        body .ollama-assistant-status {
+            color: var(--rover-muted) !important;
+        }
+
+        body .ollama-assistant-status[data-state="ready"] {
+            color: #79d6ac !important;
+        }
+
+        body .ollama-assistant-status[data-state="busy"] {
+            color: #ffd27b !important;
+        }
+
+        body .ollama-assistant-status[data-state="offline"],
+        body .ollama-assistant-status[data-state="error"] {
+            color: #ff969e !important;
+        }
+
+        body #agentsPage .rover-agent-status {
+            color: var(--rover-muted) !important;
+        }
+
+        body .Rover_About {
+            width: min(calc(100% - 2rem), 48rem);
+            margin: clamp(2rem, 8vh, 5rem) auto;
+            padding: clamp(1.5rem, 4vw, 2.5rem);
+            border: 1px solid var(--rover-border);
+            border-radius: 10px;
+            background: var(--rover-surface);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.32);
+        }
+
+        body .Rover_About h2 {
+            color: var(--rover-text);
+        }
+
+        body .Rover_About li {
+            margin-top: 0.5rem;
+            color: var(--rover-muted);
+        }
+
+        @media (max-width: 600px) {
+            body .top-nav .button,
+            body .notes-nav .button {
+                min-height: 2.45rem !important;
+                padding: 0.45rem 0.6rem !important;
+                font-size: 0.76rem !important;
+            }
         }
 
         @media (prefers-reduced-motion: reduce), (max-width: 768px) {
