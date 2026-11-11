@@ -16,7 +16,7 @@ function initializeOllamaDrawer() {
     const sendButton = document.getElementById("ollamaChatSend");
     const settingsForm = document.getElementById("ollamaChatbotSettingsForm");
     const nameInput = document.getElementById("ollamaChatbotNameInput");
-    const modelInput = document.getElementById("ollamaChatbotModelInput");
+    const modelSelect = document.getElementById("ollamaChatbotModelSelect");
     const settingsStatus = document.getElementById("ollamaSettingsStatus");
     const permissionsForm = document.getElementById("ollamaPermissionsForm");
     const readPermission = document.getElementById("ollamaAllowFolderRead");
@@ -44,7 +44,7 @@ function initializeOllamaDrawer() {
         !(sendButton instanceof HTMLButtonElement) ||
         !(settingsForm instanceof HTMLFormElement) ||
         !(nameInput instanceof HTMLInputElement) ||
-        !(modelInput instanceof HTMLInputElement) ||
+        !(modelSelect instanceof HTMLSelectElement) ||
         !(settingsStatus instanceof HTMLElement) ||
         !(permissionsForm instanceof HTMLFormElement) ||
         !(readPermission instanceof HTMLInputElement) ||
@@ -105,7 +105,7 @@ function initializeOllamaDrawer() {
         sendButton.disabled = !canChat || !active;
         endSessionButton.disabled = !canChat || !active;
         newSessionButton.hidden = !canChat || active;
-        settingsForm.querySelectorAll("input, button").forEach((control) => {
+        settingsForm.querySelectorAll("input, select, button").forEach((control) => {
             control.disabled = !canChat || !active;
         });
         permissionsForm.querySelectorAll("input, button").forEach((control) => {
@@ -124,6 +124,39 @@ function initializeOllamaDrawer() {
         }
     };
 
+    const updateModelOptions = (availableModels, preferredModel) => {
+        const models = [...new Set(
+            availableModels.filter((model) => typeof model === "string" && model),
+        )];
+        const previousModel = modelSelect.value;
+        modelSelect.replaceChildren();
+
+        if (models.length === 0) {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "No models currently available";
+            option.disabled = true;
+            option.selected = true;
+            modelSelect.append(option);
+            return "";
+        }
+
+        models.forEach((model) => {
+            const option = document.createElement("option");
+            option.value = model;
+            option.textContent = model;
+            modelSelect.append(option);
+        });
+
+        const selectedModel = models.includes(preferredModel)
+            ? preferredModel
+            : models.includes(previousModel)
+                ? previousModel
+                : models[0];
+        modelSelect.value = selectedModel;
+        return selectedModel;
+    };
+
     const refreshStatus = async () => {
         try {
             const response = await fetch(drawer.dataset.statusUrl, {
@@ -132,12 +165,19 @@ function initializeOllamaDrawer() {
             });
             const result = await response.json();
             modelName.textContent = result.model || "Not configured";
+            if (Array.isArray(result.available_models)) {
+                updateModelOptions(result.available_models, result.model);
+            } else {
+                updateModelOptions([], result.model);
+            }
             setStatus(
                 result.status || "offline",
                 result.message || "Unable to check Ollama status.",
             );
+            return result;
         } catch {
             setStatus("offline", "Could not reach Rover.");
+            return null;
         }
     };
 
@@ -179,7 +219,7 @@ function initializeOllamaDrawer() {
             chatbotName.textContent = result.chatbot_name;
             nameInput.value = result.chatbot_name;
             modelName.textContent = result.model;
-            modelInput.value = result.model;
+            modelSelect.value = result.model;
             readPermission.checked = result.permissions.read_folder;
             writePermission.checked = result.permissions.write_folder;
             result.messages.forEach((message) => {
@@ -208,7 +248,7 @@ function initializeOllamaDrawer() {
             return;
         }
 
-        const maximum = Math.min(520, window.innerWidth - 24);
+        const maximum = Math.min(760, window.innerWidth - 24);
         drawer.style.setProperty(
             "--ollama-drawer-width",
             `${Math.max(300, Math.min(maximum, width))}px`,
@@ -320,7 +360,7 @@ function initializeOllamaDrawer() {
             const currentWidth = drawer.getBoundingClientRect().width;
             drawer.style.setProperty(
                 "--ollama-drawer-width",
-                `${Math.min(520, currentWidth + Math.abs(dragDistance))}px`,
+                `${Math.min(760, currentWidth + Math.abs(dragDistance))}px`,
             );
             dragStartX = event.clientX;
         }
@@ -359,10 +399,10 @@ function initializeOllamaDrawer() {
 
     dragHandle.addEventListener("dblclick", () => {
         const currentWidth = drawer.getBoundingClientRect().width;
-        const defaultWidth = Math.min(380, window.innerWidth - 24);
+        const defaultWidth = Math.min(560, window.innerWidth - 24);
         drawer.style.setProperty(
             "--ollama-drawer-width",
-            `${currentWidth > defaultWidth + 20 ? defaultWidth : Math.min(480, window.innerWidth - 24)}px`,
+            `${currentWidth > defaultWidth + 20 ? defaultWidth : Math.min(680, window.innerWidth - 24)}px`,
         );
     });
 
@@ -375,7 +415,7 @@ function initializeOllamaDrawer() {
         try {
             const result = await requestJson(drawer.dataset.chatbotSettingsUrl, {
                 name: nameInput.value.trim(),
-                model: modelInput.value.trim(),
+                model: modelSelect.value,
             });
             chatbotName.textContent = result.name;
             modelName.textContent = result.model;
@@ -478,6 +518,68 @@ function initializeOllamaDrawer() {
         }
     });
 
+    const readChatStream = async (response, messageElement) => {
+        if (!response.ok) {
+            const result = await response.json();
+            throw new Error(result.error || "Ollama could not complete the request.");
+        }
+        if (!response.body) {
+            throw new Error("The Rover response stream is unavailable.");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullMessage = "";
+        let completed = false;
+
+        const processLine = async (line) => {
+            if (!line.trim()) {
+                return;
+            }
+            let event;
+            try {
+                event = JSON.parse(line);
+            } catch {
+                throw new Error("Rover returned an invalid response stream.");
+            }
+            if (event.error) {
+                throw new Error(event.error);
+            }
+            if (typeof event.token === "string") {
+                fullMessage += event.token;
+                for (const character of event.token) {
+                    messageElement.textContent += character;
+                    messagesPanel.scrollTop = messagesPanel.scrollHeight;
+                    await new Promise((resolve) => window.setTimeout(resolve, 6));
+                }
+            }
+            if (event.done === true) {
+                completed = true;
+            }
+        };
+
+        while (true) {
+            const { value, done } = await reader.read();
+            buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+            for (const line of lines) {
+                await processLine(line);
+            }
+            if (done) {
+                break;
+            }
+        }
+        if (buffer.trim()) {
+            await processLine(buffer);
+        }
+        if (!completed || !fullMessage) {
+            throw new Error("The response stream ended before Rover finished replying.");
+        }
+        return fullMessage;
+    };
+
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
         const prompt = input.value.trim();
@@ -492,14 +594,27 @@ function initializeOllamaDrawer() {
         input.value = "";
         loadedFileContext = "";
         setStatus("busy", "Ollama is generating a response...");
+        const assistantMessage = appendMessage("assistant", "");
+        assistantMessage.classList.add("is-streaming");
 
         try {
-            const result = await requestJson(drawer.dataset.chatUrl, { message: prompt });
-            messages.push({ role: "assistant", content: result.message });
-            latestAssistantReply = result.message;
-            appendMessage("assistant", result.message);
+            const response = await fetch(drawer.dataset.chatUrl, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfInput.value,
+                    Accept: "application/x-ndjson",
+                },
+                body: JSON.stringify({ message: prompt }),
+            });
+            const assistantText = await readChatStream(response, assistantMessage);
+            assistantMessage.classList.remove("is-streaming");
+            messages.push({ role: "assistant", content: assistantText });
+            latestAssistantReply = assistantText;
             setStatus("ready", "Model is ready.");
         } catch (error) {
+            assistantMessage.classList.remove("is-streaming");
             messages.pop();
             appendMessage("assistant", error.message);
             setStatus("error", error.message);
@@ -549,7 +664,29 @@ function initializeOllamaDrawer() {
             () => window.clearInterval(statusPoll),
             { once: true },
         );
-        window.addEventListener("ollama-preferences-updated", refreshStatus);
+        window.addEventListener("ollama-preferences-updated", async (event) => {
+            const result = await refreshStatus();
+            if (!event.detail?.apiKeySaved || !result?.available_models?.length) {
+                return;
+            }
+
+            if (modelSelect.value === result.model) {
+                settingsStatus.textContent = "Ollama API key connected to Rover AI.";
+                return;
+            }
+
+            try {
+                const saved = await requestJson(drawer.dataset.chatbotSettingsUrl, {
+                    name: nameInput.value.trim() || "Rover AI",
+                    model: modelSelect.value,
+                });
+                chatbotName.textContent = saved.name;
+                modelName.textContent = saved.model;
+                settingsStatus.textContent = `Ollama API key connected. ${saved.model} is ready.`;
+            } catch (error) {
+                settingsStatus.textContent = error.message;
+            }
+        });
     }
 }
 

@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
+import json
 from unittest.mock import patch
 
 import pytest
@@ -275,7 +276,7 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'class="ollama-mode-section"' in response.data
     assert b'id="ollamaMinimize"' in response.data
     assert b'id="ollamaEndSession"' in response.data
-    assert b"scripts/Integrations/Ollama.js?v=8" in response.data
+    assert b"scripts/Integrations/Ollama.js?v=9" in response.data
     assert response.data.count(b'id="ollamaDrawer"') == 1
     assert b'class="button is-outlined design-side-button rover-ai-nav-button"' in response.data
     assert b"ollama-drawer-toggle" not in response.data
@@ -288,6 +289,8 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b"Verify your account to enable Rover AI chat." in response.data
     assert b"#designPage .api-key-dialog .label" in response.data
     assert b'id="ollamaChatInput"' in response.data and b" disabled required" in response.data
+    assert b'id="ollamaChatbotModelSelect"' in response.data
+    assert b'id="ollamaChatbotModelInput"' not in response.data
 
     other_page = notes_client.get("/Rover/Settings", follow_redirects=True)
     assert other_page.status_code == 200
@@ -579,9 +582,13 @@ def test_ollama_chat_uses_selected_model_and_decrypted_user_key(mock_post, notes
     session_response = notes_client.get("/api/ollama/session")
     assert session_response.status_code == 200
 
-    mock_post.return_value.json.return_value = {
-        "message": {"role": "assistant", "content": "Hello from Ollama"}
-    }
+    mock_post.return_value.iter_lines.return_value = iter(
+        [
+            b'{"message":{"content":"Hello "}}',
+            b'{"message":{"content":"from Ollama"}}',
+            b'{"done":true}',
+        ]
+    )
     mock_post.return_value.raise_for_status.return_value = None
 
     response = notes_client.post(
@@ -590,8 +597,19 @@ def test_ollama_chat_uses_selected_model_and_decrypted_user_key(mock_post, notes
     )
 
     assert response.status_code == 200
-    assert response.get_json()["message"] == "Hello from Ollama"
+    events = [
+        json.loads(line)
+        for line in response.get_data(as_text=True).splitlines()
+    ]
+    assert events == [
+        {"token": "Hello "},
+        {"token": "from Ollama"},
+        {"done": True, "message": "Hello from Ollama"},
+    ]
+    assert response.mimetype == "application/x-ndjson"
     assert mock_post.call_args.kwargs["json"]["model"] == "qwen3:latest"
+    assert mock_post.call_args.kwargs["json"]["stream"] is True
+    assert mock_post.call_args.kwargs["stream"] is True
     assert mock_post.call_args.args[0] == "https://ollama.com/api/chat"
     assert mock_post.call_args.kwargs["headers"]["Authorization"] == (
         "Bearer test-provider-secret"
@@ -608,9 +626,12 @@ def test_ollama_local_does_not_send_saved_key(mock_post, notes_client):
             "api_key": "must-not-leak-to-local",
         },
     )
-    mock_post.return_value.json.return_value = {
-        "message": {"role": "assistant", "content": "Local response"}
-    }
+    mock_post.return_value.iter_lines.return_value = iter(
+        [
+            b'{"message":{"content":"Local response"}}',
+            b'{"done":true}',
+        ]
+    )
     mock_post.return_value.raise_for_status.return_value = None
     assert notes_client.get("/api/ollama/session").status_code == 200
 
@@ -620,6 +641,11 @@ def test_ollama_local_does_not_send_saved_key(mock_post, notes_client):
     )
 
     assert response.status_code == 200
+    events = [
+        json.loads(line)
+        for line in response.get_data(as_text=True).splitlines()
+    ]
+    assert events[-1]["message"] == "Local response"
     assert mock_post.call_args.kwargs["headers"] == {}
     assert mock_post.call_args.args[0] == "http://ollama.test/api/chat"
 
@@ -656,15 +682,17 @@ def test_chat_session_history_is_deleted_when_user_ends_session(mock_post, notes
     assert session_response.status_code == 200
     session_id = session_response.get_json()["session_id"]
 
-    mock_post.return_value.json.side_effect = [
-        {"message": {"role": "assistant", "content": "Session reply"}},
-        {"message": {"role": "assistant", "content": "Second reply"}},
+    mock_post.return_value.iter_lines.side_effect = [
+        iter([b'{"message":{"content":"Session reply"}}', b'{"done":true}']),
+        iter([b'{"message":{"content":"Second reply"}}', b'{"done":true}']),
     ]
     mock_post.return_value.raise_for_status.return_value = None
     response = notes_client.post("/api/ollama/chat", json={"message": "Keep this?"})
     assert response.status_code == 200
+    response.get_data(as_text=True)
     response = notes_client.post("/api/ollama/chat", json={"message": "Follow up"})
     assert response.status_code == 200
+    response.get_data(as_text=True)
     assert mock_post.call_args.kwargs["json"]["messages"] == [
         {"role": "user", "content": "Keep this?"},
         {"role": "assistant", "content": "Session reply"},

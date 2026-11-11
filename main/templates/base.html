@@ -69,14 +69,13 @@
         }
 
         .ollama-drawer {
-            --ollama-drawer-width: 380px;
+            --ollama-drawer-width: 560px;
             position: fixed;
             z-index: 1200;
-            top: auto;
-            right: 0;
-            bottom: 7vh;
+            top: 3vh;
+            right: 1.5vw;
             width: min(var(--ollama-drawer-width), calc(100vw - 24px));
-            height: min(78dvh, 680px);
+            height: min(90dvh, 860px);
             display: flex;
             flex-direction: column;
             border: 2px solid #111;
@@ -204,7 +203,8 @@
             color: #222;
         }
 
-        .ollama-drawer-settings input[type="text"] {
+        .ollama-drawer-settings input[type="text"],
+        .ollama-drawer-settings select {
             display: block;
             width: 100%;
             min-width: 0;
@@ -352,6 +352,12 @@
             align-self: flex-start;
         }
 
+        .ollama-chat-message.is-streaming::after {
+            content: "▋";
+            animation: ollama-pulse 0.7s infinite alternate;
+            margin-left: 0.1em;
+        }
+
         .ollama-chat-empty {
             margin: auto;
             color: #777;
@@ -421,9 +427,11 @@
             }
 
             .ollama-drawer {
-                --ollama-drawer-width: min(100vw, 390px);
+                --ollama-drawer-width: min(100vw, 560px);
+                top: auto;
+                right: 0;
                 bottom: 0;
-                height: min(86dvh, 720px);
+                height: min(90dvh, 860px);
             }
         }
     </style>

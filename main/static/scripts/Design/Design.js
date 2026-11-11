@@ -141,7 +141,9 @@ function initializeDesignDashboard() {
             savedKeysList.prepend(entry);
             form.reset();
             setStatus("API key saved. The secret cannot be viewed again.", "success");
-            window.dispatchEvent(new CustomEvent("ollama-preferences-updated"));
+            window.dispatchEvent(new CustomEvent("ollama-preferences-updated", {
+                detail: { apiKeySaved: true },
+            }));
         } catch {
             setStatus("Could not reach the server. Please try again.", "error");
         } finally {

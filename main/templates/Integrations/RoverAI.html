@@ -39,8 +39,10 @@
         <form id="ollamaChatbotSettingsForm">
             <label for="ollamaChatbotNameInput">Chatbot name</label>
             <input id="ollamaChatbotNameInput" name="name" type="text" maxlength="64" value="Rover AI" required>
-            <label for="ollamaChatbotModelInput">Ollama model</label>
-            <input id="ollamaChatbotModelInput" name="model" type="text" maxlength="128" placeholder="e.g. llama3.2" required>
+            <label for="ollamaChatbotModelSelect">Ollama model</label>
+            <select id="ollamaChatbotModelSelect" name="model" required>
+                <option value="" selected disabled>Loading available models...</option>
+            </select>
             <button id="ollamaSaveChatbotSettings" type="submit">Save chatbot settings</button>
         </form>
         <form id="ollamaPermissionsForm">

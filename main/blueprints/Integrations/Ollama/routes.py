@@ -1,11 +1,21 @@
 from datetime import datetime, timezone
+import json
 from math import isfinite
 from urllib.parse import urlsplit
 from uuid import uuid4
 
 import requests
-from flask import current_app, jsonify, render_template, request, session
+from flask import (
+    Response,
+    current_app,
+    jsonify,
+    render_template,
+    request,
+    session,
+    stream_with_context,
+)
 from flask_login import current_user, login_required
+from sqlalchemy.exc import SQLAlchemyError
 
 from main.extensions import db, limiter
 from main.models.user import (
@@ -557,6 +567,12 @@ def chat():
     model_name = chatbot.model_name
     chatbot_id = chatbot.chatbot_id
     session_id = chat_session.session_id
+    response = None
+
+    def close_response():
+        if response is not None:
+            response.close()
+
     try:
         headers = _ollama_headers(selected_key)
         db.session.commit()
@@ -565,67 +581,132 @@ def chat():
             json={
                 "model": model_name,
                 "messages": ollama_messages,
-                "stream": False,
+                "stream": True,
             },
             headers=headers,
             timeout=(5, 180),
+            stream=True,
         )
         response.raise_for_status()
-        result = response.json()
     except requests.Timeout:
+        close_response()
         return jsonify(error="Ollama took too long to respond. Please try again."), 504
     except requests.HTTPError as error:
+        close_response()
         if error.response is not None and error.response.status_code in (401, 403):
             return jsonify(error="Ollama rejected the API key. Check the saved key and try again."), 502
         current_app.logger.exception("Ollama chat request failed")
         return jsonify(error="Ollama could not complete the request."), 502
     except requests.RequestException:
+        close_response()
         current_app.logger.exception("Ollama chat request failed")
         return jsonify(error="Ollama could not complete the request."), 502
     except OllamaAuthenticationError as error:
+        close_response()
         return jsonify(error=str(error)), 401
     except RuntimeError as error:
+        close_response()
         current_app.logger.exception("The selected Ollama API key could not be decrypted")
         return jsonify(error=str(error)), 503
-    except ValueError:
-        current_app.logger.exception("Ollama returned an invalid response")
-        return jsonify(error="Ollama returned an invalid response."), 502
 
-    response_message = result.get("message") if isinstance(result, dict) else None
-    assistant_message = (
-        response_message.get("content")
-        if isinstance(response_message, dict)
-        else None
+    def stream_chat_response():
+        assistant_parts = []
+        stream_completed = False
+        try:
+            for line in response.iter_lines(decode_unicode=True):
+                if not line:
+                    continue
+                try:
+                    if isinstance(line, bytes):
+                        line = line.decode("utf-8")
+                    event = json.loads(line)
+                except (UnicodeDecodeError, ValueError):
+                    current_app.logger.exception("Ollama returned invalid streaming JSON")
+                    yield json.dumps({"error": "Ollama returned an invalid response."}) + "\n"
+                    return
+
+                if not isinstance(event, dict):
+                    current_app.logger.error("Ollama returned an invalid streaming event")
+                    yield json.dumps({"error": "Ollama returned an invalid response."}) + "\n"
+                    return
+
+                message = event.get("message")
+                part = message.get("content") if isinstance(message, dict) else None
+                if part is not None:
+                    if not isinstance(part, str):
+                        current_app.logger.error("Ollama returned non-text message content")
+                        yield json.dumps({"error": "Ollama returned an invalid response."}) + "\n"
+                        return
+                    if part:
+                        assistant_parts.append(part)
+                        yield json.dumps({"token": part}) + "\n"
+                if event.get("error"):
+                    current_app.logger.error("Ollama stream reported an error")
+                    yield json.dumps({"error": "Ollama could not complete the request."}) + "\n"
+                    return
+                if event.get("done") is True:
+                    stream_completed = True
+                    break
+
+            if not stream_completed:
+                current_app.logger.error("Ollama response stream ended unexpectedly")
+                yield json.dumps(
+                    {"error": "Ollama ended the response before it was complete."}
+                ) + "\n"
+                return
+
+            assistant_message = "".join(assistant_parts)
+            if not assistant_message:
+                current_app.logger.error("Ollama response did not contain assistant content")
+                yield json.dumps({"error": "Ollama returned an empty response."}) + "\n"
+                return
+
+            chat_session = ChatbotSession.query.filter_by(
+                session_id=session_id,
+                chatbot_id=chatbot_id,
+                ended_at=None,
+            ).first()
+            if chat_session is None:
+                yield json.dumps(
+                    {"error": "The chat session ended before the reply was saved."}
+                ) + "\n"
+                return
+
+            db.session.add_all(
+                [
+                    ChatbotMessage(
+                        session_id=chat_session.session_id,
+                        role="user",
+                        content=content.strip(),
+                    ),
+                    ChatbotMessage(
+                        session_id=chat_session.session_id,
+                        role="assistant",
+                        content=assistant_message,
+                    ),
+                ]
+            )
+            chat_session.last_activity_at = datetime.now(timezone.utc)
+            db.session.commit()
+            yield json.dumps({"done": True, "message": assistant_message}) + "\n"
+        except requests.RequestException:
+            current_app.logger.exception("Ollama chat stream failed")
+            yield json.dumps({"error": "Ollama could not complete the request."}) + "\n"
+        except SQLAlchemyError:
+            db.session.rollback()
+            current_app.logger.exception("Unable to save streamed Rover AI chat")
+            yield json.dumps({"error": "Rover could not save the completed chat."}) + "\n"
+        finally:
+            response.close()
+
+    return Response(
+        stream_with_context(stream_chat_response()),
+        content_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
     )
-    if not isinstance(assistant_message, str):
-        current_app.logger.error("Ollama response did not contain assistant content")
-        return jsonify(error="Ollama returned an empty response."), 502
-
-    chat_session = ChatbotSession.query.filter_by(
-        session_id=session_id,
-        chatbot_id=chatbot_id,
-        ended_at=None,
-    ).first()
-    if chat_session is None:
-        return jsonify(error="The chat session ended before the reply was saved."), 409
-
-    db.session.add_all(
-        [
-            ChatbotMessage(
-                session_id=chat_session.session_id,
-                role="user",
-                content=content.strip(),
-            ),
-            ChatbotMessage(
-                session_id=chat_session.session_id,
-                role="assistant",
-                content=assistant_message,
-            ),
-        ]
-    )
-    chat_session.last_activity_at = datetime.now(timezone.utc)
-    db.session.commit()
-    return jsonify(message=assistant_message)
 
 
 @ollama_bp.get("/agents")
