@@ -43,11 +43,11 @@ When a user sends a chat message, Rover sends the selected model the message, se
 
 ## Files and working folders
 
-Use **Add text file** in Rover AI to save a UTF-8 text, Markdown, or source-code file. Check saved files to send them with each message; uncheck them to stop sending them. Rover stores up to 20 files per account, each up to 64 KiB, and sends at most 128 KiB of selected file content per message. Delete a saved file when it is no longer needed; ending a chat session does not delete it.
+Drop UTF-8 text, Markdown, or source-code files into Rover AI, or use **browse** to select them. Check saved files to send them with each message; uncheck them to stop sending them. Rover stores up to 20 files per account, each up to 64 KiB, and sends at most 128 KiB of selected file content per message. Delete a saved file when it is no longer needed; ending a chat session does not delete it.
 
 Rover encrypts each saved filename and content in the database with authenticated encryption using `OLLAMA_API_KEY_ENCRYPTION_KEY` (or `SECRET_KEY` if unset). This is encryption at rest, not end-to-end encryption: Rover decrypts selected files to send them to Ollama. Chat messages and model responses are saved as chat history and could contain file excerpts, so deleting an attachment does not remove excerpts from history or backups. Keep the encryption key stable and backed up; losing or changing it makes existing files unreadable.
 
-Under **Chatbot settings and computer permissions**, opt into folder reading or writing and choose a working folder using the browser's permission prompt. Enter a file name and choose **Add folder file to Rover AI** to save an encrypted copy, or save the latest reply to a Markdown file after confirming the write. The original files on the computer are not encrypted by Rover. Folder access is limited to the selected folder and current page; select it again after reloading. The folder picker requires a supported browser and a secure context such as HTTPS.
+Under **Chatbot settings and computer permissions**, choose a working folder using the browser's permission prompt and opt into folder reading or writing. Selecting a folder requests browser read access; Rover only reads or writes files when the corresponding option is enabled. Enter a file name and choose **Add folder file to Rover AI** to save an encrypted copy, or save the latest reply to a Markdown file after confirming the write. The original files on the computer are not encrypted by Rover. Folder access is limited to the selected folder and current page; select it again after reloading. The folder picker requires a supported browser such as Chrome or Edge and a secure context such as HTTPS.
 
 ```mermaid
 sequenceDiagram

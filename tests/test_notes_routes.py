@@ -631,7 +631,7 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'class="ollama-mode-section"' in response.data
     assert b'id="ollamaMinimize"' in response.data
     assert b'id="ollamaEndSession"' in response.data
-    assert b"scripts/Integrations/Ollama.js?v=14" in response.data
+    assert b"scripts/Integrations/Ollama.js?v=15" in response.data
     assert response.data.count(b'id="ollamaDrawer"') == 1
     assert (
         b'class="button is-outlined design-side-button rover-ai-nav-button"'
@@ -647,6 +647,12 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'id="ollamaReadFile"' not in response.data
     assert b"Add folder file to Rover AI" in response.data
     assert b"Encrypted at rest; checked files are sent to Ollama" in response.data
+    assert b"Drop text files here or" in response.data
+    assert (
+        b'id="ollamaFileInput" type="file" multiple aria-label="Browse text files" disabled'
+        in response.data
+    )
+    assert b'id="ollamaAddFile"' not in response.data
     assert b"Verify your account to enable Rover AI chat." in response.data
     assert b"#designPage .api-key-dialog .label" in response.data
     assert (

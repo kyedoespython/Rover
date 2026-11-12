@@ -936,6 +936,20 @@
             cursor: pointer;
         }
 
+        #ollamaPermissionsForm button {
+            padding: 0.3rem 0.3rem;
+            border: 0;
+            background: transparent;
+            color: var(--rover-accent-hover);
+            text-decoration: underline;
+            text-underline-offset: 0.15em;
+        }
+
+        #ollamaPermissionsForm button:disabled {
+            color: var(--rover-muted);
+            cursor: not-allowed;
+        }
+
         .ollama-folder-actions {
             display: flex;
             flex-direction: column;
@@ -1201,13 +1215,49 @@
             font: 0.75rem/1.4 "Segoe UI", Arial, sans-serif;
         }
 
-        .ollama-attachment-button,
+        .ollama-file-prompt {
+            color: var(--rover-muted);
+        }
+
+        .ollama-file-browse {
+            position: relative;
+            color: var(--rover-accent-hover);
+            text-decoration: underline;
+            text-underline-offset: 0.15em;
+            cursor: pointer;
+        }
+
+        .ollama-file-browse input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip-path: inset(50%);
+        }
+
+        .ollama-file-browse:focus-within {
+            outline: 2px solid var(--rover-accent-hover);
+            outline-offset: 2px;
+        }
+
+        .ollama-file-browse:has(input:disabled) {
+            color: var(--rover-muted);
+            cursor: not-allowed;
+        }
+
+        body .ollama-chat-form.is-drag-over {
+            border-color: var(--rover-accent-hover);
+            box-shadow: 0 0 0 2px var(--rover-accent-hover);
+        }
+
         .ollama-file-delete {
             padding: 0.3rem 0.5rem;
-            border: 1px solid var(--rover-control-border);
-            border-radius: 5px;
-            background: var(--rover-control-bg);
-            color: var(--rover-text);
+            border: 0;
+            background: transparent;
+            color: var(--rover-accent-hover);
+            font: inherit;
+            text-decoration: underline;
+            text-underline-offset: 0.15em;
             cursor: pointer;
         }
 

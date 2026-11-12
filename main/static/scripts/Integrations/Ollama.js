@@ -28,10 +28,10 @@ function initializeOllamaDrawer() {
     const writePermission = document.getElementById("ollamaAllowFolderWrite");
     const chooseFolderButton = document.getElementById("ollamaChooseFolder");
     const folderName = document.getElementById("ollamaFolderName");
+    const folderStatus = document.getElementById("ollamaFolderStatus");
     const fileNameInput = document.getElementById("ollamaFileName");
     const writeFileButton = document.getElementById("ollamaWriteFile");
     const attachFolderFileButton = document.getElementById("ollamaAttachFolderFile");
-    const addFileButton = document.getElementById("ollamaAddFile");
     const fileInput = document.getElementById("ollamaFileInput");
     const fileList = document.getElementById("ollamaFileList");
     const fileStatus = document.getElementById("ollamaFileStatus");
@@ -66,10 +66,10 @@ function initializeOllamaDrawer() {
         !(writePermission instanceof HTMLInputElement) ||
         !(chooseFolderButton instanceof HTMLButtonElement) ||
         !(folderName instanceof HTMLElement) ||
+        !(folderStatus instanceof HTMLElement) ||
         !(fileNameInput instanceof HTMLInputElement) ||
         !(writeFileButton instanceof HTMLButtonElement) ||
         !(attachFolderFileButton instanceof HTMLButtonElement) ||
-        !(addFileButton instanceof HTMLButtonElement) ||
         !(fileInput instanceof HTMLInputElement) ||
         !(fileList instanceof HTMLElement) ||
         !(fileStatus instanceof HTMLElement)
@@ -360,7 +360,6 @@ function initializeOllamaDrawer() {
             throw error;
         }
         const result = await requestJson(drawer.dataset.filesUrl, { name: file.name, content });
-        fileStatus.textContent = "File encrypted and saved. Checked files are sent with each message.";
         try {
             await loadSavedFiles(result.file.id);
         } catch (error) {
@@ -368,22 +367,85 @@ function initializeOllamaDrawer() {
         }
     };
 
-    addFileButton.addEventListener("click", () => fileInput.click());
-    fileInput.addEventListener("change", async () => {
-        const file = fileInput.files?.[0];
-        if (!file) {
+    let uploadingFiles = false;
+    const uploadFiles = async (files, errors = []) => {
+        if (!canChat) {
+            fileStatus.textContent = "Verify your account to add files.";
             return;
         }
-        addFileButton.disabled = true;
-        fileStatus.textContent = "Saving encrypted file...";
+        if (uploadingFiles) {
+            fileStatus.textContent = "Wait for the current files to finish saving.";
+            return;
+        }
+        if (!files.length && !errors.length) {
+            return;
+        }
+        uploadingFiles = true;
+        fileInput.disabled = true;
+        fileStatus.textContent = "Saving encrypted files...";
+        let saved = 0;
         try {
-            await uploadFile(file);
-        } catch (error) {
-            fileStatus.textContent = error.message || "Could not save the file.";
+            for (const file of files) {
+                try {
+                    await uploadFile(file);
+                    saved += 1;
+                } catch (error) {
+                    errors.push(`${file.name}: ${error.message || "Could not save the file."}`);
+                }
+            }
+            const summary = saved ? `${saved} file${saved === 1 ? "" : "s"} encrypted and saved.` : "";
+            fileStatus.textContent = [summary, ...errors].filter(Boolean).join(" ");
         } finally {
             fileInput.value = "";
-            addFileButton.disabled = !canChat;
+            fileInput.disabled = !canChat;
+            uploadingFiles = false;
         }
+    };
+
+    fileInput.addEventListener("change", () => {
+        uploadFiles([...fileInput.files]);
+    });
+
+    drawer.addEventListener("dragover", (event) => {
+        if (!event.dataTransfer?.types.includes("Files")) {
+            return;
+        }
+        event.preventDefault();
+        event.dataTransfer.dropEffect = canChat && !uploadingFiles ? "copy" : "none";
+        form.classList.add("is-drag-over");
+    });
+    drawer.addEventListener("dragleave", (event) => {
+        if (!drawer.contains(event.relatedTarget)) {
+            form.classList.remove("is-drag-over");
+        }
+    });
+    drawer.addEventListener("drop", (event) => {
+        if (!event.dataTransfer?.types.includes("Files")) {
+            return;
+        }
+        event.preventDefault();
+        form.classList.remove("is-drag-over");
+        const files = [];
+        const errors = [];
+        const items = [...event.dataTransfer.items].filter((item) => item.kind === "file");
+        if (items.length) {
+            items.forEach((item) => {
+                const entry = item.webkitGetAsEntry?.();
+                if (entry?.isDirectory) {
+                    errors.push(`${entry.name}: Drop individual files, not folders.`);
+                    return;
+                }
+                const file = item.getAsFile();
+                if (file) {
+                    files.push(file);
+                } else {
+                    errors.push("Could not read one of the dropped files.");
+                }
+            });
+        } else {
+            files.push(...event.dataTransfer.files);
+        }
+        uploadFiles(files, errors);
     });
 
     const startSession = async () => {
@@ -469,23 +531,23 @@ function initializeOllamaDrawer() {
     attachFolderFileButton.addEventListener("click", async () => {
         const fileName = fileNameInput.value.trim();
         if (!sessionActive || !readPermission.checked || !directoryHandle) {
-            settingsStatus.textContent = "Enable folder reading and choose a working folder first.";
+            folderStatus.textContent = "Enable folder reading and choose a working folder first.";
             return;
         }
         if (!validFolderFileName(fileName)) {
-            settingsStatus.textContent = "Enter a file name only; folder paths are not allowed.";
+            folderStatus.textContent = "Enter a file name only; folder paths are not allowed.";
             return;
         }
         attachFolderFileButton.disabled = true;
-        settingsStatus.textContent = "Saving encrypted file...";
+        folderStatus.textContent = "Saving encrypted file...";
         try {
             await getDirectoryPermission("read");
             const fileHandle = await directoryHandle.getFileHandle(fileName);
             const file = await fileHandle.getFile();
             await uploadFile(file);
-            settingsStatus.textContent = `${fileName} encrypted and added to Rover AI.`;
+            folderStatus.textContent = `${fileName} encrypted and added to Rover AI.`;
         } catch (error) {
-            settingsStatus.textContent = error.message || "Could not add that file.";
+            folderStatus.textContent = error.message || "Could not add that file.";
         } finally {
             attachFolderFileButton.disabled = !sessionActive;
         }
@@ -726,13 +788,15 @@ function initializeOllamaDrawer() {
     });
 
     permissionsForm.addEventListener("change", async (event) => {
-        if (!(event.target instanceof HTMLInputElement) || !sessionActive) {
+        if ((event.target !== readPermission && event.target !== writePermission) || !sessionActive) {
             return;
         }
         const newValue = event.target.checked;
         const previousValue = !newValue;
+        const controls = [readPermission, writePermission, chooseFolderButton, attachFolderFileButton, writeFileButton];
+        controls.forEach((control) => { control.disabled = true; });
 
-        settingsStatus.textContent = "Saving folder permissions...";
+        folderStatus.textContent = "Saving folder permissions...";
         try {
             const result = await requestJson(drawer.dataset.permissionsUrl, {
                 read_folder: readPermission.checked,
@@ -743,34 +807,31 @@ function initializeOllamaDrawer() {
             if (!result.read_folder && !result.write_folder) {
                 directoryHandle = null;
                 folderName.textContent = "No folder selected for this page.";
-            } else if (directoryHandle && previousValue !== newValue) {
-                directoryHandle = null;
-                folderName.textContent = "Choose the folder again to apply the updated permissions.";
             }
-            settingsStatus.textContent = "Folder permissions saved.";
+            folderStatus.textContent = "Folder permissions saved.";
         } catch (error) {
             event.target.checked = previousValue;
-            settingsStatus.textContent = error.message;
+            folderStatus.textContent = error.message || "Could not save folder permissions.";
+        } finally {
+            controls.forEach((control) => { control.disabled = !sessionActive; });
         }
     });
 
     chooseFolderButton.addEventListener("click", async () => {
-        if (!readPermission.checked && !writePermission.checked) {
-            settingsStatus.textContent = "Enable a folder permission before choosing a folder.";
-            return;
-        }
         if (typeof window.showDirectoryPicker !== "function") {
-            settingsStatus.textContent = "Folder access requires a supported browser such as Chrome or Edge.";
+            folderStatus.textContent = "Folder access requires a secure context (HTTPS or localhost) and a supported browser such as Chrome or Edge.";
             return;
         }
         try {
             const mode = writePermission.checked ? "readwrite" : "read";
             directoryHandle = await window.showDirectoryPicker({ mode });
             folderName.textContent = `Selected folder: ${directoryHandle.name} (available on this page only)`;
-            settingsStatus.textContent = "Folder selected. Enter a file name to add it to Rover AI.";
+            folderStatus.textContent = readPermission.checked || writePermission.checked
+                ? "Folder selected. Enter a file name to use it."
+                : "Folder selected. Enable reading or writing to use it.";
         } catch (error) {
             if (error.name !== "AbortError") {
-                settingsStatus.textContent = error.message || "Could not select that folder.";
+                folderStatus.textContent = error.message || "Could not select that folder.";
             }
         }
     });
@@ -778,15 +839,15 @@ function initializeOllamaDrawer() {
     writeFileButton.addEventListener("click", async () => {
         const fileName = fileNameInput.value.trim();
         if (!sessionActive || !writePermission.checked) {
-            settingsStatus.textContent = "Enable selected-folder writing first.";
+            folderStatus.textContent = "Enable selected-folder writing first.";
             return;
         }
         if (!validFileName(fileName)) {
-            settingsStatus.textContent = "Enter a file name only; folder paths are not allowed.";
+            folderStatus.textContent = "Enter a file name only; folder paths are not allowed.";
             return;
         }
         if (!latestAssistantReply) {
-            settingsStatus.textContent = "There is no assistant reply to save yet.";
+            folderStatus.textContent = "There is no assistant reply to save yet.";
             return;
         }
         try {
@@ -808,9 +869,9 @@ function initializeOllamaDrawer() {
             const writable = await fileHandle.createWritable();
             await writable.write(latestAssistantReply);
             await writable.close();
-            settingsStatus.textContent = `${fileName} saved in the selected folder.`;
+            folderStatus.textContent = `${fileName} saved in the selected folder.`;
         } catch (error) {
-            settingsStatus.textContent = error.message || "Could not write to the selected file.";
+            folderStatus.textContent = error.message || "Could not write to the selected file.";
         }
     });
 
@@ -938,6 +999,7 @@ function initializeOllamaDrawer() {
             directoryHandle = null;
             folderName.textContent = "No folder selected for this page.";
             settingsStatus.textContent = "";
+            folderStatus.textContent = "";
             appendMessage("assistant", "Session ended. Start a new session to continue.");
             setSessionActive(false);
             setStatus("ready", "Session ended.");
