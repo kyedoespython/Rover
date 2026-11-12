@@ -6,6 +6,11 @@
 
 {% block extra_css %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma/bulma.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/password-toggle.css') }}?v=1">
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{{ url_for('static', filename='scripts/Auth/PasswordToggle.js') }}?v=1" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -70,11 +75,18 @@
                     </div>
                 </div>
 
-                <div class="field mb-5">
+                <div class="field">
                     <label class="label has-text-black" for="password">Password</label>
-                    <div class="control">
-                        <input class="input" type="password" id="password" name="password" placeholder="********" required>
-                    </div>
+                    {% with password_autocomplete="current-password" %}
+                        {% include "Auth/PasswordInput.html" %}
+                    {% endwith %}
+                </div>
+
+                <div class="field mb-5">
+                    <label class="checkbox">
+                        <input type="checkbox" name="remember_me" value="1">
+                        Remember me for 3 days
+                    </label>
                 </div>
 
                 <div class="has-text-centered">

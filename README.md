@@ -30,6 +30,8 @@ Chatbot configuration is stored once per account in `chatbots`, with folder-perm
 
 Triple Rover Mode is available from the Design Dashboard mode selector. It opens three independently named and configured chat slots; each slot has its own model, system instructions, temperature, and transcript. A slot's seven-day history window begins with its first successful chat and is purged by the daily 03:00 UTC scheduler. Agent slots and their metadata are stored in `rover_agent` and `rover_agent_metadata`; transcripts are stored in `rover_agent_sessions` and `rover_agent_messages`. Triple Rover agents only chat with Ollama and do not execute commands or access local files.
 
+On the login page, **Remember me for 3 days** keeps that browser signed in for up to three days of inactivity. Without it, the login cookie lasts for the browser session. Redis session records expire after three days of inactivity; no account database migration is required. Resetting the account password invalidates existing logins.
+
 ## Current Status
 
 Rover is in construction and is being developed by a solo developer. Features are being added iteratively as the project evolves.

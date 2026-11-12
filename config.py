@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 from dotenv import load_dotenv
 
@@ -25,6 +26,7 @@ class Config:
     SESSION_TYPE = os.environ.get("SESSION_TYPE") or "redis"
     SESSION_PERMANENT = _environment_boolean("SESSION_PERMANENT", False)
     SESSION_USE_SIGNER = _environment_boolean("SESSION_USE_SIGNER", False)
+    PERMANENT_SESSION_LIFETIME = timedelta(days=3)
 
     SESSION_COOKIE_SECURE = False
     SESSION_COOKIE_HTTPONLY = True

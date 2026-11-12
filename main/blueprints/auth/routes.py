@@ -450,6 +450,7 @@ def Handle_Login():
                 db.session.commit()  # commit change
 
         login_user(user)
+        session.permanent = request.form.get("remember_me") == "1"
 
         flash(f"Welcome back {user.username}!", "success")
 
