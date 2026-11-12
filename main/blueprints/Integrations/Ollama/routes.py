@@ -67,14 +67,24 @@ def _gemini_error(error):
     if isinstance(error, requests.Timeout):
         return "Gemini took too long to respond. Please try again.", 504
     if isinstance(error, requests.HTTPError) and error.response is not None:
-        if error.response.status_code in (400, 401, 403):
+        status = error.response.status_code
+        current_app.logger.warning("Gemini request failed with HTTP %s", status)
+        if status in (400, 401, 403):
             return "Gemini rejected the request or API key. Check your key and model.", 502
-        if error.response.status_code in (402, 429):
-            return "Gemini usage limit or billing issue. Check your Google AI account.", 502
-    if isinstance(error, requests.RequestException):
-        return "Could not reach Gemini. Please try again.", 503
+        if status == 402:
+            return "Gemini reported a billing or credit issue. Check your Google AI account.", 502
+        if status == 429:
+            return "Gemini quota or rate limit reached. Check your Google AI account and try again later.", 502
+        if status == 404:
+            return "Gemini endpoint or model was not found (HTTP 404). Choose another model.", 502
+        if 500 <= status < 600:
+            return f"Gemini is temporarily unavailable (HTTP {status}). Please try again later.", 503
+        return f"Gemini returned HTTP {status}. Check your model and Google AI account.", 502
     if isinstance(error, ValueError):
         return "Gemini returned an invalid response.", 502
+    if isinstance(error, requests.RequestException):
+        current_app.logger.warning("Gemini connection failed (%s)", type(error).__name__)
+        return "Could not reach Gemini. Please check the server's network connection and try again.", 503
     return str(error), 503
 
 

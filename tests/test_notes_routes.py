@@ -15,6 +15,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from main.blueprints.auth import auth_bp
 from main.blueprints.home import home_bp
 from main.blueprints.Integrations.Ollama import ollama_bp
+from main.blueprints.Integrations.Ollama.routes import _gemini_error
 from main.extensions import csrf, db, limiter, login_manager
 from main.models.user import (
     Accounts,
@@ -1741,6 +1742,61 @@ def test_gemini_rejected_reply_does_not_save_history(mock_get, mock_post, notes_
     assert response.get_json()["error"] == "Gemini could not complete the response."
     with notes_client.application.app_context():
         assert ChatbotMessage.query.count() == 0
+
+
+@pytest.mark.parametrize(
+    ("upstream_status", "expected_status", "message"),
+    [
+        (404, 502, "HTTP 404"),
+        (500, 503, "HTTP 500"),
+        (402, 502, "billing"),
+        (429, 502, "quota"),
+        (418, 502, "HTTP 418"),
+    ],
+)
+@patch("main.services.gemini_service.generate_content")
+@patch("main.services.gemini_service.available_models", return_value=["gemini-test"])
+def test_gemini_reports_upstream_errors_without_mislabeling_them_as_connection_failures(
+    mock_models, mock_generate, upstream_status, expected_status, message, notes_client, caplog
+):
+    key_id = notes_client.post(
+        "/Rover/Design/API-Keys", json={"name": "Gemini", "type": "gemini", "api_key": "test-key"}
+    ).get_json()["api_key"]["id"]
+    preferences = notes_client.post("/api/ollama/gemini/preferences", json={"api_key_id": key_id})
+    assert preferences.status_code == 200
+    mock_models.assert_called_once_with("test-key")
+    notes_client.get("/api/ollama/session")
+    upstream = requests.Response()
+    upstream.status_code = upstream_status
+    upstream._content = b"private provider response"
+    mock_generate.side_effect = requests.HTTPError("sensitive provider text", response=upstream)
+    response = notes_client.post("/api/ollama/chat", json={"message": "Hello"})
+    assert response.status_code == expected_status
+    assert message in response.get_json()["error"]
+    assert "sensitive" not in response.get_json()["error"]
+    assert "private" not in response.get_json()["error"]
+    assert "sensitive" not in caplog.text
+    assert "private" not in caplog.text
+    assert f"HTTP {upstream_status}" in caplog.text
+    with notes_client.application.app_context():
+        assert ChatbotMessage.query.count() == 0
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_status", "message"),
+    [
+        (requests.ConnectionError("sensitive provider text"), 503, "network connection"),
+        (requests.exceptions.JSONDecodeError("sensitive", "invalid", 0), 502, "invalid response"),
+        (requests.Timeout("sensitive provider text"), 504, "too long"),
+    ],
+)
+def test_gemini_distinguishes_network_and_invalid_response_errors(error, expected_status, message, notes_client, caplog):
+    with notes_client.application.app_context():
+        result, status = _gemini_error(error)
+    assert status == expected_status
+    assert message in result
+    assert "sensitive" not in result
+    assert "sensitive" not in caplog.text
 
 
 @patch("main.services.gemini_service.requests.get")

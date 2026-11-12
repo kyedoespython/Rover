@@ -55,6 +55,8 @@ Save a **Google Gemini API Key** in the Design Dashboard, then select a Gemini m
 
 When Gemini is active, Rover sends the prompt, selected attachments, and relevant chat history to Google. Existing chat history can include messages from an earlier provider; end the session first if you do not want that history sent. The status check lists models but does not confirm that generation or billing will succeed. Gemini responses are displayed after generation completes; account usage limits and pricing are controlled by Google.
 
+Gemini HTTP 429 indicates a quota or rate limit; HTTP 402 indicates a billing or credit issue. HTTP 404 can indicate an unavailable model or API endpoint, and 5xx errors indicate a Google service failure. Network errors are reported separately. Check the key's project in [Google AI Studio](https://aistudio.google.com/rate-limit); a listed model may still be unavailable for generation.
+
 ## Files and working folders
 
 Drop UTF-8 text, Markdown, or source-code files into Rover AI, or use **browse** to select them. Check saved files to send them with each message to the active provider; uncheck them to stop sending them. Rover stores up to 20 files per account, each up to 64 KiB, and sends at most 128 KiB of selected file content per message. Delete a saved file when it is no longer needed; ending a chat session does not delete it.
