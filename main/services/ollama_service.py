@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 
 from cryptography.exceptions import InvalidTag
@@ -40,3 +41,26 @@ def decrypt_api_key(ciphertext: bytes, user_id: int, key_id: int) -> str:
         raise RuntimeError(
             "The Ollama API key could not be decrypted. Re-enter it in the design dashboard."
         ) from error
+
+
+def encrypt_chatbot_file(name: str, content: str, user_id: int, file_id: str) -> bytes:
+    nonce = os.urandom(12)
+    associated_data = f"rover-chatbot-file:{user_id}:{file_id}".encode("ascii")
+    plaintext = json.dumps({"name": name, "content": content}).encode("utf-8")
+    return nonce + AESGCM(_encryption_key()).encrypt(nonce, plaintext, associated_data)
+
+
+def decrypt_chatbot_file(ciphertext: bytes, user_id: int, file_id: str) -> dict[str, str]:
+    associated_data = f"rover-chatbot-file:{user_id}:{file_id}".encode("ascii")
+    try:
+        plaintext = AESGCM(_encryption_key()).decrypt(
+            ciphertext[:12], ciphertext[12:], associated_data
+        )
+        result = json.loads(plaintext.decode("utf-8"))
+        if not isinstance(result, dict) or not all(
+            isinstance(result.get(key), str) for key in ("name", "content")
+        ):
+            raise ValueError("Invalid encrypted file data")
+        return result
+    except (InvalidTag, UnicodeDecodeError, ValueError) as error:
+        raise RuntimeError("The saved file could not be decrypted.") from error

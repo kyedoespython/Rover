@@ -9,6 +9,7 @@
     data-select-key-url="{{ url_for('Ollama.select_ollama_api_key') }}"
     data-chatbot-settings-url="{{ url_for('Ollama.save_chatbot_settings') }}"
     data-permissions-url="{{ url_for('Ollama.save_chatbot_permissions') }}"
+    data-files-url="{{ url_for('Ollama.chatbot_files') }}"
     data-verified="{{ 'true' if current_user.authentication_data and current_user.authentication_data.authenticated else 'false' }}"
     aria-label="Rover AI assistant"
 >
@@ -58,14 +59,16 @@
         <form id="ollamaPermissionsForm">
             <label><input id="ollamaAllowFolderRead" type="checkbox">Allow reading files from a folder I select</label>
             <label><input id="ollamaAllowFolderWrite" type="checkbox">Allow creating or editing files in that folder</label>
-            <button id="ollamaChooseFolder" type="button">Choose folder</button>
+            <button id="ollamaChooseFolder" type="button">Choose working folder</button>
             <p class="ollama-folder-name" id="ollamaFolderName">No folder selected for this page.</p>
             <div class="ollama-folder-actions">
-                <label for="ollamaFileName">Markdown file (auto-loads into your draft)
+                <label for="ollamaFileName">File name in working folder
                     <input id="ollamaFileName" type="text" maxlength="128" placeholder="notes.md" autocomplete="off">
                 </label>
             </div>
-            <button id="ollamaWriteFile" type="button">Save latest AI reply to file</button>
+            <button id="ollamaAttachFolderFile" type="button">Add folder file to Rover AI</button>
+            <button id="ollamaWriteFile" type="button">Save latest AI reply to Markdown file</button>
+            <p class="ollama-folder-name">Original folder files are not encrypted or changed when added.</p>
         </form>
         <p class="ollama-settings-status" id="ollamaSettingsStatus" role="status" aria-live="polite"></p>
     </details>
@@ -85,7 +88,17 @@
     <button class="ollama-new-session" id="ollamaNewSession" type="button" hidden>Start a new session</button>
     <form class="ollama-chat-form" id="ollamaChatForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <textarea class="ollama-chat-input" id="ollamaChatInput" rows="2" maxlength="20000" placeholder="Message Rover AI..." aria-label="Message Rover AI" title="Drag the bottom-right corner to resize the message box." {% if not current_user.authentication_data or not current_user.authentication_data.authenticated %}disabled{% endif %} required></textarea>
+        <div class="ollama-attachments">
+            <button id="ollamaAddFile" class="ollama-attachment-button" type="button" {% if not current_user.authentication_data or not current_user.authentication_data.authenticated %}disabled{% endif %}>Add text file</button>
+            <input id="ollamaFileInput" type="file" hidden>
+            <span>Encrypted at rest; checked files are sent to Ollama with each message.</span>
+            <div id="ollamaFileList" class="ollama-file-list" aria-label="Saved files"></div>
+            <p id="ollamaFileStatus" class="ollama-folder-name" role="status" aria-live="polite"></p>
+        </div>
+        <div class="ollama-chat-input-wrap">
+            <textarea class="ollama-chat-input" id="ollamaChatInput" rows="2" maxlength="20000" placeholder="Message Rover AI..." aria-label="Message Rover AI" {% if not current_user.authentication_data or not current_user.authentication_data.authenticated %}disabled{% endif %} required></textarea>
+            <div class="ollama-input-resize-handle" id="ollamaInputResizeHandle" role="separator" aria-orientation="horizontal" aria-label="Resize message box height" aria-controls="ollamaChatInput" title="Drag or use arrow keys to resize the message box." tabindex="0"></div>
+        </div>
         <button class="ollama-chat-send" id="ollamaChatSend" type="submit" {% if not current_user.authentication_data or not current_user.authentication_data.authenticated %}disabled{% endif %}>Send</button>
     </form>
 </aside>

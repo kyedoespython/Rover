@@ -31,6 +31,11 @@ class Accounts(db.Model, UserMixin):
         uselist=False,
         lazy="selectin",
     )
+    chatbot_files = db.relationship(
+        "ChatbotFile",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
+    )
     rover_agents = db.relationship(
         "RoverAgent",
         back_populates="owner",
@@ -200,6 +205,22 @@ class UserApiKey(db.Model):
         "Accounts",
         back_populates="api_keys",
         foreign_keys=[user_id],
+    )
+
+
+class ChatbotFile(db.Model):
+    __tablename__ = "chatbot_files"
+    __table_args__ = (db.Index("ix_chatbot_files_user_id", "user_id"),)
+
+    file_id = db.Column(db.String(36), primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        ForeignKey("accounts.user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ciphertext = db.Column(db.LargeBinary, nullable=False)
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
 

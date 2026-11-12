@@ -7,6 +7,7 @@ function initializeOllamaDrawer() {
     const dragHandle = document.getElementById("ollamaDrawerDragHandle");
     const resizeHandle = document.getElementById("ollamaResizeHandle");
     const heightResizeHandle = document.getElementById("ollamaHeightResizeHandle");
+    const inputResizeHandle = document.getElementById("ollamaInputResizeHandle");
     const statusPanel = document.getElementById("ollamaAssistantStatus");
     const statusText = document.getElementById("ollamaStatusText");
     const modelName = document.getElementById("ollamaModelName");
@@ -29,6 +30,11 @@ function initializeOllamaDrawer() {
     const folderName = document.getElementById("ollamaFolderName");
     const fileNameInput = document.getElementById("ollamaFileName");
     const writeFileButton = document.getElementById("ollamaWriteFile");
+    const attachFolderFileButton = document.getElementById("ollamaAttachFolderFile");
+    const addFileButton = document.getElementById("ollamaAddFile");
+    const fileInput = document.getElementById("ollamaFileInput");
+    const fileList = document.getElementById("ollamaFileList");
+    const fileStatus = document.getElementById("ollamaFileStatus");
 
     if (
         !(drawer instanceof HTMLElement) ||
@@ -39,6 +45,7 @@ function initializeOllamaDrawer() {
         !(dragHandle instanceof HTMLElement) ||
         !(resizeHandle instanceof HTMLElement) ||
         !(heightResizeHandle instanceof HTMLElement) ||
+        !(inputResizeHandle instanceof HTMLElement) ||
         !(statusPanel instanceof HTMLElement) ||
         !(statusText instanceof HTMLElement) ||
         !(modelName instanceof HTMLElement) ||
@@ -60,7 +67,12 @@ function initializeOllamaDrawer() {
         !(chooseFolderButton instanceof HTMLButtonElement) ||
         !(folderName instanceof HTMLElement) ||
         !(fileNameInput instanceof HTMLInputElement) ||
-        !(writeFileButton instanceof HTMLButtonElement)
+        !(writeFileButton instanceof HTMLButtonElement) ||
+        !(attachFolderFileButton instanceof HTMLButtonElement) ||
+        !(addFileButton instanceof HTMLButtonElement) ||
+        !(fileInput instanceof HTMLInputElement) ||
+        !(fileList instanceof HTMLElement) ||
+        !(fileStatus instanceof HTMLElement)
     ) {
         return;
     }
@@ -76,9 +88,6 @@ function initializeOllamaDrawer() {
     let sessionActive = false;
     let directoryHandle = null;
     let latestAssistantReply = "";
-    let fileLoadTimer;
-    let fileLoadGeneration = 0;
-    let loadedFileContext = "";
 
     const setStatus = (state, message) => {
         statusPanel.dataset.state = state;
@@ -273,6 +282,110 @@ function initializeOllamaDrawer() {
         return result;
     };
 
+    let filesRequestId = 0;
+    const loadSavedFiles = async (newFileId = null) => {
+        const requestId = ++filesRequestId;
+        const response = await fetch(drawer.dataset.filesUrl, {
+            credentials: "same-origin",
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+        });
+        const result = await response.json();
+        if (requestId !== filesRequestId) {
+            return;
+        }
+        if (!response.ok) {
+            throw new Error(result.error || "Could not load saved files.");
+        }
+        const selected = new Set(
+            [...fileList.querySelectorAll('input[type="checkbox"]:checked')].map((item) => item.value),
+        );
+        if (newFileId) {
+            selected.add(newFileId);
+        }
+        fileList.replaceChildren();
+        result.files.forEach((file) => {
+            const row = document.createElement("div");
+            row.className = "ollama-file-item";
+            const label = document.createElement("label");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = file.id;
+            checkbox.checked = selected.has(file.id);
+            label.append(checkbox, document.createTextNode(` ${file.name}`));
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.className = "ollama-file-delete";
+            deleteButton.textContent = "Delete";
+            deleteButton.setAttribute("aria-label", `Delete ${file.name}`);
+            deleteButton.addEventListener("click", async () => {
+                if (!confirm(`Delete the encrypted copy of "${file.name}" from Rover?`)) {
+                    return;
+                }
+                deleteButton.disabled = true;
+                try {
+                    const response = await fetch(`${drawer.dataset.filesUrl}/${encodeURIComponent(file.id)}`, {
+                        method: "DELETE",
+                        credentials: "same-origin",
+                        headers: { "X-CSRFToken": csrfInput.value, Accept: "application/json" },
+                    });
+                    const result = await response.json();
+                    if (!response.ok) {
+                        throw new Error(result.error || "Could not delete the file.");
+                    }
+                    filesRequestId += 1;
+                    row.remove();
+                    fileStatus.textContent = "Encrypted file deleted.";
+                } catch (error) {
+                    fileStatus.textContent = error.message || "Could not delete the file.";
+                    deleteButton.disabled = false;
+                }
+            });
+            row.append(label, deleteButton);
+            fileList.append(row);
+        });
+    };
+
+    const uploadFile = async (file) => {
+        if (file.size > 64 * 1024) {
+            throw new Error("Files must be 64 KB or smaller.");
+        }
+        let content;
+        try {
+            content = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(await file.arrayBuffer());
+        } catch (error) {
+            if (error instanceof TypeError) {
+                throw new Error("The file must contain valid UTF-8 text.");
+            }
+            throw error;
+        }
+        const result = await requestJson(drawer.dataset.filesUrl, { name: file.name, content });
+        fileStatus.textContent = "File encrypted and saved. Checked files are sent with each message.";
+        try {
+            await loadSavedFiles(result.file.id);
+        } catch (error) {
+            throw new Error(`File saved, but the list could not be refreshed: ${error.message}`);
+        }
+    };
+
+    addFileButton.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", async () => {
+        const file = fileInput.files?.[0];
+        if (!file) {
+            return;
+        }
+        addFileButton.disabled = true;
+        fileStatus.textContent = "Saving encrypted file...";
+        try {
+            await uploadFile(file);
+        } catch (error) {
+            fileStatus.textContent = error.message || "Could not save the file.";
+        } finally {
+            fileInput.value = "";
+            addFileButton.disabled = !canChat;
+        }
+    });
+
     const startSession = async () => {
         if (!canChat) {
             return;
@@ -330,14 +443,15 @@ function initializeOllamaDrawer() {
         );
     };
 
-    const validFileName = (name) =>
+    const validFolderFileName = (name) =>
         name.length > 0 &&
         name.length <= 128 &&
         name !== "." &&
         name !== ".." &&
         !/[\\/]/.test(name) &&
-        !name.includes("..") &&
-        /\.md$/i.test(name);
+        !name.includes("..");
+
+    const validFileName = (name) => validFolderFileName(name) && /\.md$/i.test(name);
 
     const getDirectoryPermission = async (mode) => {
         if (!directoryHandle) {
@@ -352,63 +466,30 @@ function initializeOllamaDrawer() {
         }
     };
 
-    const loadMarkdownFile = async () => {
-        const generation = ++fileLoadGeneration;
+    attachFolderFileButton.addEventListener("click", async () => {
         const fileName = fileNameInput.value.trim();
         if (!sessionActive || !readPermission.checked || !directoryHandle) {
+            settingsStatus.textContent = "Enable folder reading and choose a working folder first.";
             return;
         }
-        if (!validFileName(fileName)) {
-            settingsStatus.textContent = fileName
-                ? "Enter a Markdown file name ending in .md."
-                : "Choose a Markdown file name to load it automatically.";
+        if (!validFolderFileName(fileName)) {
+            settingsStatus.textContent = "Enter a file name only; folder paths are not allowed.";
             return;
         }
-
+        attachFolderFileButton.disabled = true;
+        settingsStatus.textContent = "Saving encrypted file...";
         try {
             await getDirectoryPermission("read");
             const fileHandle = await directoryHandle.getFileHandle(fileName);
             const file = await fileHandle.getFile();
-            if (generation !== fileLoadGeneration || fileNameInput.value.trim() !== fileName) {
-                return;
-            }
-            if (file.size > 64 * 1024) {
-                throw new Error("Markdown files larger than 64 KB cannot be added to chat.");
-            }
-
-            const content = await file.text();
-            if (generation !== fileLoadGeneration || fileNameInput.value.trim() !== fileName) {
-                return;
-            }
-            if (loadedFileContext) {
-                const contextStart = input.value.indexOf(loadedFileContext);
-                if (contextStart !== -1) {
-                    input.value =
-                        input.value.slice(0, contextStart) +
-                        input.value.slice(contextStart + loadedFileContext.length);
-                }
-            }
-            const context = `\n\n[File context: ${fileName}]\n${content}`;
-            if (input.value.length + context.length > 20_000) {
-                throw new Error("That file would exceed the message size limit.");
-            }
-            input.value += context;
-            loadedFileContext = context;
-            settingsStatus.textContent = `${fileName} loaded into your draft. Review it before sending.`;
+            await uploadFile(file);
+            settingsStatus.textContent = `${fileName} encrypted and added to Rover AI.`;
         } catch (error) {
-            if (generation === fileLoadGeneration) {
-                settingsStatus.textContent = error.message || `Could not load ${fileName}.`;
-            }
+            settingsStatus.textContent = error.message || "Could not add that file.";
+        } finally {
+            attachFolderFileButton.disabled = !sessionActive;
         }
-    };
-
-    const scheduleMarkdownFileLoad = () => {
-        window.clearTimeout(fileLoadTimer);
-        if (!fileNameInput.value.trim()) {
-            return;
-        }
-        fileLoadTimer = window.setTimeout(loadMarkdownFile, 600);
-    };
+    });
 
     toggle.addEventListener("click", () => setDrawerOpen(true));
     hideButton.addEventListener("click", () => setDrawerOpen(false));
@@ -529,8 +610,52 @@ function initializeOllamaDrawer() {
         const direction = event.key === "ArrowDown" ? 1 : -1;
         setDrawerHeight(drawer.getBoundingClientRect().height + direction * (mobile ? -20 : 20));
     });
+
+    const updateInputResizeHandle = () => {
+        const style = window.getComputedStyle(input);
+        const minimum = parseFloat(style.minHeight);
+        const maximum = Math.max(minimum, parseFloat(style.maxHeight));
+        inputResizeHandle.setAttribute("aria-valuemin", String(Math.round(minimum)));
+        inputResizeHandle.setAttribute("aria-valuemax", String(Math.round(maximum)));
+        inputResizeHandle.setAttribute("aria-valuenow", String(Math.round(input.getBoundingClientRect().height)));
+    };
+    const setInputHeight = (height) => {
+        const style = window.getComputedStyle(input);
+        const minimum = parseFloat(style.minHeight);
+        const maximum = Math.max(minimum, parseFloat(style.maxHeight));
+        input.style.height = `${Math.max(minimum, Math.min(maximum, height))}px`;
+        updateInputResizeHandle();
+    };
+    let inputResizeStart = null;
+    inputResizeHandle.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        inputResizeStart = { y: event.clientY, height: input.getBoundingClientRect().height };
+        inputResizeHandle.setPointerCapture(event.pointerId);
+    });
+    inputResizeHandle.addEventListener("pointermove", (event) => {
+        if (inputResizeStart && inputResizeHandle.hasPointerCapture(event.pointerId)) {
+            setInputHeight(inputResizeStart.height + event.clientY - inputResizeStart.y);
+        }
+    });
+    const stopInputResizing = (event) => {
+        inputResizeStart = null;
+        if (inputResizeHandle.hasPointerCapture(event.pointerId)) {
+            inputResizeHandle.releasePointerCapture(event.pointerId);
+        }
+    };
+    inputResizeHandle.addEventListener("pointerup", stopInputResizing);
+    inputResizeHandle.addEventListener("pointercancel", stopInputResizing);
+    inputResizeHandle.addEventListener("keydown", (event) => {
+        if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
+            return;
+        }
+        event.preventDefault();
+        setInputHeight(input.getBoundingClientRect().height + (event.key === "ArrowDown" ? 20 : -20));
+    });
+    updateInputResizeHandle();
     updateHeightHandle(drawer.getBoundingClientRect().height);
     window.addEventListener("resize", () => {
+        setInputHeight(input.getBoundingClientRect().height);
         const height = drawer.getBoundingClientRect().height;
         if (drawer.style.height) {
             setDrawerHeight(height);
@@ -570,7 +695,7 @@ function initializeOllamaDrawer() {
             }
             updateModelOptions(result.available_models, result.model);
             settingsStatus.textContent = result.api_key_name
-                ? `${result.api_key_name} loaded into Rover AI.`
+                ? `${result.api_key_name} loaded. ${result.model} is selected.`
                 : "Local Ollama selected.";
             setStatus("ready", "Ollama key and models loaded.");
         } catch (error) {
@@ -642,16 +767,13 @@ function initializeOllamaDrawer() {
             const mode = writePermission.checked ? "readwrite" : "read";
             directoryHandle = await window.showDirectoryPicker({ mode });
             folderName.textContent = `Selected folder: ${directoryHandle.name} (available on this page only)`;
-            settingsStatus.textContent = "Folder selected. Enter a .md file name to load it into your draft automatically.";
-            await loadMarkdownFile();
+            settingsStatus.textContent = "Folder selected. Enter a file name to add it to Rover AI.";
         } catch (error) {
             if (error.name !== "AbortError") {
                 settingsStatus.textContent = error.message || "Could not select that folder.";
             }
         }
     });
-
-    fileNameInput.addEventListener("input", scheduleMarkdownFileLoad);
 
     writeFileButton.addEventListener("click", async () => {
         const fileName = fileNameInput.value.trim();
@@ -769,7 +891,6 @@ function initializeOllamaDrawer() {
         appendMessage("user", prompt);
         messages.push({ role: "user", content: prompt });
         input.value = "";
-        loadedFileContext = "";
         setStatus("busy", "Ollama is generating a response...");
         const assistantMessage = appendMessage("assistant", "");
         assistantMessage.classList.add("is-streaming");
@@ -783,7 +904,10 @@ function initializeOllamaDrawer() {
                     "X-CSRFToken": csrfInput.value,
                     Accept: "application/x-ndjson",
                 },
-                body: JSON.stringify({ message: prompt }),
+                body: JSON.stringify({
+                    message: prompt,
+                    file_ids: [...fileList.querySelectorAll('input[type="checkbox"]:checked')].map((item) => item.value),
+                }),
             });
             const assistantText = await readChatStream(response, assistantMessage);
             assistantMessage.classList.remove("is-streaming");
@@ -829,6 +953,9 @@ function initializeOllamaDrawer() {
         setSessionActive(false);
         appendMessage("assistant", "Verify your account to enable Rover AI chat.");
     } else {
+        loadSavedFiles().catch((error) => {
+            fileStatus.textContent = error.message || "Could not load saved files.";
+        });
         setSessionActive(false);
         startSession();
         const statusPoll = window.setInterval(() => {
@@ -842,29 +969,22 @@ function initializeOllamaDrawer() {
             { once: true },
         );
         window.addEventListener("ollama-preferences-updated", async (event) => {
-            if (event.detail?.apiKeySaved) {
-                await loadApiKeys();
-            }
-            const result = await refreshStatus();
-            if (!event.detail?.apiKeySaved || !result?.available_models?.length) {
+            if (!event.detail?.apiKeySaved) {
+                await refreshStatus();
                 return;
             }
-
-            if (modelSelect.value === result.model) {
-                settingsStatus.textContent = "Ollama API key connected to Rover AI.";
-                return;
-            }
-
+            await loadApiKeys();
             try {
-                const saved = await requestJson(drawer.dataset.chatbotSettingsUrl, {
-                    name: nameInput.value.trim() || "Rover AI",
-                    model: modelSelect.value,
+                const result = await requestJson(drawer.dataset.selectKeyUrl, {
+                    api_key_id: event.detail.apiKeyId,
                 });
-                chatbotName.textContent = saved.name;
-                modelName.textContent = saved.model;
-                settingsStatus.textContent = `Ollama API key connected. ${saved.model} is ready.`;
+                modelName.textContent = result.model;
+                updateModelOptions(result.available_models, result.model);
+                settingsStatus.textContent = `Ollama API key connected. ${result.model} is selected.`;
+                setStatus("ready", "Ollama key and models loaded.");
             } catch (error) {
-                settingsStatus.textContent = error.message;
+                settingsStatus.textContent = `API key saved, but model selection failed: ${error.message}`;
+                setStatus("error", settingsStatus.textContent);
             }
         });
         window.addEventListener("focus", () => {

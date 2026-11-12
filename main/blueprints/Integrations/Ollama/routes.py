@@ -20,6 +20,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from main.extensions import db, limiter
 from main.models.user import (
     Chatbot,
+    ChatbotFile,
     ChatbotMessage,
     ChatbotMetadata,
     ChatbotSession,
@@ -29,7 +30,11 @@ from main.models.user import (
     RoverAgentSession,
     UserApiKey,
 )
-from main.services.ollama_service import decrypt_api_key
+from main.services.ollama_service import (
+    decrypt_api_key,
+    decrypt_chatbot_file,
+    encrypt_chatbot_file,
+)
 
 from . import ollama_bp
 
@@ -41,6 +46,10 @@ class OllamaAuthenticationError(RuntimeError):
 CHAT_SESSION_KEY = "rover_ai_session_id"
 ROVER_AGENT_COUNT = 3
 AGENT_HISTORY_DAYS = 7
+RECOMMENDED_OLLAMA_CLOUD_MODEL = "gemma4:31b"
+MAX_CHATBOT_FILES = 20
+MAX_CHATBOT_FILE_BYTES = 64 * 1024
+MAX_CHATBOT_CONTEXT_BYTES = 128 * 1024
 
 
 def _account_is_verified() -> bool:
@@ -372,9 +381,22 @@ def select_ollama_api_key():
 
     chatbot = Chatbot.query.filter_by(user_id=current_user.user_id).first()
     current_model = chatbot.model_name if chatbot else current_user.ollama_model
-    model_name = (
-        current_model if current_model in available_models else available_models[0]
+    matching_model = next(
+        (
+            name
+            for name in available_models
+            if current_model and name.startswith(f"{current_model}:")
+        ),
+        None,
     )
+    if current_model in available_models:
+        model_name = current_model
+    elif matching_model:
+        model_name = matching_model
+    elif _is_ollama_cloud() and RECOMMENDED_OLLAMA_CLOUD_MODEL in available_models:
+        model_name = RECOMMENDED_OLLAMA_CLOUD_MODEL
+    else:
+        model_name = available_models[0]
     current_user.active_ollama_api_key_id = (
         selected_key.api_key_id if selected_key else None
     )
@@ -672,6 +694,99 @@ def save_chatbot_permissions():
     return jsonify(read_folder=allow_read, write_folder=allow_write)
 
 
+@ollama_bp.route("/chatbot/files", methods=["GET", "POST"])
+@login_required
+@limiter.limit("30 per minute")
+def chatbot_files():
+    if not _account_is_verified():
+        return jsonify(error="Verify your account to manage Rover AI files."), 403
+
+    if request.method == "GET":
+        saved_files = (
+            ChatbotFile.query.filter_by(user_id=current_user.user_id)
+            .order_by(ChatbotFile.created_at, ChatbotFile.file_id)
+            .all()
+        )
+        try:
+            files = [
+                {
+                    "id": saved.file_id,
+                    "name": decrypt_chatbot_file(
+                        saved.ciphertext, current_user.user_id, saved.file_id
+                    )["name"],
+                }
+                for saved in saved_files
+            ]
+        except RuntimeError as error:
+            current_app.logger.exception("Unable to decrypt a Rover AI file")
+            return jsonify(error=str(error)), 503
+        response = jsonify(files=files)
+        response.cache_control.no_store = True
+        return response
+
+    if not request.is_json:
+        return jsonify(error="A JSON request is required."), 415
+    if request.content_length is not None and request.content_length > 400_000:
+        return jsonify(error="The file is too large."), 413
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(error="The request body must be valid JSON."), 400
+    name = payload.get("name")
+    content = payload.get("content")
+    if (
+        not isinstance(name, str)
+        or not name.strip()
+        or len(name) > 128
+        or name in (".", "..")
+        or any(char in name for char in "/\\")
+        or any(ord(char) < 32 or ord(char) == 127 for char in name)
+        or not isinstance(content, str)
+    ):
+        return jsonify(error="Choose a valid text file and file name."), 400
+    try:
+        content_bytes = content.encode("utf-8")
+    except UnicodeEncodeError:
+        return jsonify(error="The file must contain valid UTF-8 text."), 400
+    if len(content_bytes) > MAX_CHATBOT_FILE_BYTES:
+        return jsonify(error="Files must be 64 KB or smaller."), 413
+    if any(ord(char) < 32 and char not in "\r\n\t" for char in content):
+        return jsonify(error="Only UTF-8 text and source-code files are supported."), 400
+    if (
+        ChatbotFile.query.filter_by(user_id=current_user.user_id).count()
+        >= MAX_CHATBOT_FILES
+    ):
+        return jsonify(error="Delete a saved file before adding more than 20 files."), 400
+    file_id = str(uuid4())
+    try:
+        ciphertext = encrypt_chatbot_file(name, content, current_user.user_id, file_id)
+    except RuntimeError as error:
+        current_app.logger.exception("Unable to encrypt a Rover AI file")
+        return jsonify(error=str(error)), 503
+    db.session.add(
+        ChatbotFile(
+            file_id=file_id, user_id=current_user.user_id, ciphertext=ciphertext
+        )
+    )
+    db.session.commit()
+    return jsonify(file={"id": file_id, "name": name}), 201
+
+
+@ollama_bp.delete("/chatbot/files/<file_id>")
+@login_required
+@limiter.limit("30 per minute")
+def delete_chatbot_file(file_id):
+    if not _account_is_verified():
+        return jsonify(error="Verify your account to manage Rover AI files."), 403
+    saved_file = ChatbotFile.query.filter_by(
+        file_id=file_id, user_id=current_user.user_id
+    ).first()
+    if saved_file is None:
+        return jsonify(error="The saved file was not found."), 404
+    db.session.delete(saved_file)
+    db.session.commit()
+    return jsonify(deleted=True)
+
+
 @ollama_bp.post("/chat")
 @login_required
 @limiter.limit("10 per minute")
@@ -686,6 +801,16 @@ def chat():
     content = payload.get("message") if isinstance(payload, dict) else None
     if not isinstance(content, str) or not content.strip() or len(content) > 20_000:
         return jsonify(error="Enter a message between 1 and 20000 characters."), 400
+    file_ids = payload.get("file_ids", [])
+    if (
+        not isinstance(file_ids, list)
+        or len(file_ids) > MAX_CHATBOT_FILES
+        or any(
+            not isinstance(file_id, str) or len(file_id) != 36 for file_id in file_ids
+        )
+        or len(set(file_ids)) != len(file_ids)
+    ):
+        return jsonify(error="Choose valid saved files."), 400
 
     chatbot = Chatbot.query.filter_by(user_id=current_user.user_id).first()
     chat_session = _current_chat_session(chatbot) if chatbot else None
@@ -702,7 +827,37 @@ def chat():
     ollama_messages = [
         {"role": message.role, "content": message.content} for message in history
     ]
-    ollama_messages.append({"role": "user", "content": content.strip()})
+    context = []
+    if file_ids:
+        saved_files = ChatbotFile.query.filter(
+            ChatbotFile.user_id == current_user.user_id,
+            ChatbotFile.file_id.in_(file_ids),
+        ).all()
+        if len(saved_files) != len(file_ids):
+            return jsonify(error="A selected file was not found."), 404
+        try:
+            by_id = {
+                saved.file_id: decrypt_chatbot_file(
+                    saved.ciphertext, current_user.user_id, saved.file_id
+                )
+                for saved in saved_files
+            }
+        except RuntimeError as error:
+            current_app.logger.exception("Unable to decrypt a Rover AI file")
+            return jsonify(error=str(error)), 503
+        context_size = sum(
+            len(by_id[file_id]["content"].encode("utf-8")) for file_id in file_ids
+        )
+        if context_size > MAX_CHATBOT_CONTEXT_BYTES:
+            return jsonify(error="Selected files exceed the 128 KB chat limit."), 400
+        context = [
+            f"[Attached file: {by_id[file_id]['name']}]\n{by_id[file_id]['content']}"
+            for file_id in file_ids
+        ]
+    ollama_content = content.strip()
+    if context:
+        ollama_content += "\n\n" + "\n\n".join(context)
+    ollama_messages.append({"role": "user", "content": ollama_content})
     selected_key = _selected_api_key()
     model_name = chatbot.model_name
     chatbot_id = chatbot.chatbot_id

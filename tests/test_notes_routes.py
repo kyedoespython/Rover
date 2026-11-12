@@ -18,6 +18,7 @@ from main.models.user import (
     Accounts,
     Authentication,
     Chatbot,
+    ChatbotFile,
     ChatbotMessage,
     ChatbotSession,
     Notes,
@@ -630,7 +631,7 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'class="ollama-mode-section"' in response.data
     assert b'id="ollamaMinimize"' in response.data
     assert b'id="ollamaEndSession"' in response.data
-    assert b"scripts/Integrations/Ollama.js?v=12" in response.data
+    assert b"scripts/Integrations/Ollama.js?v=14" in response.data
     assert response.data.count(b'id="ollamaDrawer"') == 1
     assert (
         b'class="button is-outlined design-side-button rover-ai-nav-button"'
@@ -644,7 +645,8 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'class="ollama-drawer is-minimized"' in response.data
     assert b"Rover AI" in response.data
     assert b'id="ollamaReadFile"' not in response.data
-    assert b"Markdown file (auto-loads into your draft)" in response.data
+    assert b"Add folder file to Rover AI" in response.data
+    assert b"Encrypted at rest; checked files are sent to Ollama" in response.data
     assert b"Verify your account to enable Rover AI chat." in response.data
     assert b"#designPage .api-key-dialog .label" in response.data
     assert (
@@ -1260,6 +1262,48 @@ def test_rover_ai_api_key_loader_selects_key_and_lists_safe_labels(
         assert account.ollama_model == "qwen3:latest"
 
 
+@pytest.mark.parametrize(
+    ("current_model", "models", "expected_model"),
+    [
+        ("removed-model", ["other-model", "gemma4:31b"], "gemma4:31b"),
+        ("other-model", ["other-model", "gemma4:31b"], "other-model"),
+        ("other-model", ["other-model:latest", "gemma4:31b"], "other-model:latest"),
+        ("removed-model", ["other-model"], "other-model"),
+    ],
+)
+@patch("main.blueprints.Integrations.Ollama.routes.requests.get")
+def test_loading_ollama_key_selects_available_recommended_model(
+    mock_get, notes_client, current_model, models, expected_model
+):
+    with notes_client.application.app_context():
+        notes_client.application.config["OLLAMA_BASE_URL"] = "https://ollama.com"
+        account = Accounts.query.filter_by(email="route-notes@example.com").one()
+        account.ollama_model = current_model
+        chatbot = Chatbot(
+            user_id=account.user_id, chatbot_name="Rover AI", model_name=current_model
+        )
+        db.session.add(chatbot)
+        db.session.commit()
+
+    key_id = notes_client.post(
+        "/Rover/Design/API-Keys",
+        json={"name": "Cloud", "type": "ollama", "api_key": "test-key"},
+    ).get_json()["api_key"]["id"]
+    mock_get.return_value.json.return_value = {
+        "models": [{"name": name} for name in models]
+    }
+
+    response = notes_client.post("/api/ollama/key", json={"api_key_id": key_id})
+
+    assert response.status_code == 200
+    assert response.get_json()["model"] == expected_model
+    with notes_client.application.app_context():
+        account = Accounts.query.filter_by(email="route-notes@example.com").one()
+        assert account.ollama_model == expected_model
+        chatbot = Chatbot.query.filter_by(user_id=account.user_id).one()
+        assert chatbot.model_name == expected_model
+
+
 @patch("main.blueprints.Integrations.Ollama.routes.requests.get")
 def test_ollama_key_can_be_deactivated_without_contacting_ollama(mock_get, notes_client):
     with notes_client.application.app_context():
@@ -1422,6 +1466,113 @@ def test_ollama_chat_requires_session_and_rejects_long_message(notes_client):
         json={"message": "x" * 20_001},
     )
     assert invalid_message.status_code == 400
+
+
+@patch("main.blueprints.Integrations.Ollama.routes.requests.post")
+def test_chatbot_files_are_encrypted_and_sent_only_when_selected(mock_post, notes_client):
+    saved = notes_client.post(
+        "/api/ollama/chatbot/files",
+        json={"name": "private-notes.txt", "content": "private file contents"},
+    )
+    assert saved.status_code == 201
+    file_id = saved.get_json()["file"]["id"]
+    with notes_client.application.app_context():
+        stored = db.session.get(ChatbotFile, file_id)
+        assert b"private file contents" not in stored.ciphertext
+        assert b"private-notes.txt" not in stored.ciphertext
+
+    listed = notes_client.get("/api/ollama/chatbot/files")
+    assert listed.get_json() == {
+        "files": [{"id": file_id, "name": "private-notes.txt"}]
+    }
+    assert "no-store" in listed.headers["Cache-Control"]
+    assert b"private file contents" not in listed.data
+    assert notes_client.get("/api/ollama/session").status_code == 200
+    mock_post.return_value.iter_lines.return_value = iter(
+        [b'{"message":{"content":"Response"}}', b'{"done":true}']
+    )
+    response = notes_client.post(
+        "/api/ollama/chat", json={"message": "Summarize", "file_ids": [file_id]}
+    )
+    assert response.status_code == 200
+    response.get_data()
+    message = mock_post.call_args.kwargs["json"]["messages"][-1]["content"]
+    assert "private file contents" in message
+    with notes_client.application.app_context():
+        user_message = ChatbotMessage.query.filter_by(role="user").one()
+        assert user_message.content == "Summarize"
+
+    assert notes_client.post("/api/ollama/session/end", json={}).status_code == 200
+    assert len(notes_client.get("/api/ollama/chatbot/files").get_json()["files"]) == 1
+    assert notes_client.delete(f"/api/ollama/chatbot/files/{file_id}").status_code == 200
+    assert notes_client.get("/api/ollama/chatbot/files").get_json()["files"] == []
+
+
+def test_chatbot_files_reject_invalid_or_foreign_content(notes_client):
+    for payload in [
+        {"name": "../secret.txt", "content": "text"},
+        {"name": "binary", "content": "text\u0000binary"},
+        {"name": "large.txt", "content": "x" * (64 * 1024 + 1)},
+    ]:
+        assert notes_client.post(
+            "/api/ollama/chatbot/files", json=payload
+        ).status_code in (400, 413)
+
+    with notes_client.application.app_context():
+        other = Accounts(
+            email="other-file-owner@example.com",
+            username="OtherFileOwner",
+            password="hashed-password",
+            country_of_origin="United States",
+        )
+        db.session.add(other)
+        db.session.flush()
+        foreign_id = "00000000-0000-4000-8000-000000000001"
+        db.session.add(
+            ChatbotFile(file_id=foreign_id, user_id=other.user_id, ciphertext=b"secret")
+        )
+        db.session.commit()
+    assert notes_client.get("/api/ollama/chatbot/files").get_json()["files"] == []
+    assert notes_client.delete(f"/api/ollama/chatbot/files/{foreign_id}").status_code == 404
+    notes_client.get("/api/ollama/session")
+    response = notes_client.post(
+        "/api/ollama/chat", json={"message": "Hello", "file_ids": [foreign_id]}
+    )
+    assert response.status_code == 404
+
+
+@patch("main.blueprints.Integrations.Ollama.routes.requests.post")
+def test_chatbot_file_selection_limits_and_decryption_errors(mock_post, notes_client):
+    file_ids = []
+    for index in range(3):
+        response = notes_client.post(
+            "/api/ollama/chatbot/files",
+            json={"name": f"{index}.txt", "content": "x" * (64 * 1024)},
+        )
+        assert response.status_code == 201
+        file_ids.append(response.get_json()["file"]["id"])
+
+    notes_client.get("/api/ollama/session")
+    too_large = notes_client.post(
+        "/api/ollama/chat", json={"message": "Hello", "file_ids": file_ids}
+    )
+    assert too_large.status_code == 400
+    duplicate = notes_client.post(
+        "/api/ollama/chat",
+        json={"message": "Hello", "file_ids": [file_ids[0], file_ids[0]]},
+    )
+    assert duplicate.status_code == 400
+    mock_post.assert_not_called()
+
+    with notes_client.application.app_context():
+        db.session.get(ChatbotFile, file_ids[0]).ciphertext = b"corrupted"
+        db.session.commit()
+    assert notes_client.get("/api/ollama/chatbot/files").status_code == 503
+    corrupt = notes_client.post(
+        "/api/ollama/chat", json={"message": "Hello", "file_ids": [file_ids[0]]}
+    )
+    assert corrupt.status_code == 503
+    mock_post.assert_not_called()
 
 
 @patch("main.blueprints.Integrations.Ollama.routes.requests.post")

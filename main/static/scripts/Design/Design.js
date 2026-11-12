@@ -122,7 +122,7 @@ function initializeDesignDashboard() {
             form.reset();
             setStatus("API key saved. The secret cannot be viewed again.", "success");
             window.dispatchEvent(new CustomEvent("ollama-preferences-updated", {
-                detail: { apiKeySaved: true },
+                detail: { apiKeySaved: true, apiKeyId: result.api_key.id },
             }));
         } catch {
             setStatus("Could not reach the server. Please try again.", "error");
