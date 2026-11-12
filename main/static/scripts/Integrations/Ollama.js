@@ -85,6 +85,8 @@ function initializeOllamaDrawer() {
     const canChat = drawer.dataset.verified === "true";
     const messages = [];
     let isSending = false;
+    let chatError = false;
+    let activeProvider = "ollama";
     let sessionActive = false;
     let directoryHandle = null;
     let latestAssistantReply = "";
@@ -94,7 +96,19 @@ function initializeOllamaDrawer() {
         statusText.textContent = message;
     };
 
-    const appendMessage = (role, content) => {
+    const addExpandButton = (message, messageContent) => {
+        const expandButton = document.createElement("button");
+        expandButton.className = "ollama-message-expand";
+        expandButton.type = "button";
+        expandButton.textContent = "Expand response";
+        expandButton.addEventListener("click", () => {
+            expandedResponse.textContent = messageContent.textContent;
+            expandedDialog.showModal();
+        });
+        message.append(expandButton);
+    };
+
+    const appendMessage = (role, content, expandable = role === "assistant") => {
         document.getElementById("ollamaChatEmpty")?.remove();
         const message = document.createElement("div");
         message.className = "ollama-chat-message";
@@ -103,16 +117,8 @@ function initializeOllamaDrawer() {
         messageContent.className = "ollama-chat-message-content";
         messageContent.textContent = content;
         message.append(messageContent);
-        if (role === "assistant") {
-            const expandButton = document.createElement("button");
-            expandButton.className = "ollama-message-expand";
-            expandButton.type = "button";
-            expandButton.textContent = "Expand response";
-            expandButton.addEventListener("click", () => {
-                expandedResponse.textContent = messageContent.textContent;
-                expandedDialog.showModal();
-            });
-            message.append(expandButton);
+        if (expandable && content) {
+            addExpandButton(message, messageContent);
         }
         messagesPanel.append(message);
         messagesPanel.scrollTop = messagesPanel.scrollHeight;
@@ -247,19 +253,25 @@ function initializeOllamaDrawer() {
                 headers: { Accept: "application/json" },
             });
             const result = await response.json();
+            activeProvider = result.provider || "ollama";
+            apiKeyForm.hidden = activeProvider === "gemini";
             modelName.textContent = result.model || "Not configured";
             if (Array.isArray(result.available_models)) {
                 updateModelOptions(result.available_models, result.model);
             } else {
                 updateModelOptions([], result.model);
             }
-            setStatus(
-                result.status || "offline",
-                result.message || "Unable to check Ollama status.",
-            );
+            if (!isSending && !chatError) {
+                setStatus(
+                    result.status || "offline",
+                    result.message || "Unable to check Ollama status.",
+                );
+            }
             return result;
         } catch {
-            setStatus("offline", "Could not reach Rover.");
+            if (!isSending && !chatError) {
+                setStatus("offline", "Could not reach Rover.");
+            }
             return null;
         }
     };
@@ -453,6 +465,7 @@ function initializeOllamaDrawer() {
             return;
         }
         newSessionButton.disabled = true;
+        chatError = false;
         setStatus("checking", "Loading Rover AI session...");
         try {
             const response = await fetch(drawer.dataset.sessionUrl, {
@@ -466,6 +479,8 @@ function initializeOllamaDrawer() {
 
             clearMessages();
             chatbotName.textContent = result.chatbot_name;
+            activeProvider = result.provider || "ollama";
+            apiKeyForm.hidden = activeProvider === "gemini";
             nameInput.value = result.chatbot_name;
             modelName.textContent = result.model;
             modelSelect.value = result.model;
@@ -484,7 +499,7 @@ function initializeOllamaDrawer() {
             refreshStatus();
         } catch (error) {
             setStatus("error", error.message);
-            appendMessage("assistant", error.message);
+            appendMessage("assistant", error.message, false);
             setSessionActive(false);
         } finally {
             newSessionButton.disabled = false;
@@ -749,6 +764,7 @@ function initializeOllamaDrawer() {
             const result = await requestJson(drawer.dataset.selectKeyUrl, {
                 api_key_id: rawKeyId ? Number(rawKeyId) : null,
             });
+            chatError = false;
             modelName.textContent = result.model;
             if (result.api_key_id === null) {
                 settingsStatus.textContent = "Ollama API key deactivated.";
@@ -778,6 +794,7 @@ function initializeOllamaDrawer() {
                 name: nameInput.value.trim(),
                 model: modelSelect.value,
             });
+            chatError = false;
             chatbotName.textContent = result.name;
             modelName.textContent = result.model;
             settingsStatus.textContent = "Chatbot settings saved.";
@@ -877,8 +894,17 @@ function initializeOllamaDrawer() {
 
     const readChatStream = async (response, messageElement) => {
         if (!response.ok) {
-            const result = await response.json();
-            throw new Error(result.error || "Ollama could not complete the request.");
+            let result;
+            try {
+                result = await response.json();
+            } catch {
+                throw new Error(`Rover could not complete the request (HTTP ${response.status}).`);
+            }
+            throw new Error(
+                typeof result?.error === "string" && result.error
+                    ? result.error
+                    : `Rover could not complete the request (HTTP ${response.status}).`,
+            );
         }
         if (!response.body) {
             throw new Error("The Rover response stream is unavailable.");
@@ -947,12 +973,13 @@ function initializeOllamaDrawer() {
             return;
         }
         isSending = true;
+        chatError = false;
         sendButton.disabled = true;
         input.disabled = true;
         appendMessage("user", prompt);
         messages.push({ role: "user", content: prompt });
         input.value = "";
-        setStatus("busy", "Ollama is generating a response...");
+        setStatus("busy", `${activeProvider === "gemini" ? "Gemini" : "Ollama"} is generating a response...`);
         const assistantMessage = appendMessage("assistant", "");
         assistantMessage.classList.add("is-streaming");
 
@@ -972,14 +999,21 @@ function initializeOllamaDrawer() {
             });
             const assistantText = await readChatStream(response, assistantMessage);
             assistantMessage.classList.remove("is-streaming");
+            addExpandButton(
+                assistantMessage,
+                assistantMessage.querySelector(".ollama-chat-message-content"),
+            );
             messages.push({ role: "assistant", content: assistantText });
             latestAssistantReply = assistantText;
-            setStatus("ready", "Model is ready.");
+            setStatus("ready", "Response received.");
         } catch (error) {
+            chatError = true;
             assistantMessage.classList.remove("is-streaming");
+            assistantMessage.classList.add("is-error");
+            assistantMessage.querySelector(".ollama-chat-message-content").textContent =
+                error.message || "Ollama could not complete the request.";
             messages.pop();
-            appendMessage("assistant", error.message);
-            setStatus("error", error.message);
+            setStatus("error", error.message || "Ollama could not complete the request.");
         } finally {
             isSending = false;
             input.disabled = !sessionActive;
@@ -1000,7 +1034,8 @@ function initializeOllamaDrawer() {
             folderName.textContent = "No folder selected for this page.";
             settingsStatus.textContent = "";
             folderStatus.textContent = "";
-            appendMessage("assistant", "Session ended. Start a new session to continue.");
+            chatError = false;
+            appendMessage("assistant", "Session ended. Start a new session to continue.", false);
             setSessionActive(false);
             setStatus("ready", "Session ended.");
         } catch (error) {
@@ -1013,7 +1048,7 @@ function initializeOllamaDrawer() {
         modelName.textContent = "Unavailable";
         setStatus("error", "Verify your account to use Rover AI.");
         setSessionActive(false);
-        appendMessage("assistant", "Verify your account to enable Rover AI chat.");
+        appendMessage("assistant", "Verify your account to enable Rover AI chat.", false);
     } else {
         loadSavedFiles().catch((error) => {
             fileStatus.textContent = error.message || "Could not load saved files.";
@@ -1040,6 +1075,7 @@ function initializeOllamaDrawer() {
                 const result = await requestJson(drawer.dataset.selectKeyUrl, {
                     api_key_id: event.detail.apiKeyId,
                 });
+                chatError = false;
                 modelName.textContent = result.model;
                 updateModelOptions(result.available_models, result.model);
                 settingsStatus.textContent = `Ollama API key connected. ${result.model} is selected.`;

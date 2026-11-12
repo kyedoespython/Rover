@@ -35,17 +35,25 @@ The assistant panel shows connection/model status. If it reports the service is 
 - The model is installed or available on that Ollama endpoint.
 - For Ollama Cloud, a valid saved API key is selected.
 
+“Model available in Ollama” means the model is listed by the endpoint; it does not confirm that a chat request will succeed. If Ollama Cloud reports that payment or usage credits are required, review the account's [usage and billing](https://ollama.com/settings) and [pricing](https://ollama.com/pricing).
+
 Drag the panel's height handle or use its arrow keys to resize it. The message field can also be resized by dragging its bottom-right corner or focusing that corner and using the arrow keys.
 
 ## Data sent to Ollama
 
 When a user sends a chat message, Rover sends the selected model the message, selected attachments, and relevant conversation history. Do not include secrets or sensitive personal data in prompts or files unless the user and deployment policy permit it.
 
+## Google Gemini
+
+Save a **Google Gemini API Key** in the Design Dashboard, then open **Settings → Integrations** and activate it under Google Gemini. Rover loads the models available to that key; select a model and save it. Use **Use Ollama** to switch back. Gemini uses Google's API, not the configured Ollama endpoint. Its key is encrypted at rest using the same stable encryption secret described above and is sent only to Google's Gemini API.
+
+When Gemini is active, Rover sends the prompt, selected attachments, and relevant chat history to Google. Existing chat history can include messages from an earlier provider; end the session first if you do not want that history sent. The status check lists models but does not confirm that generation or billing will succeed. Gemini responses are displayed after generation completes; account usage limits and pricing are controlled by Google.
+
 ## Files and working folders
 
-Drop UTF-8 text, Markdown, or source-code files into Rover AI, or use **browse** to select them. Check saved files to send them with each message; uncheck them to stop sending them. Rover stores up to 20 files per account, each up to 64 KiB, and sends at most 128 KiB of selected file content per message. Delete a saved file when it is no longer needed; ending a chat session does not delete it.
+Drop UTF-8 text, Markdown, or source-code files into Rover AI, or use **browse** to select them. Check saved files to send them with each message to the active provider; uncheck them to stop sending them. Rover stores up to 20 files per account, each up to 64 KiB, and sends at most 128 KiB of selected file content per message. Delete a saved file when it is no longer needed; ending a chat session does not delete it.
 
-Rover encrypts each saved filename and content in the database with authenticated encryption using `OLLAMA_API_KEY_ENCRYPTION_KEY` (or `SECRET_KEY` if unset). This is encryption at rest, not end-to-end encryption: Rover decrypts selected files to send them to Ollama. Chat messages and model responses are saved as chat history and could contain file excerpts, so deleting an attachment does not remove excerpts from history or backups. Keep the encryption key stable and backed up; losing or changing it makes existing files unreadable.
+Rover encrypts each saved filename and content in the database with authenticated encryption using `OLLAMA_API_KEY_ENCRYPTION_KEY` (or `SECRET_KEY` if unset). This is encryption at rest, not end-to-end encryption: Rover decrypts selected files to send them to the active provider. Chat messages and model responses are saved as chat history and could contain file excerpts, so deleting an attachment does not remove excerpts from history or backups. Keep the encryption key stable and backed up; losing or changing it makes existing files unreadable.
 
 Under **Chatbot settings and computer permissions**, choose a working folder using the browser's permission prompt and opt into folder reading or writing. Selecting a folder requests browser read access; Rover only reads or writes files when the corresponding option is enabled. Enter a file name and choose **Add folder file to Rover AI** to save an encrypted copy, or save the latest reply to a Markdown file after confirming the write. The original files on the computer are not encrypted by Rover. Folder access is limited to the selected folder and current page; select it again after reloading. The folder picker requires a supported browser such as Chrome or Edge and a secure context such as HTTPS.
 

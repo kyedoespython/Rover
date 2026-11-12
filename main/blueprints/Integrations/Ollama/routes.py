@@ -35,6 +35,7 @@ from main.services.ollama_service import (
     decrypt_chatbot_file,
     encrypt_chatbot_file,
 )
+from main.services import gemini_service
 
 from . import ollama_bp
 
@@ -52,6 +53,31 @@ MAX_CHATBOT_FILE_BYTES = 64 * 1024
 MAX_CHATBOT_CONTEXT_BYTES = 128 * 1024
 
 
+def _gemini_key(key_id=None):
+    key_id = current_user.active_gemini_api_key_id if key_id is None else key_id
+    key = UserApiKey.query.filter_by(
+        api_key_id=key_id, user_id=current_user.user_id, key_type="gemini"
+    ).first()
+    if key is None or not key.key_ciphertext:
+        raise RuntimeError("Select a saved Gemini API key in Settings → Integrations.")
+    return decrypt_api_key(key.key_ciphertext, key.user_id, key.api_key_id)
+
+
+def _gemini_error(error):
+    if isinstance(error, requests.Timeout):
+        return "Gemini took too long to respond. Please try again.", 504
+    if isinstance(error, requests.HTTPError) and error.response is not None:
+        if error.response.status_code in (400, 401, 403):
+            return "Gemini rejected the request or API key. Check your key and model.", 502
+        if error.response.status_code in (402, 429):
+            return "Gemini usage limit or billing issue. Check your Google AI account.", 502
+    if isinstance(error, requests.RequestException):
+        return "Could not reach Gemini. Please try again.", 503
+    if isinstance(error, ValueError):
+        return "Gemini returned an invalid response.", 502
+    return str(error), 503
+
+
 def _account_is_verified() -> bool:
     authentication = current_user.authentication_data
     return bool(authentication and authentication.authenticated)
@@ -64,7 +90,9 @@ def _get_or_create_chatbot() -> Chatbot:
             user_id=current_user.user_id,
             chatbot_name="Rover AI",
             model_name=(
-                current_user.ollama_model or current_app.config["OLLAMA_MODEL"]
+                current_user.gemini_model
+                if current_user.rover_ai_provider == "gemini" and current_user.gemini_model
+                else current_user.ollama_model or current_app.config["OLLAMA_MODEL"]
             ),
         )
         db.session.add(chatbot)
@@ -227,6 +255,20 @@ def status():
     ):
         return jsonify(error="Verify your account to use the Ollama assistant."), 403
 
+    if current_user.rover_ai_provider == "gemini":
+        model_name = current_user.gemini_model
+        try:
+            models = gemini_service.available_models(_gemini_key())
+        except (RuntimeError, ValueError, requests.RequestException) as error:
+            message, code = _gemini_error(error)
+            return jsonify(status="error", provider="gemini", model=model_name, message=message), code
+        available = model_name in models
+        return jsonify(
+            status="ready" if available else "model_missing",
+            provider="gemini", model=model_name, available_models=models,
+            message="Model available in Gemini." if available else "Selected Gemini model is unavailable.",
+        )
+
     chatbot = Chatbot.query.filter_by(user_id=current_user.user_id).first()
     model_name = (
         chatbot.model_name
@@ -280,7 +322,7 @@ def status():
         available_models=available_models,
         api_key_name=api_key_name if _is_ollama_cloud() else None,
         message=(
-            "Model ready."
+            "Model available in Ollama."
             if model_available
             else f"Model {model_name} is not available in Ollama."
         ),
@@ -380,7 +422,11 @@ def select_ollama_api_key():
         return jsonify(error="No Ollama models are available for this key."), 400
 
     chatbot = Chatbot.query.filter_by(user_id=current_user.user_id).first()
-    current_model = chatbot.model_name if chatbot else current_user.ollama_model
+    current_model = (
+        chatbot.model_name
+        if chatbot and current_user.rover_ai_provider == "ollama"
+        else current_user.ollama_model
+    )
     matching_model = next(
         (
             name
@@ -401,6 +447,7 @@ def select_ollama_api_key():
         selected_key.api_key_id if selected_key else None
     )
     current_user.ollama_model = model_name
+    current_user.rover_ai_provider = "ollama"
     if chatbot is not None:
         chatbot.model_name = model_name
     db.session.commit()
@@ -474,7 +521,54 @@ def integration_settings():
         active_api_key_name=selected_key.key_name if selected_key else None,
         status_message=status_message,
         cloud_endpoint=_is_ollama_cloud(),
+        gemini_keys=UserApiKey.query.filter_by(user_id=current_user.user_id, key_type="gemini")
+        .filter(UserApiKey.key_ciphertext.is_not(None)).order_by(UserApiKey.created_at.desc()).all(),
+        gemini_key_id=current_user.active_gemini_api_key_id,
+        gemini_model=current_user.gemini_model,
+        rover_ai_provider=current_user.rover_ai_provider,
     )
+
+
+@ollama_bp.post("/gemini/preferences")
+@login_required
+@limiter.limit("10 per minute")
+def gemini_preferences():
+    if not _account_is_verified():
+        return jsonify(error="Verify your account to configure Gemini."), 403
+    payload = request.get_json(silent=True) if request.is_json else None
+    if not isinstance(payload, dict):
+        return jsonify(error="A JSON request is required."), 400
+    if payload.get("provider") == "ollama":
+        current_user.rover_ai_provider = "ollama"
+        chatbot = Chatbot.query.filter_by(user_id=current_user.user_id).first()
+        if chatbot:
+            chatbot.model_name = current_user.ollama_model or current_app.config["OLLAMA_MODEL"]
+        db.session.commit()
+        return jsonify(provider="ollama")
+    key_id = payload.get("api_key_id")
+    model = payload.get("model")
+    if isinstance(key_id, bool) or not isinstance(key_id, int):
+        return jsonify(error="Choose a saved Gemini API key."), 400
+    if model is not None and (not isinstance(model, str) or not gemini_service.MODEL_NAME.fullmatch(model)):
+        return jsonify(error="Choose a valid Gemini model."), 400
+    try:
+        models = gemini_service.available_models(_gemini_key(key_id))
+    except (RuntimeError, ValueError, requests.RequestException) as error:
+        message, code = _gemini_error(error)
+        return jsonify(error=message), code
+    if not models:
+        return jsonify(error="No Gemini text-generation models are available for this key."), 400
+    if model and model not in models:
+        return jsonify(error="That Gemini model is not available for this key."), 400
+    model = model or (current_user.gemini_model if current_user.gemini_model in models else models[0])
+    current_user.active_gemini_api_key_id = key_id
+    current_user.gemini_model = model
+    current_user.rover_ai_provider = "gemini"
+    chatbot = Chatbot.query.filter_by(user_id=current_user.user_id).first()
+    if chatbot:
+        chatbot.model_name = model
+    db.session.commit()
+    return jsonify(provider="gemini", model=model, available_models=models, api_key_id=key_id)
 
 
 @ollama_bp.post("/preferences")
@@ -546,6 +640,7 @@ def save_preferences():
 
     current_user.ollama_model = model_name
     current_user.active_ollama_api_key_id = selected_key_id
+    current_user.rover_ai_provider = "ollama"
     chatbot = Chatbot.query.filter_by(user_id=current_user.user_id).first()
     if chatbot is not None:
         chatbot.model_name = model_name
@@ -582,6 +677,7 @@ def get_chat_session():
         session_id=chat_session.session_id,
         chatbot_name=chatbot.chatbot_name,
         model=chatbot.model_name,
+        provider=current_user.rover_ai_provider,
         messages=[
             {"role": message.role, "content": message.content} for message in messages
         ],
@@ -638,6 +734,20 @@ def save_chatbot_settings():
     ):
         return jsonify(error="Enter a valid Ollama model name."), 400
     model_name = model_name.strip()
+    if current_user.rover_ai_provider == "gemini":
+        try:
+            models = gemini_service.available_models(_gemini_key())
+        except (RuntimeError, ValueError, requests.RequestException) as error:
+            message, code = _gemini_error(error)
+            return jsonify(error=message), code
+        if model_name not in models:
+            return jsonify(error="That model is not available in Gemini."), 400
+        chatbot = _get_or_create_chatbot()
+        chatbot.chatbot_name = chatbot_name.strip()
+        chatbot.model_name = model_name
+        current_user.gemini_model = model_name
+        db.session.commit()
+        return jsonify(name=chatbot.chatbot_name, model=model_name)
     selected_key = _selected_api_key()
     try:
         headers = _ollama_headers(selected_key)
@@ -858,6 +968,34 @@ def chat():
     if context:
         ollama_content += "\n\n" + "\n\n".join(context)
     ollama_messages.append({"role": "user", "content": ollama_content})
+    if current_user.rover_ai_provider == "gemini":
+        try:
+            assistant_message = gemini_service.generate_content(
+                _gemini_key(), current_user.gemini_model or "", ollama_messages
+            )
+        except (RuntimeError, ValueError, requests.RequestException) as error:
+            message, code = _gemini_error(error)
+            return jsonify(error=message), code
+        chat_session = _current_chat_session(chatbot)
+        if chat_session is None:
+            return jsonify(error="The chat session ended before the reply was saved."), 409
+        try:
+            db.session.add_all([
+                ChatbotMessage(session_id=chat_session.session_id, role="user", content=content.strip()),
+                ChatbotMessage(session_id=chat_session.session_id, role="assistant", content=assistant_message),
+            ])
+            chat_session.last_activity_at = datetime.now(timezone.utc)
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            current_app.logger.exception("Unable to save Gemini chat")
+            return jsonify(error="Rover could not save the completed chat."), 500
+        return Response(
+            json.dumps({"token": assistant_message}) + "\n"
+            + json.dumps({"done": True, "message": assistant_message}) + "\n",
+            content_type="application/x-ndjson",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
     selected_key = _selected_api_key()
     model_name = chatbot.model_name
     chatbot_id = chatbot.chatbot_id
@@ -892,6 +1030,16 @@ def chat():
             return jsonify(
                 error="Ollama rejected the API key. Check the saved key and try again."
             ), 502
+        if (
+            error.response is not None
+            and error.response.status_code == 402
+            and _is_ollama_cloud()
+        ):
+            current_app.logger.warning("Ollama Cloud rejected chat: payment required")
+            return jsonify(
+                error="Ollama Cloud requires payment or available usage credits. "
+                "Check your Ollama account billing and usage."
+            ), 402
         current_app.logger.exception("Ollama chat request failed")
         return jsonify(error="Ollama could not complete the request."), 502
     except requests.RequestException:

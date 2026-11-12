@@ -50,7 +50,7 @@
         <form id="ollamaChatbotSettingsForm">
             <label for="ollamaChatbotNameInput">Chatbot name</label>
             <input id="ollamaChatbotNameInput" name="name" type="text" maxlength="64" value="Rover AI" required>
-            <label for="ollamaChatbotModelSelect">Ollama model</label>
+            <label for="ollamaChatbotModelSelect">AI model</label>
             <select id="ollamaChatbotModelSelect" name="model" required>
                 <option value="" selected disabled>Loading available models...</option>
             </select>
@@ -93,7 +93,7 @@
             <div class="ollama-file-prompt">Drop text files here or
                 <label class="ollama-file-browse">browse<input id="ollamaFileInput" type="file" multiple aria-label="Browse text files" {% if not current_user.authentication_data or not current_user.authentication_data.authenticated %}disabled{% endif %}></label>.
             </div>
-            <span>Encrypted at rest; checked files are sent to Ollama with each message.</span>
+            <span>Encrypted at rest; checked files are sent to the active AI provider with each message.</span>
             <div id="ollamaFileList" class="ollama-file-list" aria-label="Saved files"></div>
             <p id="ollamaFileStatus" class="ollama-folder-name" role="status" aria-live="polite"></p>
         </div>

@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+import requests
 from flask import Flask
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -631,7 +632,7 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'class="ollama-mode-section"' in response.data
     assert b'id="ollamaMinimize"' in response.data
     assert b'id="ollamaEndSession"' in response.data
-    assert b"scripts/Integrations/Ollama.js?v=15" in response.data
+    assert b"scripts/Integrations/Ollama.js?v=17" in response.data
     assert response.data.count(b'id="ollamaDrawer"') == 1
     assert (
         b'class="button is-outlined design-side-button rover-ai-nav-button"'
@@ -646,7 +647,7 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b"Rover AI" in response.data
     assert b'id="ollamaReadFile"' not in response.data
     assert b"Add folder file to Rover AI" in response.data
-    assert b"Encrypted at rest; checked files are sent to Ollama" in response.data
+    assert b"Encrypted at rest; checked files are sent to the active AI provider" in response.data
     assert b"Drop text files here or" in response.data
     assert (
         b'id="ollamaFileInput" type="file" multiple aria-label="Browse text files" disabled'
@@ -1168,6 +1169,7 @@ def test_ollama_status_reports_selected_model(mock_get, notes_client):
     assert result["status"] == "ready"
     assert result["model"] == "llama3.2"
     assert result["available_models"] == ["llama3.2:latest", "qwen3:latest"]
+    assert result["message"] == "Model available in Ollama."
 
 
 @patch("main.blueprints.Integrations.Ollama.routes.requests.get")
@@ -1415,6 +1417,248 @@ def test_ollama_chat_uses_selected_model_and_decrypted_user_key(
     assert mock_post.call_args.kwargs["headers"]["Authorization"] == (
         "Bearer test-provider-secret"
     )
+
+
+@patch("main.services.gemini_service.requests.post")
+@patch("main.services.gemini_service.requests.get")
+def test_gemini_key_activation_chat_files_and_switch_back(mock_get, mock_post, notes_client):
+    mock_get.return_value.status_code = 200
+    mock_get.return_value.json.return_value = {
+        "models": [
+            {"name": "models/gemini-test-flash", "supportedGenerationMethods": ["generateContent"]},
+            {"name": "models/embedding-test", "supportedGenerationMethods": ["embedContent"]},
+        ]
+    }
+    mock_post.return_value.status_code = 200
+    mock_post.return_value.json.return_value = {
+        "candidates": [{"content": {"parts": [{"text": "Gemini reply"}]}, "finishReason": "STOP"}]
+    }
+    saved = notes_client.post(
+        "/Rover/Design/API-Keys",
+        json={"name": "Google", "type": "gemini", "api_key": "test-gemini-secret"},
+    )
+    assert saved.status_code == 201
+    key_id = saved.get_json()["api_key"]["id"]
+    with notes_client.application.app_context():
+        account = Accounts.query.filter_by(email="route-notes@example.com").one()
+        key = db.session.get(UserApiKey, key_id)
+        assert account.rover_ai_provider == "ollama"
+        assert account.active_ollama_api_key_id is None
+        assert b"test-gemini-secret" not in key.key_ciphertext
+    selected = notes_client.post("/api/ollama/gemini/preferences", json={"api_key_id": key_id})
+    assert selected.status_code == 200
+    assert selected.get_json()["model"] == "gemini-test-flash"
+    assert selected.get_json()["available_models"] == ["gemini-test-flash"]
+    assert notes_client.get("/api/ollama/session").get_json()["provider"] == "gemini"
+    assert notes_client.get("/api/ollama/status").get_json()["message"] == "Model available in Gemini."
+    saved_file = notes_client.post(
+        "/api/ollama/chatbot/files", json={"name": "notes.txt", "content": "private text"}
+    ).get_json()["file"]["id"]
+    response = notes_client.post(
+        "/api/ollama/chat", json={"message": "Summarize", "file_ids": [saved_file]}
+    )
+    assert response.status_code == 200
+    assert [json.loads(line) for line in response.get_data(as_text=True).splitlines()] == [
+        {"token": "Gemini reply"}, {"done": True, "message": "Gemini reply"}
+    ]
+    assert mock_get.call_args.args[0] == "https://generativelanguage.googleapis.com/v1beta/models"
+    assert mock_post.call_args.args[0] == (
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-test-flash:generateContent"
+    )
+    assert mock_post.call_args.kwargs["headers"]["x-goog-api-key"] == "test-gemini-secret"
+    assert mock_post.call_args.kwargs["allow_redirects"] is False
+    contents = mock_post.call_args.kwargs["json"]["contents"]
+    assert contents == [{"role": "user", "parts": [{"text": "Summarize\n\n[Attached file: notes.txt]\nprivate text"}]}]
+    response = notes_client.post("/api/ollama/chat", json={"message": "Follow up"})
+    assert response.status_code == 200
+    contents = mock_post.call_args.kwargs["json"]["contents"]
+    assert [item["role"] for item in contents] == ["user", "model", "user"]
+    assert contents[0]["parts"][0]["text"] == "Summarize"
+    assert notes_client.post("/api/ollama/gemini/preferences", json={"provider": "ollama"}).status_code == 200
+    assert notes_client.get("/api/ollama/session").get_json()["provider"] == "ollama"
+    with notes_client.application.app_context():
+        assert ChatbotMessage.query.count() == 4
+        assert Accounts.query.filter_by(email="route-notes@example.com").one().ollama_model is None
+
+
+@patch("main.services.gemini_service.requests.get")
+def test_gemini_activation_rejects_wrong_keys_and_failed_model_lookup(mock_get, notes_client):
+    ollama_key = notes_client.post(
+        "/Rover/Design/API-Keys", json={"name": "Other", "type": "ollama", "api_key": "ollama-secret"}
+    ).get_json()["api_key"]["id"]
+    response = notes_client.post("/api/ollama/gemini/preferences", json={"api_key_id": ollama_key})
+    assert response.status_code == 503
+    mock_get.assert_not_called()
+    gemini_key = notes_client.post(
+        "/Rover/Design/API-Keys", json={"name": "Gemini", "type": "gemini", "api_key": "secret"}
+    ).get_json()["api_key"]["id"]
+    mock_get.return_value.status_code = 403
+    upstream = requests.Response()
+    upstream.status_code = 403
+    mock_get.return_value.raise_for_status.side_effect = requests.HTTPError(response=upstream)
+    response = notes_client.post("/api/ollama/gemini/preferences", json={"api_key_id": gemini_key})
+    assert response.status_code == 502
+    assert "Gemini rejected" in response.get_json()["error"]
+    with notes_client.application.app_context():
+        assert Accounts.query.filter_by(email="route-notes@example.com").one().rover_ai_provider == "ollama"
+
+
+@patch("main.services.gemini_service.requests.post")
+@patch("main.services.gemini_service.requests.get")
+def test_gemini_rejected_reply_does_not_save_history(mock_get, mock_post, notes_client):
+    mock_get.return_value.status_code = 200
+    mock_get.return_value.json.return_value = {
+        "models": [{"name": "models/gemini-test", "supportedGenerationMethods": ["generateContent"]}]
+    }
+    key_id = notes_client.post(
+        "/Rover/Design/API-Keys", json={"name": "Gemini", "type": "gemini", "api_key": "secret"}
+    ).get_json()["api_key"]["id"]
+    notes_client.post("/api/ollama/gemini/preferences", json={"api_key_id": key_id})
+    notes_client.get("/api/ollama/session")
+    mock_post.return_value.status_code = 200
+    mock_post.return_value.json.return_value = {"candidates": [{"finishReason": "SAFETY"}]}
+    response = notes_client.post("/api/ollama/chat", json={"message": "Hello"})
+    assert response.status_code == 503
+    assert response.get_json()["error"] == "Gemini could not complete the response."
+    with notes_client.application.app_context():
+        assert ChatbotMessage.query.count() == 0
+
+
+@patch("main.services.gemini_service.requests.get")
+def test_gemini_rejects_foreign_key_and_invalid_model_without_switching(mock_get, notes_client):
+    with notes_client.application.app_context():
+        other = Accounts(
+            email="other-gemini@example.com", username="OtherGemini",
+            password="hashed", country_of_origin="United States",
+        )
+        db.session.add(other)
+        db.session.flush()
+        foreign = UserApiKey(
+            user_id=other.user_id, key_name="Foreign", key_type="gemini",
+            key_hash="hash", key_ciphertext=b"foreign",
+            created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
+        )
+        db.session.add(foreign)
+        db.session.commit()
+        foreign_id = foreign.api_key_id
+    response = notes_client.post("/api/ollama/gemini/preferences", json={"api_key_id": foreign_id})
+    assert response.status_code == 503
+    mock_get.assert_not_called()
+    key_id = notes_client.post(
+        "/Rover/Design/API-Keys", json={"name": "Mine", "type": "gemini", "api_key": "secret"}
+    ).get_json()["api_key"]["id"]
+    response = notes_client.post(
+        "/api/ollama/gemini/preferences", json={"api_key_id": key_id, "model": "../malicious"}
+    )
+    assert response.status_code == 400
+    mock_get.assert_not_called()
+    with notes_client.application.app_context():
+        assert Accounts.query.filter_by(email="route-notes@example.com").one().rover_ai_provider == "ollama"
+
+
+@patch("main.blueprints.Integrations.Ollama.routes._available_models")
+@patch("main.services.gemini_service.available_models")
+def test_switching_from_gemini_to_ollama_preserves_ollama_model(
+    mock_gemini_models, mock_ollama_models, notes_client
+):
+    mock_gemini_models.return_value = ["gemini-test"]
+    mock_ollama_models.return_value = ["first:latest", "saved:latest"]
+    ollama_key = notes_client.post(
+        "/Rover/Design/API-Keys", json={"name": "Local", "type": "ollama", "api_key": "secret"}
+    ).get_json()["api_key"]["id"]
+    gemini_key = notes_client.post(
+        "/Rover/Design/API-Keys", json={"name": "Google", "type": "gemini", "api_key": "secret"}
+    ).get_json()["api_key"]["id"]
+    with notes_client.application.app_context():
+        account = Accounts.query.filter_by(email="route-notes@example.com").one()
+        account.ollama_model = "saved:latest"
+        db.session.commit()
+    notes_client.get("/api/ollama/session")
+    notes_client.post("/api/ollama/gemini/preferences", json={"api_key_id": gemini_key})
+    response = notes_client.post("/api/ollama/key", json={"api_key_id": ollama_key})
+    assert response.status_code == 200
+    assert response.get_json()["model"] == "saved:latest"
+    assert notes_client.get("/api/ollama/session").get_json()["provider"] == "ollama"
+
+
+@patch("main.blueprints.Integrations.Ollama.routes.requests.post")
+def test_ollama_cloud_payment_error_explains_billing_without_exposing_details(
+    mock_post, notes_client
+):
+    with notes_client.application.app_context():
+        notes_client.application.config["OLLAMA_BASE_URL"] = "https://ollama.com"
+    notes_client.post(
+        "/Rover/Design/API-Keys",
+        json={"name": "Cloud", "type": "ollama", "api_key": "test-provider-secret"},
+    )
+    notes_client.get("/api/ollama/session")
+    upstream = requests.Response()
+    upstream.status_code = 402
+    upstream._content = b"private provider details"
+    mock_post.return_value.raise_for_status.side_effect = requests.HTTPError(
+        response=upstream
+    )
+
+    response = notes_client.post("/api/ollama/chat", json={"message": "Hello"})
+
+    assert response.status_code == 402
+    assert response.get_json()["error"] == (
+        "Ollama Cloud requires payment or available usage credits. "
+        "Check your Ollama account billing and usage."
+    )
+    assert b"private provider details" not in response.data
+    mock_post.return_value.close.assert_called_once()
+    with notes_client.application.app_context():
+        assert ChatbotMessage.query.count() == 0
+
+
+@pytest.mark.parametrize("status_code", [402, 500])
+@patch("main.blueprints.Integrations.Ollama.routes.requests.post")
+def test_ollama_local_provider_error_remains_generic(
+    mock_post, notes_client, status_code
+):
+    notes_client.get("/api/ollama/session")
+    upstream = requests.Response()
+    upstream.status_code = status_code
+    mock_post.return_value.raise_for_status.side_effect = requests.HTTPError(
+        response=upstream
+    )
+
+    response = notes_client.post("/api/ollama/chat", json={"message": "Hello"})
+
+    assert response.status_code == 502
+    assert response.get_json()["error"] == "Ollama could not complete the request."
+    mock_post.return_value.close.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("last_event", "error"),
+    [
+        (b'{"error":"private provider details"}', "Ollama could not complete the request."),
+        (None, "Ollama ended the response before it was complete."),
+    ],
+)
+@patch("main.blueprints.Integrations.Ollama.routes.requests.post")
+def test_ollama_failed_stream_does_not_save_partial_chat(
+    mock_post, notes_client, last_event, error
+):
+    notes_client.get("/api/ollama/session")
+    lines = [b'{"message":{"content":"partial"}}']
+    if last_event is not None:
+        lines.append(last_event)
+    mock_post.return_value.iter_lines.return_value = iter(lines)
+    mock_post.return_value.raise_for_status.return_value = None
+
+    response = notes_client.post("/api/ollama/chat", json={"message": "Hello"})
+
+    events = [json.loads(line) for line in response.get_data(as_text=True).splitlines()]
+    assert events == [
+        {"token": "partial"},
+        {"error": error},
+    ]
+    mock_post.return_value.close.assert_called_once()
+    with notes_client.application.app_context():
+        assert ChatbotMessage.query.count() == 0
 
 
 @patch("main.blueprints.Integrations.Ollama.routes.requests.post")

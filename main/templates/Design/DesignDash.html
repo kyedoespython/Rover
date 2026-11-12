@@ -9,9 +9,9 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{{ url_for('static', filename='scripts/Design/Design.js') }}?v=5" defer></script>
+    <script src="{{ url_for('static', filename='scripts/Design/Design.js') }}?v=6" defer></script>
     <script type="module" src="{{ url_for('static', filename='scripts/Design/Schema/Schema.js') }}?v=1"></script>
-    <script src="{{ url_for('static', filename='scripts/Integrations/Ollama.js') }}?v=15" defer></script>
+    <script src="{{ url_for('static', filename='scripts/Integrations/Ollama.js') }}?v=17" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -1207,6 +1207,7 @@
                         <select id="apiKeyType" name="type" required>
                             <option value="">Select API Key</option>
                             <option value="ollama">Ollama API Key</option>
+                            <option value="gemini">Google Gemini API Key</option>
                         </select>
                     </div>
                 </div>

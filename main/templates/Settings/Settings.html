@@ -158,7 +158,7 @@
                             </div>
                             {% if not api_key.key_ciphertext %}
                                 <span class="saved-api-key-status">Re-enter key</span>
-                            {% elif api_key.api_key_id == active_api_key_id %}
+                            {% elif (api_key.key_type == "ollama" and api_key.api_key_id == active_api_key_id) or (api_key.key_type == "gemini" and api_key.api_key_id == active_gemini_api_key_id) %}
                                 <span class="saved-api-key-status is-active">Active</span>
                             {% endif %}
                         </article>

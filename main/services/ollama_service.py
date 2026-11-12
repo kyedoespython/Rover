@@ -39,7 +39,7 @@ def decrypt_api_key(ciphertext: bytes, user_id: int, key_id: int) -> str:
         return plaintext.decode("utf-8")
     except (InvalidTag, UnicodeDecodeError) as error:
         raise RuntimeError(
-            "The Ollama API key could not be decrypted. Re-enter it in the design dashboard."
+            "The API key could not be decrypted. Re-enter it in the design dashboard."
         ) from error
 
 

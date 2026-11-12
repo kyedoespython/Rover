@@ -11,6 +11,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const activeKey = document.getElementById("activeOllamaApiKey");
     const connectionStatus = document.getElementById("ollamaConnectionStatus");
     const csrfInput = form?.querySelector('input[name="csrf_token"]');
+    const geminiForm = document.getElementById("geminiPreferencesForm");
+    const geminiKey = document.getElementById("geminiApiKeySelect");
+    const geminiModel = document.getElementById("geminiModelSelect");
+    const geminiStatus = document.getElementById("geminiPreferencesStatus");
+    const geminiSave = document.getElementById("saveGeminiModel");
+    const useOllama = document.getElementById("useOllamaProvider");
+    const activeProvider = document.getElementById("activeRoverProvider");
 
     if (
         !(container instanceof HTMLElement) ||
@@ -24,7 +31,14 @@ document.addEventListener("DOMContentLoaded", () => {
         !(deactivateButton instanceof HTMLButtonElement) ||
         !(activeKey instanceof HTMLElement) ||
         !(connectionStatus instanceof HTMLElement) ||
-        !(csrfInput instanceof HTMLInputElement)
+        !(csrfInput instanceof HTMLInputElement) ||
+        !(geminiForm instanceof HTMLFormElement) ||
+        !(geminiKey instanceof HTMLSelectElement) ||
+        !(geminiModel instanceof HTMLSelectElement) ||
+        !(geminiStatus instanceof HTMLElement) ||
+        !(geminiSave instanceof HTMLButtonElement) ||
+        !(useOllama instanceof HTMLButtonElement) ||
+        !(activeProvider instanceof HTMLElement)
     ) {
         return;
     }
@@ -73,6 +87,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? "Ollama API key deactivated."
                 : "Ollama API key activated.";
             status.dataset.state = "success";
+            if (result.api_key_id !== null) {
+                activeProvider.textContent = "Ollama";
+            }
             window.dispatchEvent(new CustomEvent("ollama-preferences-updated", {
                 detail: { model: result.model },
             }));
@@ -135,6 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
             connectionStatus.textContent = "Connected to Ollama.";
             status.textContent = "Ollama settings saved.";
             status.dataset.state = "success";
+            activeProvider.textContent = "Ollama";
             window.dispatchEvent(new CustomEvent("ollama-preferences-updated", {
                 detail: { model: result.model },
             }));
@@ -147,4 +165,65 @@ document.addEventListener("DOMContentLoaded", () => {
             deactivateButton.disabled = false;
         }
     });
+
+    const updateGemini = async (payload) => {
+        geminiForm.querySelectorAll("button, select").forEach((control) => { control.disabled = true; });
+        geminiStatus.textContent = "Updating AI provider...";
+        geminiStatus.dataset.state = "";
+        try {
+            const response = await fetch(container.dataset.geminiUrl, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfInput.value,
+                    Accept: "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "Could not update the AI provider.");
+            }
+            activeProvider.textContent = result.provider === "gemini" ? "Google Gemini" : "Ollama";
+            if (result.provider === "gemini") {
+                geminiModel.replaceChildren();
+                result.available_models.forEach((name) => {
+                    const option = document.createElement("option");
+                    option.value = name;
+                    option.textContent = name;
+                    geminiModel.append(option);
+                });
+                geminiModel.value = result.model;
+            }
+            geminiStatus.textContent = result.provider === "gemini"
+                ? `Gemini activated with ${result.model}.`
+                : "Ollama selected for Rover AI.";
+            geminiStatus.dataset.state = "success";
+        } catch (error) {
+            geminiStatus.textContent = error.message || "Could not update the AI provider.";
+            geminiStatus.dataset.state = "error";
+        } finally {
+            geminiForm.querySelectorAll("button, select").forEach((control) => { control.disabled = false; });
+        }
+    };
+
+    geminiForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (!geminiKey.value) {
+            geminiStatus.textContent = "Select a saved Gemini key first.";
+            geminiStatus.dataset.state = "error";
+            return;
+        }
+        updateGemini({ api_key_id: Number(geminiKey.value) });
+    });
+    geminiSave.addEventListener("click", () => {
+        if (!geminiKey.value || !geminiModel.value) {
+            geminiStatus.textContent = "Activate a Gemini key and choose a model first.";
+            geminiStatus.dataset.state = "error";
+            return;
+        }
+        updateGemini({ api_key_id: Number(geminiKey.value), model: geminiModel.value });
+    });
+    useOllama.addEventListener("click", () => updateGemini({ provider: "ollama" }));
 });

@@ -503,7 +503,7 @@ def Save_User_Api_Key():
     api_key = api_key.strip()
     if not key_name or len(key_name) > 128:
         return jsonify(error="Name must be between 1 and 128 characters."), 400
-    if key_type != "ollama":
+    if key_type not in ("ollama", "gemini"):
         return jsonify(error="Select a supported API key type."), 400
     if not api_key or len(api_key) > 4096:
         return jsonify(error="API key must be between 1 and 4096 characters."), 400
@@ -538,14 +538,15 @@ def Save_User_Api_Key():
             saved_key.user_id,
             saved_key.api_key_id,
         )
-        current_user.active_ollama_api_key_id = saved_key.api_key_id
+        if key_type == "ollama":
+            current_user.active_ollama_api_key_id = saved_key.api_key_id
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
         return jsonify(error="You already have an API key with that name."), 409
     except RuntimeError as error:
         db.session.rollback()
-        current_app.logger.exception("Unable to encrypt the submitted Ollama API key")
+        current_app.logger.exception("Unable to encrypt the submitted API key")
         return jsonify(error=str(error)), 500
 
     return jsonify(
@@ -573,6 +574,7 @@ def Settings():
         "Settings/Settings.html",
         api_keys=api_keys,
         active_api_key_id=current_user.active_ollama_api_key_id,
+        active_gemini_api_key_id=current_user.active_gemini_api_key_id,
     )
 
 
