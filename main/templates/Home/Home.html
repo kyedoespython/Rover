@@ -15,24 +15,30 @@
 {% block content %}
 
 <style>
+    html {
+        overflow-y: auto;
+    }
+
     .home-page {
+        --landing-gutter: clamp(0.75rem, 2vw, 2rem);
         position: relative;
         z-index: 2;
         display: flex;
         min-height: 100vh;
         min-height: 100dvh;
         flex-direction: column;
-        padding: 1px 0 2rem;
+        padding: var(--landing-gutter);
     }
 
     .landing-shell {
         position: relative;
         isolation: isolate;
         display: flex;
-        width: min(calc(100% - clamp(2rem, 12vw, 8rem)), 1440px);
-        min-height: min(75vh, 760px);
+        width: 100%;
+        min-height: calc(100vh - var(--landing-gutter) - var(--landing-gutter));
+        min-height: calc(100dvh - var(--landing-gutter) - var(--landing-gutter));
         flex-direction: column;
-        margin: clamp(2rem, 12vh, 7rem) auto 4vh;
+        margin: 0 auto;
         overflow: hidden;
         border: 1px solid rgba(200, 209, 212, 0.2);
         border-radius: 14px;
@@ -134,7 +140,7 @@
 
     .metal-tile {
         position: absolute;
-        width: clamp(7rem, 14vw, 13rem);
+        width: clamp(7rem, 14vw, 22rem);
         aspect-ratio: 1;
         border: 1px solid rgba(235, 241, 243, 0.45);
         border-radius: 13px;
@@ -240,12 +246,6 @@
     }
 
     @media (max-width: 760px) {
-        .landing-shell {
-            width: calc(100% - 1.5rem);
-            min-height: min(84vh, 740px);
-            margin: 1rem auto 1.5rem;
-        }
-
         .landing-nav {
             grid-template-columns: 1fr auto;
             padding: 1rem;
@@ -287,15 +287,6 @@
     }
 
     @media (max-height: 600px) and (orientation: landscape) {
-        .home-page {
-            padding-bottom: 0;
-        }
-
-        .landing-shell {
-            min-height: calc(100dvh - 2rem);
-            margin: 1rem auto 0;
-        }
-
         .landing-nav {
             padding-top: 0.75rem;
             padding-bottom: 0.75rem;
