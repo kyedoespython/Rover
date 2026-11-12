@@ -32,6 +32,8 @@ Triple Rover Mode is available from the Design Dashboard mode selector. It opens
 
 On the login page, **Remember me for 3 days** keeps that browser signed in for up to three days of inactivity. Without it, the login cookie lasts for the browser session. Redis session records expire after three days of inactivity; no account database migration is required. Resetting the account password invalidates existing logins.
 
+Signed-in users can submit support tickets from **Support**. Tickets are stored in the application's `tickets` database table for operators to review; there is no automatic support email notification or ticket-management interface. Titles are limited to 64 characters and descriptions to 512 characters. Apply database migrations before using this feature.
+
 ## Current Status
 
 Rover is in construction and is being developed by a solo developer. Features are being added iteratively as the project evolves.

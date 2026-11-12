@@ -113,6 +113,9 @@
         <h1 class="title is-2 has-text-centered has-text-black support-title">Rover Support</h1>
         <section class="box support-card">
             <h2 class="title is-4 has-text-centered has-text-black ticket-title mb-4">Create a ticket</h2>
+            {% if not current_user.is_authenticated %}
+                <p class="has-text-centered mb-3"><a href="{{ url_for('auth.Login') }}">Sign in</a> before submitting a ticket.</p>
+            {% endif %}
             <form action="{{ url_for('home.Tickets') }}" method="post">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -122,9 +125,9 @@
                         <div class="select is-fullwidth">
                             <select id="ticketType" name="ticketType" required>
                                 <option value="">Select a ticket type</option>
-                                <option value="bug">Found a bug</option>
-                                <option value="recommendation">Recommendation</option>
-                                <option value="question">Question</option>
+                                <option value="bug" {% if request.form.get('ticketType') == 'bug' %}selected{% endif %}>Found a bug</option>
+                                <option value="recommendation" {% if request.form.get('ticketType') == 'recommendation' %}selected{% endif %}>Recommendation</option>
+                                <option value="question" {% if request.form.get('ticketType') == 'question' %}selected{% endif %}>Question</option>
                             </select>
                         </div>
                     </div>
@@ -133,14 +136,14 @@
                 <div class="field">
                     <label class="label has-text-black" for="nameTicket">Ticket name</label>
                     <div class="control">
-                        <input class="input" id="nameTicket" type="text" name="ticketName" placeholder="Ticket name" required>
+                        <input class="input" id="nameTicket" type="text" name="ticketName" placeholder="Ticket name" maxlength="64" value="{{ request.form.get('ticketName', '') }}" required>
                     </div>
                 </div>
 
                 <div class="field">
                     <label class="label has-text-black" for="TicketContent">Description</label>
                     <div class="control">
-                        <textarea class="textarea" id="TicketContent" name="TicketContent" placeholder="Describe the issue or suggestion" required></textarea>
+                        <textarea class="textarea" id="TicketContent" name="TicketContent" placeholder="Describe the issue or suggestion" maxlength="512" required>{{ request.form.get('TicketContent', '') }}</textarea>
                     </div>
                 </div>
 

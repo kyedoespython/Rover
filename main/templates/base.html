@@ -675,10 +675,6 @@
             color: var(--rover-muted) !important;
         }
 
-        body .ollama-assistant-status[data-state="ready"] {
-            color: #79d6ac !important;
-        }
-
         body .ollama-assistant-status[data-state="busy"] {
             color: #ffd27b !important;
         }
@@ -1004,31 +1000,13 @@
             font: 0.72rem var(--rover-font-sans);
         }
 
-        .ollama-status-dot {
-            width: 0.55rem;
-            height: 0.55rem;
-            flex: 0 0 auto;
-            border-radius: 50%;
-            background: #999;
-        }
-
-        .ollama-assistant-status[data-state="ready"] .ollama-status-dot {
-            background: #16803c;
-        }
-
-        .ollama-assistant-status[data-state="busy"] .ollama-status-dot {
-            background: #d08b00;
-            animation: ollama-pulse 1s infinite alternate;
+        .ollama-assistant-status[hidden] {
+            display: none;
         }
 
         .ollama-assistant-status[data-state="offline"],
         .ollama-assistant-status[data-state="error"] {
             color: #b42318;
-        }
-
-        .ollama-assistant-status[data-state="offline"] .ollama-status-dot,
-        .ollama-assistant-status[data-state="error"] .ollama-status-dot {
-            background: #b42318;
         }
 
         @keyframes ollama-pulse {

@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 import requests
 from flask import Flask
+from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from main.blueprints.auth import auth_bp
@@ -28,6 +29,7 @@ from main.models.user import (
     RoverAgentMessage,
     RoverAgentSession,
     SchemaMetadata,
+    Tickets,
     UserApiKey,
     UserSchemaDatabase,
     UserSchema,
@@ -92,6 +94,69 @@ def notes_client(tmp_path):
     with app.app_context():
         db.session.remove()
         db.drop_all()
+
+
+def test_support_ticket_is_saved_and_duplicate_names_are_allowed(notes_client):
+    payload = {"ticketType": "bug", "ticketName": " Problem ", "TicketContent": " Details "}
+    first = notes_client.post("/Tickets/Rover", data=payload, follow_redirects=True)
+    second = notes_client.post("/Tickets/Rover", data=payload, follow_redirects=True)
+    assert first.status_code == second.status_code == 200
+    assert b"Ticket #1 submitted." in first.data
+    assert b"Ticket #2 submitted." in second.data
+    with notes_client.application.app_context():
+        account = Accounts.query.filter_by(email="route-notes@example.com").one()
+        tickets = Tickets.query.order_by(Tickets.ticket_id).all()
+        assert [(item.user_id, item.ticket_type, item.ticket_name, item.ticket_content) for item in tickets] == [
+            (account.user_id, "bug", "Problem", "Details"),
+            (account.user_id, "bug", "Problem", "Details"),
+        ]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"ticketType": "other", "ticketName": "Name", "TicketContent": "Description"},
+        {"ticketType": "bug", "ticketName": " " * 2, "TicketContent": "Description"},
+        {"ticketType": "bug", "ticketName": "x" * 65, "TicketContent": "Description"},
+        {"ticketType": "bug", "ticketName": "Name", "TicketContent": "x" * 513},
+    ],
+)
+def test_support_ticket_rejects_invalid_input(notes_client, payload):
+    response = notes_client.post("/Tickets/Rover", data=payload)
+    assert response.status_code == 400
+    with notes_client.application.app_context():
+        assert Tickets.query.count() == 0
+
+
+def test_support_ticket_database_failure_preserves_form(notes_client):
+    payload = {"ticketType": "question", "ticketName": "Help", "TicketContent": "My description"}
+    with patch.object(db.session, "commit", side_effect=SQLAlchemyError("test failure")):
+        response = notes_client.post("/Tickets/Rover", data=payload)
+    assert response.status_code == 503
+    assert b"Your ticket could not be saved" in response.data
+    assert b'value="Help"' in response.data
+    assert b"My description</textarea>" in response.data
+    with notes_client.application.app_context():
+        assert Tickets.query.count() == 0
+
+
+def test_support_ticket_requires_login(notes_client):
+    with notes_client.session_transaction() as session:
+        session.clear()
+    response = notes_client.post(
+        "/Tickets/Rover",
+        data={"ticketType": "bug", "ticketName": "Name", "TicketContent": "Description"},
+    )
+    assert response.status_code in (302, 401)
+    with notes_client.application.app_context():
+        assert Tickets.query.count() == 0
+
+
+def test_signup_fields_have_associated_labels(notes_client):
+    response = notes_client.get("/Rover/Sign%20Up")
+    for field in ("email", "username", "password", "telephone", "signupCountry"):
+        assert f'for="{field}"'.encode() in response.data
 
 
 def test_notes_route_create_load_edit_and_delete(notes_client):
@@ -633,7 +698,10 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'class="ollama-mode-section"' in response.data
     assert b'id="ollamaMinimize"' in response.data
     assert b'id="ollamaEndSession"' in response.data
-    assert b"scripts/Integrations/Ollama.js?v=18" in response.data
+    assert b"scripts/Integrations/Ollama.js?v=19" in response.data
+    assert b"Model provider and saved API key" in response.data
+    assert b"Saved Ollama API key" not in response.data
+    assert b"ollama-status-dot" not in response.data
     assert response.data.count(b'id="ollamaDrawer"') == 1
     assert (
         b'class="button is-outlined design-side-button rover-ai-nav-button"'
@@ -665,7 +733,7 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'id="ollamaChatbotModelInput"' not in response.data
     assert b'id="ollamaApiKeySelect"' in response.data
     assert b'id="ollamaLoadApiKey"' in response.data
-    assert b'type="module" src="/static/scripts/Design/Schema/Schema.js?v=1"' in response.data
+    assert b'type="module" src="/static/scripts/Design/Schema/Schema.js?v=2"' in response.data
     assert b'id="openSchemaEditor"' in response.data
     assert b'id="schemaEditorDialog"' in response.data
     assert b'data-schema-url="/api/schema"' in response.data
@@ -1597,6 +1665,20 @@ def test_model_chooser_cloud_sources_are_owned_and_identify_active_key(mock_mode
     }
     assert mock_models.call_args.args[0]["Authorization"] == "Bearer secret-2"
     assert notes_client.get("/api/ollama/model-sources/ollama/local/models").status_code == 404
+
+
+def test_model_sources_show_saved_ollama_keys_as_unavailable_for_local_endpoint(notes_client):
+    key_id = notes_client.post(
+        "/Rover/Design/API-Keys",
+        json={"name": "Cloud key", "type": "ollama", "api_key": "secret"},
+    ).get_json()["api_key"]["id"]
+    sources = notes_client.get("/api/ollama/model-sources").get_json()["sources"]
+    key = next(source for source in sources if source["key_id"] == key_id)
+    assert key["provider"] == "ollama"
+    assert key["active"] is False
+    assert "Ollama Cloud" in key["unavailable_reason"]
+    assert "secret" not in str(sources)
+    assert notes_client.get(f"/api/ollama/model-sources/ollama/{key_id}/models").status_code == 404
 
 
 @patch("main.blueprints.Integrations.Ollama.routes.requests.get")

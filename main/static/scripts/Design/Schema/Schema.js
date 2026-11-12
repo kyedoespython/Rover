@@ -1,4 +1,4 @@
-import { createSchemaViews } from "./SchemaViews.js?v=1";
+import { createSchemaViews } from "./SchemaViews.js?v=2";
 import { createSchemaDatabase } from "./SchemaDatabase.js?v=1";
 import { createSchemaTools } from "./SchemaTools.js?v=1";
 

@@ -80,14 +80,14 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <div class="field">
-                    <label class="label has-text-black">Email</label>
+                    <label class="label has-text-black" for="email">Email</label>
                     <div class="control">
                         <input class="input" type="email" id="email" name="email" placeholder="********" required>
                     </div>
                 </div>
 
                 <div class="field">
-                    <label class="label has-text-black">Username</label>
+                    <label class="label has-text-black" for="username">Username</label>
                     <div class="control">
                         <input class="input" type="text" id="username" name="username" placeholder="********" required>
                     </div>
@@ -101,14 +101,14 @@
                 </div>
 
                 <div class="field">
-                    <label class="label has-text-black">Phone Number <span class="has-text-grey-light">(Optional)</span></label>
+                    <label class="label has-text-black" for="telephone">Phone Number <span class="has-text-grey-light">(Optional)</span></label>
                     <div class="control">
                         <input class="input" type="tel" id="telephone" name="telephone" placeholder="********">
                     </div>
                 </div>
 
                 <div class="field mb-5">
-                    <label class="label has-text-black">Country</label>
+                    <label class="label has-text-black" for="signupCountry">Country</label>
                     <div class="control">
                         <div class="select is-fullwidth">
                             <select id="signupCountry" name="country" required>

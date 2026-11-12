@@ -125,6 +125,7 @@ function initializeOllamaDrawer() {
 
     const setStatus = (state, message) => {
         statusPanel.dataset.state = state;
+        statusPanel.hidden = state === "ready";
         statusText.textContent = message;
     };
 
@@ -247,10 +248,12 @@ function initializeOllamaDrawer() {
     };
 
     let apiKeysRequestId = 0;
-    const loadApiKeys = async () => {
+    let modelSources = [];
+    const sourceValue = (source) => `${source.provider}:${source.key_id === null ? "local" : source.key_id}`;
+    const loadApiKeys = async (preferActive = false) => {
         const requestId = ++apiKeysRequestId;
         try {
-            const response = await fetch(drawer.dataset.keysUrl, {
+            const response = await fetch(drawer.dataset.modelSourcesUrl, {
                 credentials: "same-origin",
                 headers: { Accept: "application/json" },
                 cache: "no-store",
@@ -260,28 +263,58 @@ function initializeOllamaDrawer() {
                 return;
             }
             if (!response.ok) {
-                throw new Error(result.error || "Could not load saved Ollama API keys.");
+                throw new Error(result.error || "Could not load model providers.");
             }
+            const previousValue = apiKeySelect.value;
+            modelSources = result.sources;
             apiKeySelect.replaceChildren();
-            const localOption = document.createElement("option");
-            localOption.value = "";
-            localOption.textContent = "No API key";
-            apiKeySelect.append(localOption);
-            result.keys.forEach((key) => {
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = "Choose a provider or API key";
+            apiKeySelect.append(placeholder);
+            modelSources.forEach((source) => {
                 const option = document.createElement("option");
-                option.value = String(key.id);
-                option.textContent = key.name;
+                option.value = sourceValue(source);
+                const provider = source.provider === "gemini" ? "Google Gemini" : "Ollama";
+                option.textContent = `${provider} · ${source.name}`;
+                if (source.unavailable_reason) {
+                    option.disabled = true;
+                    option.textContent += " (requires Ollama Cloud)";
+                }
                 apiKeySelect.append(option);
             });
-            apiKeySelect.value = result.active_api_key_id === null
-                ? ""
-                : String(result.active_api_key_id);
+            const active = modelSources.find((source) => source.active);
+            const previous = modelSources.find((source) => sourceValue(source) === previousValue && !source.unavailable_reason);
+            apiKeySelect.value = sourceValueOrEmpty(preferActive ? active : previous || active);
         } catch (error) {
             if (requestId === apiKeysRequestId) {
-                settingsStatus.textContent = error.message || "Could not load saved Ollama API keys.";
+                settingsStatus.textContent = error instanceof SyntaxError
+                    ? "Could not load model providers. Please check your connection and sign-in."
+                    : error.message || "Could not load model providers.";
             }
         }
     };
+    const sourceValueOrEmpty = (source) => source ? sourceValue(source) : "";
+
+    const getSourceModels = async (source) => {
+        const sourceId = source.key_id === null ? "local" : String(source.key_id);
+        const url = drawer.dataset.modelSourceUrl
+            .replace("PROVIDER", encodeURIComponent(source.provider))
+            .replace("SOURCE", encodeURIComponent(sourceId));
+        const response = await fetch(url, {
+            credentials: "same-origin", headers: { Accept: "application/json" }, cache: "no-store",
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || "Could not load models.");
+        }
+        return data.models;
+    };
+
+    const saveModelSelection = (source, model) => requestJson(
+        source.provider === "gemini" ? drawer.dataset.geminiPreferencesUrl : drawer.dataset.ollamaPreferencesUrl,
+        { model, api_key_id: source.key_id },
+    );
 
     const refreshStatus = async () => {
         const requestId = ++statusRequestId;
@@ -291,11 +324,10 @@ function initializeOllamaDrawer() {
                 headers: { Accept: "application/json" },
             });
             const result = await response.json();
-            if (requestId !== statusRequestId || isSelectingModel) {
+            if (requestId !== statusRequestId || isSelectingModel || isSavingSettings) {
                 return null;
             }
             activeProvider = result.provider || activeProvider;
-            apiKeyForm.hidden = activeProvider !== "ollama";
             modelName.textContent = result.model || "Not selected";
             setSessionActive(sessionActive);
             if (Array.isArray(result.available_models)) {
@@ -303,7 +335,7 @@ function initializeOllamaDrawer() {
             } else {
                 updateModelOptions([], result.model);
             }
-            if (requestId === statusRequestId && !isSelectingModel && !isSending && !chatError) {
+            if (requestId === statusRequestId && !isSelectingModel && !isSavingSettings && !isSending && !chatError) {
                 setStatus(
                     result.status || "offline",
                     result.message || "Unable to check Ollama status.",
@@ -311,7 +343,7 @@ function initializeOllamaDrawer() {
             }
             return result;
         } catch {
-            if (requestId === statusRequestId && !isSelectingModel && !isSending && !chatError) {
+            if (requestId === statusRequestId && !isSelectingModel && !isSavingSettings && !isSending && !chatError) {
                 setStatus("offline", "Could not reach Rover.");
             }
             return null;
@@ -378,27 +410,21 @@ function initializeOllamaDrawer() {
                 status.textContent = "Loading models...";
                 group.append(heading, status);
                 modelMenu.append(group);
+                if (source.unavailable_reason) {
+                    status.textContent = source.unavailable_reason;
+                    return;
+                }
                 try {
-                    const sourceId = source.key_id === null ? "local" : String(source.key_id);
-                    const url = drawer.dataset.modelSourceUrl
-                        .replace("PROVIDER", encodeURIComponent(source.provider))
-                        .replace("SOURCE", encodeURIComponent(sourceId));
-                    const response = await fetch(url, {
-                        credentials: "same-origin", headers: { Accept: "application/json" }, cache: "no-store",
-                    });
-                    const data = await response.json();
-                    if (!response.ok) {
-                        throw new Error(data.error || "Could not load models.");
-                    }
+                    const models = await getSourceModels(source);
                     if (requestId !== modelMenuRequestId) {
                         return;
                     }
-                    if (!data.models.length) {
+                    if (!models.length) {
                         status.textContent = "No models available.";
                         return;
                     }
                     status.remove();
-                    data.models.forEach((name) => {
+                    models.forEach((name) => {
                         const button = document.createElement("button");
                         button.type = "button";
                         button.textContent = name;
@@ -418,18 +444,14 @@ function initializeOllamaDrawer() {
                             status.textContent = "Selecting model...";
                             let selected = false;
                             try {
-                                const url = source.provider === "gemini"
-                                    ? drawer.dataset.geminiPreferencesUrl
-                                    : drawer.dataset.ollamaPreferencesUrl;
-                                const result = await requestJson(url, {
-                                    model: name, api_key_id: source.key_id,
-                                });
+                                const result = await saveModelSelection(source, name);
                                 activeProvider = source.provider;
                                 chatError = false;
                                 modelName.textContent = result.model;
-                                apiKeyForm.hidden = activeProvider !== "ollama";
+                                settingsStatus.textContent = "";
                                 closeModelMenu();
                                 setStatus("ready", `${result.model} selected.`);
+                                loadApiKeys(true);
                                 selected = true;
                             } catch (error) {
                                 status.dataset.error = "true";
@@ -688,7 +710,6 @@ function initializeOllamaDrawer() {
             clearMessages();
             chatbotName.textContent = result.chatbot_name;
             activeProvider = result.provider || "unselected";
-            apiKeyForm.hidden = activeProvider !== "ollama";
             nameInput.value = result.chatbot_name;
             modelName.textContent = result.model || "Not selected";
             modelSelect.value = result.model;
@@ -968,26 +989,31 @@ function initializeOllamaDrawer() {
         isSavingSettings = true;
         closeModelMenu();
         setSessionActive(true);
-        settingsStatus.textContent = "Loading saved Ollama API key...";
-        const rawKeyId = apiKeySelect.value;
+        settingsStatus.textContent = "Loading models...";
+        statusRequestId += 1;
         try {
-            const result = await requestJson(drawer.dataset.selectKeyUrl, {
-                api_key_id: rawKeyId ? Number(rawKeyId) : null,
-            });
+            const source = modelSources.find((item) => sourceValue(item) === apiKeySelect.value);
+            if (!source || source.unavailable_reason) {
+                throw new Error("Choose an available provider or API key.");
+            }
+            const models = await getSourceModels(source);
+            if (!models.length) {
+                throw new Error("No models are available for this provider.");
+            }
+            const model = source.active && models.includes(modelName.textContent)
+                ? modelName.textContent : models[0];
+            const result = await saveModelSelection(source, model);
+            activeProvider = source.provider;
             chatError = false;
             modelName.textContent = result.model;
-            if (result.api_key_id === null) {
-                settingsStatus.textContent = "Ollama API key deactivated.";
-                await refreshStatus();
-                return;
-            }
-            updateModelOptions(result.available_models, result.model);
-            settingsStatus.textContent = result.api_key_name
-                ? `${result.api_key_name} loaded. ${result.model} is selected.`
-                : "Local Ollama selected.";
-            setStatus("ready", "Ollama key and models loaded.");
+            updateModelOptions(models, result.model);
+            settingsStatus.textContent = `${source.name} loaded. ${result.model} is selected.`;
+            setStatus("ready", "Models loaded.");
+            loadApiKeys(true);
         } catch (error) {
-            settingsStatus.textContent = error.message;
+            settingsStatus.textContent = error instanceof SyntaxError
+                ? "Could not load models. Please check your connection and sign-in."
+                : error.message || "Could not load models.";
         } finally {
             isSavingSettings = false;
             setSessionActive(sessionActive);

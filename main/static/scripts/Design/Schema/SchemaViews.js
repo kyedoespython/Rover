@@ -149,6 +149,11 @@ export function createSchemaViews(context) {
     const renderTables = () => {
         tableGrid.replaceChildren();
         emptyState.hidden = tables.length > 0;
+        emptyState.querySelector("strong").textContent = state.selectedDatabaseId
+            ? "No tables yet" : "No database selected";
+        emptyState.querySelector("span").textContent = state.selectedDatabaseId
+            ? "Add a table to begin designing this database."
+            : "Create a database or load a SQLite file to begin.";
         tables.forEach((table) => {
             const card = createElement(
                 "article",

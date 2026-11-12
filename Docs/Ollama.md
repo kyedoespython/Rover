@@ -28,18 +28,20 @@ Rover displays saved key labels, not the secret. Re-enter a key if it needs to b
 
 In Rover AI, open **Models** below the message field. Models are grouped by integration and saved key; selecting one configures the provider without reloading. New accounts have no AI provider selected until a model is chosen. Existing accounts keep their previous selection. Gemini and Ollama are supported; other providers such as Groq are not yet integrated.
 
+You can also open **Chatbot settings and computer permissions**, select a saved Gemini or Ollama key under **Model provider and saved API key**, and choose **Load models**. Rover selects an available model; use **AI model** and **Save chatbot settings** to change it. The configured local or custom Ollama endpoint is also listed. Ollama Cloud keys remain visible but unavailable when a local or custom endpoint is configured, because Rover never sends those keys to other endpoints.
+
 The chooser loads each integration's model list when opened and reports errors independently. Model availability does not guarantee generation or billing access. Switching providers sends subsequent prompts, checked files, and relevant existing chat history to the newly selected provider. End the chat session first if that history should not be shared.
 
 The Integrations page checks models offered by the configured endpoint and saves the selected model for the account. The single Rover AI panel can also have its own chatbot name and model setting. Triple Rover slots each have independent model settings.
 
-The assistant panel shows connection/model status. If it reports the service is unreachable or the model is missing, verify:
+The assistant panel displays connection and model errors when they occur. If it reports the service is unreachable or the model is missing, verify:
 
 - The Ollama service is running and reachable from the Rover web process.
 - The configured base URL is correct for the current network/container.
 - The model is installed or available on that Ollama endpoint.
 - For Ollama Cloud, a valid saved API key is selected.
 
-“Model available in Ollama” means the model is listed by the endpoint; it does not confirm that a chat request will succeed. If Ollama Cloud reports that payment or usage credits are required, review the account's [usage and billing](https://ollama.com/settings) and [pricing](https://ollama.com/pricing).
+If Ollama Cloud reports that payment or usage credits are required, review the account's [usage and billing](https://ollama.com/settings) and [pricing](https://ollama.com/pricing).
 
 Drag the panel's height handle or use its arrow keys to resize it. The message field can also be resized by dragging its bottom-right corner or focusing that corner and using the arrow keys.
 

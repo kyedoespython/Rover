@@ -362,17 +362,20 @@ def model_sources():
             "active": current_user.rover_ai_provider == "ollama",
         })
     for key in keys:
-        if key.key_type == "gemini" or _is_ollama_cloud():
-            sources.append({
-                "provider": key.key_type,
-                "key_id": key.api_key_id,
-                "name": key.key_name,
-                "active": current_user.rover_ai_provider == key.key_type
-                and key.api_key_id == (
-                    current_user.active_gemini_api_key_id
-                    if key.key_type == "gemini" else current_user.active_ollama_api_key_id
-                ),
-            })
+        unavailable = key.key_type == "ollama" and not _is_ollama_cloud()
+        source = {
+            "provider": key.key_type,
+            "key_id": key.api_key_id,
+            "name": key.key_name,
+            "active": not unavailable and current_user.rover_ai_provider == key.key_type
+            and key.api_key_id == (
+                current_user.active_gemini_api_key_id
+                if key.key_type == "gemini" else current_user.active_ollama_api_key_id
+            ),
+        }
+        if unavailable:
+            source["unavailable_reason"] = "Ollama API keys require the official Ollama Cloud endpoint."
+        sources.append(source)
     return jsonify(sources=sources)
 
 

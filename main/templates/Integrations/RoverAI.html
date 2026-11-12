@@ -5,8 +5,6 @@
     data-chat-url="{{ url_for('Ollama.chat') }}"
     data-session-url="{{ url_for('Ollama.get_chat_session') }}"
     data-end-session-url="{{ url_for('Ollama.end_chat_session') }}"
-    data-keys-url="{{ url_for('Ollama.ollama_api_keys') }}"
-    data-select-key-url="{{ url_for('Ollama.select_ollama_api_key') }}"
     data-chatbot-settings-url="{{ url_for('Ollama.save_chatbot_settings') }}"
     data-permissions-url="{{ url_for('Ollama.save_chatbot_permissions') }}"
     data-files-url="{{ url_for('Ollama.chatbot_files') }}"
@@ -45,11 +43,11 @@
     <details class="ollama-drawer-settings">
         <summary>Chatbot settings and computer permissions</summary>
         <form id="ollamaApiKeyForm">
-            <label for="ollamaApiKeySelect">Saved Ollama API key</label>
+            <label for="ollamaApiKeySelect">Model provider and saved API key</label>
             <select id="ollamaApiKeySelect" name="api_key_id">
-                <option value="">No API key (local Ollama)</option>
+                <option value="">Loading integrations...</option>
             </select>
-            <button id="ollamaLoadApiKey" type="submit">Load API key</button>
+            <button id="ollamaLoadApiKey" type="submit">Load models</button>
         </form>
         <form id="ollamaChatbotSettingsForm">
             <label for="ollamaChatbotNameInput">Chatbot name</label>
@@ -78,7 +76,6 @@
         <p class="ollama-settings-status" id="ollamaSettingsStatus" role="status" aria-live="polite"></p>
     </details>
     <div class="ollama-assistant-status" id="ollamaAssistantStatus" data-state="checking" role="status" aria-live="polite">
-        <span class="ollama-status-dot" aria-hidden="true"></span>
         <span id="ollamaStatusText">Checking model status...</span>
     </div>
     <div class="ollama-chat-messages" id="ollamaChatMessages" role="log" aria-live="polite" aria-label="Chat messages">
