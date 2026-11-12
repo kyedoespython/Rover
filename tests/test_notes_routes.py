@@ -630,7 +630,7 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'class="ollama-mode-section"' in response.data
     assert b'id="ollamaMinimize"' in response.data
     assert b'id="ollamaEndSession"' in response.data
-    assert b"scripts/Integrations/Ollama.js?v=11" in response.data
+    assert b"scripts/Integrations/Ollama.js?v=12" in response.data
     assert response.data.count(b'id="ollamaDrawer"') == 1
     assert (
         b'class="button is-outlined design-side-button rover-ai-nav-button"'
@@ -1208,6 +1208,20 @@ def test_rover_ai_api_key_loader_selects_key_and_lists_safe_labels(
             "api_key": "private-work-key",
         },
     ).get_json()["api_key"]
+    second_key = notes_client.post(
+        "/Rover/Design/API-Keys",
+        json={
+            "name": "Personal Ollama",
+            "type": "ollama",
+            "api_key": "private-personal-key",
+        },
+    ).get_json()["api_key"]
+    key_list = notes_client.get("/api/ollama/keys").get_json()
+    assert key_list["active_api_key_id"] == second_key["id"]
+    assert {key["name"]: key["id"] for key in key_list["keys"]} == {
+        "Work Ollama": saved_key["id"],
+        "Personal Ollama": second_key["id"],
+    }
     with notes_client.application.app_context():
         account = Accounts.query.filter_by(email="route-notes@example.com").one()
         account.active_ollama_api_key_id = None
@@ -1216,11 +1230,9 @@ def test_rover_ai_api_key_loader_selects_key_and_lists_safe_labels(
 
     key_list = notes_client.get("/api/ollama/keys")
     assert key_list.status_code == 200
-    assert key_list.get_json() == {
-        "keys": [{"id": saved_key["id"], "name": "Work Ollama"}],
-        "active_api_key_id": None,
-    }
+    assert key_list.get_json()["active_api_key_id"] is None
     assert b"private-work-key" not in key_list.data
+    assert b"private-personal-key" not in key_list.data
 
     mock_get.return_value.json.return_value = {
         "models": [{"name": "qwen3:latest"}, {"name": "llama3.2"}]
@@ -1238,10 +1250,40 @@ def test_rover_ai_api_key_loader_selects_key_and_lists_safe_labels(
         "api_key_id": saved_key["id"],
         "api_key_name": "Work Ollama",
     }
+    assert (
+        notes_client.get("/api/ollama/keys").get_json()["active_api_key_id"]
+        == saved_key["id"]
+    )
     with notes_client.application.app_context():
         account = Accounts.query.filter_by(email="route-notes@example.com").one()
         assert account.active_ollama_api_key_id == saved_key["id"]
         assert account.ollama_model == "qwen3:latest"
+
+
+@patch("main.blueprints.Integrations.Ollama.routes.requests.get")
+def test_ollama_key_can_be_deactivated_without_contacting_ollama(mock_get, notes_client):
+    with notes_client.application.app_context():
+        notes_client.application.config["OLLAMA_BASE_URL"] = "https://ollama.com"
+
+    saved = notes_client.post(
+        "/Rover/Design/API-Keys",
+        json={"name": "Work", "type": "ollama", "api_key": "test-key"},
+    )
+    assert saved.status_code == 201
+    key_id = saved.get_json()["api_key"]["id"]
+
+    assert notes_client.post("/api/ollama/key", json={}).status_code == 400
+    with notes_client.application.app_context():
+        account = Accounts.query.filter_by(email="route-notes@example.com").one()
+        assert account.active_ollama_api_key_id == key_id
+    response = notes_client.post("/api/ollama/key", json={"api_key_id": None})
+
+    assert response.status_code == 200
+    assert response.get_json()["api_key_id"] is None
+    mock_get.assert_not_called()
+    with notes_client.application.app_context():
+        account = Accounts.query.filter_by(email="route-notes@example.com").one()
+        assert account.active_ollama_api_key_id is None
 
 
 @patch("main.blueprints.Integrations.Ollama.routes.requests.get")

@@ -26,6 +26,7 @@
         </select>
     </div>
     <div class="ollama-resize-handle" id="ollamaResizeHandle" role="separator" aria-orientation="vertical" aria-label="Resize assistant panel"></div>
+    <div class="ollama-height-resize-handle" id="ollamaHeightResizeHandle" role="separator" aria-orientation="horizontal" aria-label="Resize assistant panel height" aria-controls="ollamaDrawer" title="Drag or use arrow keys to resize the assistant panel." tabindex="0"></div>
     <header class="ollama-drawer-header" id="ollamaDrawerDragHandle">
         <div>
             <h2 class="ollama-assistant-title" id="ollamaChatbotName">Rover AI</h2>
@@ -84,7 +85,7 @@
     <button class="ollama-new-session" id="ollamaNewSession" type="button" hidden>Start a new session</button>
     <form class="ollama-chat-form" id="ollamaChatForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <textarea class="ollama-chat-input" id="ollamaChatInput" rows="2" maxlength="20000" placeholder="Message Rover AI..." aria-label="Message Rover AI" {% if not current_user.authentication_data or not current_user.authentication_data.authenticated %}disabled{% endif %} required></textarea>
+        <textarea class="ollama-chat-input" id="ollamaChatInput" rows="2" maxlength="20000" placeholder="Message Rover AI..." aria-label="Message Rover AI" title="Drag the bottom-right corner to resize the message box." {% if not current_user.authentication_data or not current_user.authentication_data.authenticated %}disabled{% endif %} required></textarea>
         <button class="ollama-chat-send" id="ollamaChatSend" type="submit" {% if not current_user.authentication_data or not current_user.authentication_data.authenticated %}disabled{% endif %}>Send</button>
     </form>
 </aside>

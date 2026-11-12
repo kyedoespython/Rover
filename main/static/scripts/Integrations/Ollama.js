@@ -6,6 +6,7 @@ function initializeOllamaDrawer() {
     const newSessionButton = document.getElementById("ollamaNewSession");
     const dragHandle = document.getElementById("ollamaDrawerDragHandle");
     const resizeHandle = document.getElementById("ollamaResizeHandle");
+    const heightResizeHandle = document.getElementById("ollamaHeightResizeHandle");
     const statusPanel = document.getElementById("ollamaAssistantStatus");
     const statusText = document.getElementById("ollamaStatusText");
     const modelName = document.getElementById("ollamaModelName");
@@ -37,6 +38,7 @@ function initializeOllamaDrawer() {
         !(newSessionButton instanceof HTMLButtonElement) ||
         !(dragHandle instanceof HTMLElement) ||
         !(resizeHandle instanceof HTMLElement) ||
+        !(heightResizeHandle instanceof HTMLElement) ||
         !(statusPanel instanceof HTMLElement) ||
         !(statusText instanceof HTMLElement) ||
         !(modelName instanceof HTMLElement) ||
@@ -192,20 +194,26 @@ function initializeOllamaDrawer() {
         return selectedModel;
     };
 
+    let apiKeysRequestId = 0;
     const loadApiKeys = async () => {
+        const requestId = ++apiKeysRequestId;
         try {
             const response = await fetch(drawer.dataset.keysUrl, {
                 credentials: "same-origin",
                 headers: { Accept: "application/json" },
+                cache: "no-store",
             });
             const result = await response.json();
+            if (requestId !== apiKeysRequestId) {
+                return;
+            }
             if (!response.ok) {
                 throw new Error(result.error || "Could not load saved Ollama API keys.");
             }
             apiKeySelect.replaceChildren();
             const localOption = document.createElement("option");
             localOption.value = "";
-            localOption.textContent = "No API key (local Ollama)";
+            localOption.textContent = "No API key";
             apiKeySelect.append(localOption);
             result.keys.forEach((key) => {
                 const option = document.createElement("option");
@@ -217,7 +225,9 @@ function initializeOllamaDrawer() {
                 ? ""
                 : String(result.active_api_key_id);
         } catch (error) {
-            settingsStatus.textContent = error.message || "Could not load saved Ollama API keys.";
+            if (requestId === apiKeysRequestId) {
+                settingsStatus.textContent = error.message || "Could not load saved Ollama API keys.";
+            }
         }
     };
 
@@ -462,6 +472,73 @@ function initializeOllamaDrawer() {
     resizeHandle.addEventListener("pointerup", stopResizing);
     resizeHandle.addEventListener("pointercancel", stopResizing);
 
+    const drawerHeightBounds = () => {
+        const mobile = window.matchMedia("(max-width: 600px)").matches;
+        const rect = drawer.getBoundingClientRect();
+        const maximum = Math.max(0, window.innerHeight - (mobile ? 24 : rect.top + 12));
+        const minimum = Math.min(320, maximum);
+        return { minimum, maximum };
+    };
+
+    const updateHeightHandle = (height) => {
+        const { minimum, maximum } = drawerHeightBounds();
+        heightResizeHandle.setAttribute("aria-valuemin", String(Math.round(minimum)));
+        heightResizeHandle.setAttribute("aria-valuemax", String(Math.round(maximum)));
+        heightResizeHandle.setAttribute("aria-valuenow", String(Math.round(height)));
+    };
+
+    const setDrawerHeight = (height) => {
+        const { minimum, maximum } = drawerHeightBounds();
+        const nextHeight = Math.max(minimum, Math.min(maximum, height));
+        drawer.style.height = `${nextHeight}px`;
+        updateHeightHandle(nextHeight);
+    };
+
+    const resizeDrawerHeight = (event) => {
+        const rect = drawer.getBoundingClientRect();
+        const mobile = window.matchMedia("(max-width: 600px)").matches;
+        setDrawerHeight(mobile ? rect.bottom - event.clientY : event.clientY - rect.top);
+    };
+
+    heightResizeHandle.addEventListener("pointerdown", (event) => {
+        if (drawer.classList.contains("is-minimized")) {
+            return;
+        }
+        event.preventDefault();
+        heightResizeHandle.setPointerCapture(event.pointerId);
+        resizeDrawerHeight(event);
+    });
+    heightResizeHandle.addEventListener("pointermove", (event) => {
+        if (heightResizeHandle.hasPointerCapture(event.pointerId)) {
+            resizeDrawerHeight(event);
+        }
+    });
+    const stopHeightResizing = (event) => {
+        if (heightResizeHandle.hasPointerCapture(event.pointerId)) {
+            heightResizeHandle.releasePointerCapture(event.pointerId);
+        }
+    };
+    heightResizeHandle.addEventListener("pointerup", stopHeightResizing);
+    heightResizeHandle.addEventListener("pointercancel", stopHeightResizing);
+    heightResizeHandle.addEventListener("keydown", (event) => {
+        if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
+            return;
+        }
+        event.preventDefault();
+        const mobile = window.matchMedia("(max-width: 600px)").matches;
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        setDrawerHeight(drawer.getBoundingClientRect().height + direction * (mobile ? -20 : 20));
+    });
+    updateHeightHandle(drawer.getBoundingClientRect().height);
+    window.addEventListener("resize", () => {
+        const height = drawer.getBoundingClientRect().height;
+        if (drawer.style.height) {
+            setDrawerHeight(height);
+        } else {
+            updateHeightHandle(height);
+        }
+    });
+
     dragHandle.addEventListener("dblclick", () => {
         const currentWidth = drawer.getBoundingClientRect().width;
         const defaultWidth = window.innerWidth <= 600
@@ -486,6 +563,11 @@ function initializeOllamaDrawer() {
                 api_key_id: rawKeyId ? Number(rawKeyId) : null,
             });
             modelName.textContent = result.model;
+            if (result.api_key_id === null) {
+                settingsStatus.textContent = "Ollama API key deactivated.";
+                await refreshStatus();
+                return;
+            }
             updateModelOptions(result.available_models, result.model);
             settingsStatus.textContent = result.api_key_name
                 ? `${result.api_key_name} loaded into Rover AI.`
@@ -760,6 +842,9 @@ function initializeOllamaDrawer() {
             { once: true },
         );
         window.addEventListener("ollama-preferences-updated", async (event) => {
+            if (event.detail?.apiKeySaved) {
+                await loadApiKeys();
+            }
             const result = await refreshStatus();
             if (!event.detail?.apiKeySaved || !result?.available_models?.length) {
                 return;
@@ -780,6 +865,14 @@ function initializeOllamaDrawer() {
                 settingsStatus.textContent = `Ollama API key connected. ${saved.model} is ready.`;
             } catch (error) {
                 settingsStatus.textContent = error.message;
+            }
+        });
+        window.addEventListener("focus", () => {
+            if (sessionActive) {
+                loadApiKeys();
+                if (!isSending) {
+                    refreshStatus();
+                }
             }
         });
     }

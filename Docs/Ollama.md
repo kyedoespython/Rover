@@ -19,7 +19,8 @@ On Render, leave `OLLAMA_BASE_URL` unset to use Ollama Cloud by default, or set 
 1. Sign in with a verified account.
 2. Open the **Design Dashboard** and select **API Key**.
 3. Give the key a recognizable label, choose **Ollama API Key**, enter the secret, and save it.
-4. Open **Settings → Integrations**, choose an available model and saved key, then save.
+4. The saved key becomes active automatically. To switch keys, open **Settings → Integrations**, select a saved key, and choose **Activate selected key**. Use **Deactivate key** to stop using it; Ollama Cloud requires an active key.
+5. Choose an available model and save the integration settings.
 
 Rover displays saved key labels, not the secret. Re-enter a key if it needs to be replaced. Configure a stable `OLLAMA_API_KEY_ENCRYPTION_KEY` in the deployment environment for encrypted-at-rest credentials. Keep it private, separate from `SECRET_KEY`, and backed up securely; changing the encryption secret can make existing saved keys unusable.
 
@@ -33,6 +34,8 @@ The assistant panel shows connection/model status. If it reports the service is 
 - The configured base URL is correct for the current network/container.
 - The model is installed or available on that Ollama endpoint.
 - For Ollama Cloud, a valid saved API key is selected.
+
+Drag the panel's height handle or use its arrow keys to resize it. The message field can also be resized by dragging its bottom-right corner.
 
 ## Data sent to Ollama
 

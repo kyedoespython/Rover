@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{{ url_for('static', filename='scripts/Integrations/Settings.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='scripts/Integrations/Settings.js') }}?v=2" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -86,6 +86,7 @@
         class="integrations-content"
         id="ollamaPreferences"
         data-preferences-url="{{ url_for('Ollama.save_preferences') }}"
+        data-key-url="{{ url_for('Ollama.select_ollama_api_key') }}"
         data-cloud-endpoint="{{ 'true' if cloud_endpoint else 'false' }}"
         aria-labelledby="integrationsHeading"
     >
@@ -94,7 +95,7 @@
         <p class="current-model">
             Current AI model: <strong id="currentOllamaModel">{{ current_model }}</strong>
         </p>
-        <p class="has-text-grey mb-5">{{ status_message }}</p>
+        <p class="has-text-grey mb-5" id="ollamaConnectionStatus">{{ status_message }}</p>
 
         <form id="ollamaPreferencesForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -119,7 +120,7 @@
                 <label class="label" for="ollamaApiKeySelect">Ollama API key</label>
                 <div class="control select is-fullwidth">
                     <select id="ollamaApiKeySelect" name="api_key_id" {% if cloud_endpoint %}required{% endif %}>
-                        <option value="" {% if cloud_endpoint %}disabled{% endif %}>
+                        <option value="" {% if cloud_endpoint %}disabled{% endif %} {% if cloud_endpoint and not active_api_key_id %}selected{% endif %}>
                             {% if cloud_endpoint %}Select a saved API key (required for Ollama Cloud){% else %}No API key (local Ollama){% endif %}
                         </option>
                         {% for api_key in api_keys %}
@@ -136,6 +137,13 @@
                         Local Ollama does not require authentication. Saved Ollama keys are not sent to local or custom endpoints.
                     {% endif %}
                 </p>
+                <p id="activeOllamaApiKey" class="help">Active API key: {{ active_api_key_name or "None" }}</p>
+                <div class="buttons">
+                    <button class="button is-black is-outlined" id="activateOllamaApiKey"
+                            type="button">Activate selected key</button>
+                    <button class="button is-black is-outlined" id="deactivateOllamaApiKey"
+                            type="button">Deactivate key</button>
+                </div>
             </div>
 
             <button class="button is-black is-outlined is-size-6" id="saveOllamaPreferences" type="submit">Save integration settings</button>

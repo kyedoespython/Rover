@@ -315,9 +315,24 @@ def select_ollama_api_key():
     if not isinstance(payload, dict):
         return jsonify(error="The request body must be valid JSON."), 400
 
-    key_id = payload.get("api_key_id")
+    if "api_key_id" not in payload:
+        return jsonify(error="Choose a valid saved API key."), 400
+    key_id = payload["api_key_id"]
     selected_key = None
-    if key_id is not None:
+    if key_id is None:
+        chatbot = Chatbot.query.filter_by(user_id=current_user.user_id).first()
+        model_name = (
+            chatbot.model_name if chatbot else current_user.ollama_model
+        ) or current_app.config["OLLAMA_MODEL"]
+        current_user.active_ollama_api_key_id = None
+        db.session.commit()
+        return jsonify(
+            model=model_name,
+            available_models=[],
+            api_key_id=None,
+            api_key_name=None,
+        )
+    else:
         if isinstance(key_id, bool) or not isinstance(key_id, int):
             return jsonify(error="Choose a valid saved API key."), 400
         selected_key = (
@@ -434,6 +449,7 @@ def integration_settings():
         available_models=available_models,
         api_keys=api_keys,
         active_api_key_id=current_user.active_ollama_api_key_id,
+        active_api_key_name=selected_key.key_name if selected_key else None,
         status_message=status_message,
         cloud_endpoint=_is_ollama_cloud(),
     )

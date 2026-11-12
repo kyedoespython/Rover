@@ -1121,11 +1121,11 @@
         .ollama-chat-form {
             flex: 0 0 auto;
             display: grid;
-            gap: 0.4rem;
+            gap: 0.5rem;
             margin: 0.75rem;
-            padding: 0.6rem;
+            padding: 0.75rem;
             border: 1px solid var(--rover-border);
-            border-radius: 8px;
+            border-radius: 12px;
             background: var(--rover-surface-raised);
             box-shadow: 0 1px 3px rgba(31, 35, 40, 0.08);
         }
@@ -1138,18 +1138,34 @@
         .ollama-chat-input {
             width: 100%;
             box-sizing: border-box;
-            min-height: 3.5rem;
-            max-height: 8rem;
+            min-height: 5rem;
+            max-height: min(14rem, 35dvh);
             resize: vertical;
-            padding: 0.3rem 0.35rem;
+            overflow-y: auto;
+            padding: 0.4rem;
             border: 0;
             background: transparent;
             color: var(--rover-text);
-            font: 0.85rem/1.5 "Segoe UI", Arial, sans-serif;
+            font: 0.9rem/1.5 "Segoe UI", Arial, sans-serif;
         }
 
         .ollama-chat-input:focus {
             outline: none;
+        }
+
+        body .ollama-chat-form .ollama-chat-input:focus-visible {
+            outline: none !important;
+        }
+
+        body .ollama-chat-form:focus-within {
+            outline: 2px solid var(--rover-accent-hover);
+            outline-offset: 2px;
+        }
+
+        @media (forced-colors: active) {
+            body .ollama-chat-form:focus-within {
+                outline-color: Highlight;
+            }
         }
 
         .ollama-chat-input::placeholder {
@@ -1188,6 +1204,37 @@
             touch-action: none;
         }
 
+        .ollama-height-resize-handle {
+            position: absolute;
+            z-index: 3;
+            right: 12px;
+            bottom: 0;
+            left: 12px;
+            height: 10px;
+            cursor: ns-resize;
+            touch-action: none;
+        }
+
+        .ollama-height-resize-handle::after {
+            position: absolute;
+            top: 4px;
+            left: calc(50% - 18px);
+            width: 36px;
+            height: 2px;
+            border-radius: 2px;
+            background: var(--rover-muted);
+            content: "";
+        }
+
+        .ollama-height-resize-handle:focus-visible {
+            outline: 2px solid var(--rover-accent);
+            outline-offset: -2px;
+        }
+
+        .ollama-drawer.is-minimized .ollama-height-resize-handle {
+            display: none;
+        }
+
         @media (max-width: 600px) {
             .flash-message-stack {
                 top: 5rem;
@@ -1201,6 +1248,11 @@
                 right: 12px;
                 bottom: 12px;
                 height: 86dvh;
+            }
+
+            .ollama-height-resize-handle {
+                top: 0;
+                bottom: auto;
             }
         }
     </style>
