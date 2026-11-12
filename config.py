@@ -43,16 +43,6 @@ class Config:
         else None
     )
     NOTE_STORAGE_DIR = os.environ.get("NOTE_STORAGE_DIR")
-    OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
-    OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
-    OLLAMA_API_KEY_ENCRYPTION_KEY = os.environ.get("OLLAMA_API_KEY_ENCRYPTION_KEY")
-    AGENT_HISTORY_CLEANUP_ENABLED = (
-        os.environ.get(
-            "AGENT_HISTORY_CLEANUP_ENABLED",
-            "true",
-        ).lower()
-        == "true"
-    )
 
 
 # Development-only defaults. Production startup requires real deployment secrets.
@@ -95,7 +85,6 @@ class ProductionConfig(Config):
         resend_api_key = os.environ.get("RESEND_API_KEY")
         public_base_url = os.environ.get("PUBLIC_BASE_URL")
         rover_domain = os.environ.get("ROVER_DOMAIN")
-        ollama_base_url = os.environ.get("OLLAMA_BASE_URL")
 
         if not secret or len(secret) < 32:
             raise RuntimeError(
@@ -122,8 +111,6 @@ class ProductionConfig(Config):
         cls.SESSION_TYPE = session_type
         cls.RESEND_API_KEY = resend_api_key
         cls.PUBLIC_BASE_URL = public_base_url or f"https://{rover_domain.strip('/')}"
-        # Hosted production apps normally have no local Ollama daemon.
-        cls.OLLAMA_BASE_URL = ollama_base_url or "https://ollama.com"
 
 
 CONFIG_MAP = {

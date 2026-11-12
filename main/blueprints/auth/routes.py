@@ -26,7 +26,6 @@ from main.models.user import (
     Accounts,
     Authentication,
     Notes,
-    UserApiKey,
     UserSchemaDatabase,
     UserSchema,
 )
@@ -51,7 +50,6 @@ from main.services.notes_service import (
     update_note,
 )
 
-from main.services.ollama_service import encrypt_api_key
 from main.services.user_service import Account_Exists_Validator, Contents_Checker
 
 from . import auth_bp
@@ -463,12 +461,6 @@ def DesignDash():
     return render_template("Design/DesignDash.html")
 
 
-@auth_bp.route("/DesignDashboard/Agents")
-@login_required
-def AgentsDash():
-    return render_template("Design/Agents.html")
-
-
 def _require_verified_account():
     authentication = current_user.authentication_data
     if authentication is None or not authentication.authenticated:
@@ -478,104 +470,14 @@ def _require_verified_account():
     return None
 
 
-@auth_bp.route("/Rover/Design/API-Keys", methods=["POST"])
-@login_required
-@limiter.limit("10/minute")
-def Save_User_Api_Key():
-    authentication = current_user.authentication_data
-    if authentication is None or not authentication.authenticated:
-        return jsonify(error="Verify your account before saving an API key."), 403
-
-    if not request.is_json:
-        return jsonify(error="A JSON request is required."), 415
-
-    payload = request.get_json(silent=True)
-    if not isinstance(payload, dict):
-        return jsonify(error="The request body must be valid JSON."), 400
-
-    key_name = payload.get("name")
-    key_type = payload.get("type")
-    api_key = payload.get("api_key")
-    if not all(isinstance(value, str) for value in (key_name, key_type, api_key)):
-        return jsonify(error="Name, type, and API key are required."), 400
-
-    key_name = key_name.strip()
-    api_key = api_key.strip()
-    if not key_name or len(key_name) > 128:
-        return jsonify(error="Name must be between 1 and 128 characters."), 400
-    if key_type not in ("ollama", "gemini"):
-        return jsonify(error="Select a supported API key type."), 400
-    if not api_key or len(api_key) > 4096:
-        return jsonify(error="API key must be between 1 and 4096 characters."), 400
-
-    now = datetime.now(timezone.utc)
-    saved_key = UserApiKey.query.filter_by(
-        user_id=current_user.user_id,
-        key_name=key_name,
-    ).first()
-    if saved_key is not None and saved_key.key_ciphertext is not None:
-        return jsonify(error="You already have an API key with that name."), 409
-
-    if saved_key is None:
-        saved_key = UserApiKey(
-            user_id=current_user.user_id,
-            key_name=key_name,
-            key_type=key_type,
-            key_hash=generate_password_hash(api_key),
-            created_at=now,
-            updated_at=now,
-        )
-        db.session.add(saved_key)
-    else:
-        saved_key.key_type = key_type
-        saved_key.key_hash = generate_password_hash(api_key)
-        saved_key.updated_at = now
-
-    try:
-        db.session.flush()
-        saved_key.key_ciphertext = encrypt_api_key(
-            api_key,
-            saved_key.user_id,
-            saved_key.api_key_id,
-        )
-        if key_type == "ollama":
-            current_user.active_ollama_api_key_id = saved_key.api_key_id
-        db.session.commit()
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify(error="You already have an API key with that name."), 409
-    except RuntimeError as error:
-        db.session.rollback()
-        current_app.logger.exception("Unable to encrypt the submitted API key")
-        return jsonify(error=str(error)), 500
-
-    return jsonify(
-        api_key={
-            "id": saved_key.api_key_id,
-            "name": saved_key.key_name,
-            "type": saved_key.key_type,
-            "created_at": saved_key.created_at.isoformat(),
-        }
-    ), 201
-
-
 @auth_bp.route("/Rover/Settings")
 @login_required
 def Settings():
     access_denied = _require_verified_account()
     if access_denied:
         return access_denied
-    api_keys = (
-        UserApiKey.query.filter_by(user_id=current_user.user_id)
-        .order_by(UserApiKey.created_at.desc())
-        .all()
-    )
-    return render_template(
-        "Settings/Settings.html",
-        api_keys=api_keys,
-        active_api_key_id=current_user.active_ollama_api_key_id,
-        active_gemini_api_key_id=current_user.active_gemini_api_key_id,
-    )
+
+    return render_template("Settings/Settings.html")
 
 
 @auth_bp.route("/Rover/Notes", methods=["GET", "POST"])

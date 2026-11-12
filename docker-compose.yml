@@ -12,9 +12,6 @@ services:
     environment:
       APP_ENV: production
       NOTE_STORAGE_DIR: /var/lib/rover/notes
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
-      OLLAMA_API_KEY_ENCRYPTION_KEY: ${OLLAMA_API_KEY_ENCRYPTION_KEY:-}
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the environment or .env file}
       DATABASE_URL: postgresql+psycopg://rover:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the environment or .env file}@db:5432/rover
       REDIS_URL: redis://redis:6379/0

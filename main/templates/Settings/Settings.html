@@ -9,120 +9,6 @@
 {% endblock %}
 
 {% block content %}
-
-<style>
-    body, body * {
-        font-family: var(--rover-font-sans) !important;
-    }
-
-    #settingsPage {
-        min-height: 100vh;
-        min-height: 100dvh;
-        display: flex;
-        flex-direction: column;
-    }
-
-    #settingsPage .settings-header {
-        margin: 0.75rem 1rem 0;
-    }
-
-    #settingsPage .settings-actions {
-        display: flex;
-        justify-content: center;
-        margin: 2rem 1rem 0;
-    }
-
-    #settingsPage .settings-content {
-        width: min(calc(100% - 2rem), 52rem);
-        margin: 4rem auto 2rem;
-    }
-
-    #settingsPage .saved-api-keys-panel {
-        padding: clamp(1rem, 3vw, 1.5rem);
-        border: 1px solid var(--rover-border);
-        border-radius: 0.75rem;
-        background: var(--rover-surface);
-        color: var(--rover-text);
-    }
-
-    #settingsPage .saved-api-keys-heading {
-        margin: 0;
-        color: var(--rover-text);
-        font-size: 1.25rem;
-    }
-
-    #settingsPage .saved-api-keys-description,
-    #settingsPage .saved-api-key-meta,
-    #settingsPage .no-saved-api-keys {
-        color: var(--rover-muted);
-    }
-
-    #settingsPage .saved-api-keys-description {
-        margin: 0.35rem 0 0;
-    }
-
-    #settingsPage .saved-api-keys-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    #settingsPage .saved-api-keys-list {
-        display: grid;
-        gap: 0.65rem;
-    }
-
-    #settingsPage .saved-api-key {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        padding: 0.9rem 1rem;
-        border: 1px solid var(--rover-border);
-        border-radius: 0.5rem;
-    }
-
-    #settingsPage .saved-api-key-name {
-        margin: 0;
-        color: var(--rover-text);
-        font-weight: 600;
-        overflow-wrap: anywhere;
-    }
-
-    #settingsPage .saved-api-key-meta {
-        margin: 0.2rem 0 0;
-        font-size: 0.85rem;
-    }
-
-    #settingsPage .saved-api-key-status {
-        flex: 0 0 auto;
-        padding: 0.2rem 0.55rem;
-        border: 1px solid var(--rover-border);
-        border-radius: 999px;
-        color: var(--rover-muted);
-        font-size: 0.75rem;
-    }
-
-    #settingsPage .saved-api-key-status.is-active {
-        border-color: #8ca9c8;
-        color: #c4d9f2;
-    }
-
-    #settingsPage .no-saved-api-keys {
-        margin: 0;
-    }
-
-    @media (max-width: 520px) {
-        #settingsPage .saved-api-keys-header,
-        #settingsPage .saved-api-key {
-            align-items: flex-start;
-            flex-direction: column;
-        }
-    }
-</style>
-
 <div id="settingsPage">
     <nav class="top-nav p-4" style="display: flex; justify-content: space-between; align-items: center;">
         <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6">Home</a>
@@ -131,44 +17,9 @@
             <a href="{{ url_for('home.Contact') }}" class="button is-black is-outlined is-size-6">Support</a>
         </div>
     </nav>
-
-    <h1 class="title is-2 has-text-centered has-text-black settings-header">Settings</h1>
-    <div class="settings-actions">
-        <a href="{{ url_for('Ollama.integration_settings') }}" class="button is-black is-outlined is-size-6">Integrations</a>
-    </div>
-    <main class="settings-content">
-        <section class="saved-api-keys-panel" aria-labelledby="savedApiKeysHeading">
-            <header class="saved-api-keys-header">
-                <div>
-                    <h2 class="saved-api-keys-heading" id="savedApiKeysHeading">Saved API keys</h2>
-                    <p class="saved-api-keys-description">Key values stay encrypted and are never shown here.</p>
-                </div>
-                <a href="{{ url_for('auth.DesignDash') }}" class="button is-black is-outlined">Add API key</a>
-            </header>
-            {% if api_keys %}
-                <div class="saved-api-keys-list">
-                    {% for api_key in api_keys %}
-                        <article class="saved-api-key">
-                            <div>
-                                <p class="saved-api-key-name">{{ api_key.key_name }}</p>
-                                <p class="saved-api-key-meta">
-                                    {% if api_key.key_type == "ollama" %}Ollama API key{% else %}{{ api_key.key_type|title }} API key{% endif %}
-                                    &middot; Added {{ api_key.created_at.strftime("%Y-%m-%d") }}
-                                </p>
-                            </div>
-                            {% if not api_key.key_ciphertext %}
-                                <span class="saved-api-key-status">Re-enter key</span>
-                            {% elif (api_key.key_type == "ollama" and api_key.api_key_id == active_api_key_id) or (api_key.key_type == "gemini" and api_key.api_key_id == active_gemini_api_key_id) %}
-                                <span class="saved-api-key-status is-active">Active</span>
-                            {% endif %}
-                        </article>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="no-saved-api-keys">No API keys saved yet.</p>
-            {% endif %}
-        </section>
+    <main class="has-text-centered">
+        <h1 class="title is-2">Settings</h1>
+        <p>No settings are available yet.</p>
     </main>
 </div>
-
 {% endblock %}

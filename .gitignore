@@ -187,7 +187,5 @@ cython_debug/
 # Local-only security review notes
 /Security.md
 
-# Keep only the public Ollama and agent guides in Git.
+# Keep local documentation drafts out of Git.
 /Docs/*
-!/Docs/Ollama.md
-!/Docs/Triple-Rover.md

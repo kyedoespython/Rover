@@ -4,15 +4,57 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from flask_login import login_required
+from flask_migrate import upgrade
 from flask_session import Session
 from redis import Redis
 from werkzeug.security import generate_password_hash
 
 from config import Config
+from main import create_app
 from main.blueprints.auth import auth_bp
 from main.blueprints.home import home_bp
 from main.extensions import csrf, db, limiter, login_manager
 from main.models.user import Accounts, Authentication
+
+
+def test_retired_assistant_routes_are_not_registered():
+    app = create_app("testing")
+    registered = {rule.rule for rule in app.url_map.iter_rules()}
+    assert not any(rule.startswith("/api/ollama") for rule in registered)
+    assert "/DesignDashboard/Agents" not in registered
+    assert "/Rover/Design/API-Keys" not in registered
+    assert "/Rover/Settings/Integrations" not in registered
+
+
+def test_existing_database_remains_usable_without_removing_stored_data():
+    app = create_app("testing")
+    with app.app_context():
+        with db.engine.connect() as connection:
+            connection.connection.driver_connection.create_function(
+                "now", 0, lambda: "2026-01-01 00:00:00"
+            )
+        upgrade(directory="migrations")
+        account = Accounts(
+            email="migration@example.test",
+            username="MigrationUser",
+            password="hashed-password",
+            country_of_origin="United States",
+        )
+        db.session.add(account)
+        db.session.flush()
+        db.session.execute(
+            db.text(
+                "INSERT INTO user_api_keys "
+                "(user_id, key_name, key_type, key_hash, created_at, updated_at) "
+                "VALUES (:user_id, 'old key', 'gemini', 'hash', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            ),
+            {"user_id": account.user_id},
+        )
+        db.session.commit()
+        account.username = "UpdatedUser"
+        db.session.commit()
+        assert db.session.execute(db.text("SELECT key_name FROM user_api_keys")).scalar_one() == "old key"
+        assert db.session.get(Accounts, account.user_id).username == "UpdatedUser"
 
 
 def test_successful_login_flash_uses_username_from_database():

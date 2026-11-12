@@ -9,9 +9,7 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="{{ url_for('static', filename='scripts/Design/Design.js') }}?v=7" defer></script>
-    <script type="module" src="{{ url_for('static', filename='scripts/Design/Schema/Schema.js') }}?v=2"></script>
-    <script src="{{ url_for('static', filename='scripts/Integrations/Ollama.js') }}?v=19" defer></script>
+    <script type="module" src="{{ url_for('static', filename='scripts/Design/Schema/Schema.js') }}?v=3"></script>
 {% endblock %}
 
 {% block content %}
@@ -81,109 +79,6 @@
         border-color: #111;
         background: white;
         color: #111;
-    }
-
-    #designPage .api-key-backdrop[hidden] {
-        display: none !important;
-    }
-
-    #designPage .api-key-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 1100;
-        display: grid;
-        place-items: center;
-        padding: 1rem;
-        background: rgba(0, 0, 0, 0.48);
-    }
-
-    #designPage .api-key-dialog {
-        width: min(100%, 480px);
-        max-height: min(90vh, 760px);
-        max-height: min(90dvh, 760px);
-        overflow-y: auto;
-        padding: clamp(1.25rem, 4vw, 2rem);
-        border: 1px solid #dedede;
-        border-radius: 6px;
-        background: #fff;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.24);
-    }
-
-    #designPage .api-key-dialog-heading {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 1rem;
-        margin-bottom: 1.25rem;
-    }
-
-    #designPage .api-key-dialog-heading .title {
-        margin-bottom: 0.35rem;
-    }
-
-    #designPage .api-key-dialog-description,
-    #designPage .api-key-row-meta {
-        color: #666;
-        font-size: 0.78rem;
-        line-height: 1.5;
-    }
-
-    #designPage .api-key-dialog .label {
-        color: #000;
-    }
-
-    #designPage .api-key-dialog .input,
-    #designPage .api-key-dialog .select select {
-        color: #111;
-        background: #fff;
-        border-color: #d5d5d5;
-        box-shadow: none;
-    }
-
-    #designPage .api-key-dialog .input:focus,
-    #designPage .api-key-dialog .select select:focus {
-        border-color: #111;
-        box-shadow: 0 0 0 0.125em rgba(0, 0, 0, 0.1);
-    }
-
-    #designPage .api-key-dialog .select:not(.is-multiple):not(.is-loading)::after {
-        border-color: #111;
-    }
-
-    #designPage .api-key-close {
-        flex: 0 0 auto;
-        border: 0;
-        background: transparent;
-        color: #333;
-        font-size: 1.5rem;
-        line-height: 1;
-        cursor: pointer;
-    }
-
-    #designPage .api-key-submit {
-        border-color: #111;
-        background: #111;
-        color: white;
-    }
-
-    #designPage .api-key-submit:hover {
-        border-color: #111;
-        background: white;
-        color: #111;
-    }
-
-    #designPage .api-key-status {
-        min-height: 1.5rem;
-        margin-top: 0.75rem;
-        font-size: 0.8rem;
-    }
-
-    #designPage .api-key-status[data-state="error"] {
-        color: #b42318;
-    }
-
-    #designPage .api-key-status[data-state="success"] {
-        color: #16803c;
     }
 
     #schemaEditorDialog {
@@ -1069,17 +964,9 @@
 
     <div class="design-layout">
         <nav class="design-side-nav" aria-label="Design sections">
-            <button class="button is-outlined design-side-button" id="openApiKeyDialog" type="button" aria-haspopup="dialog" aria-controls="apiKeyDialog">API Key</button>
             <button class="button is-outlined design-side-button" id="openSchemaEditor" type="button" aria-haspopup="dialog" aria-controls="schemaEditorDialog">Schema</button>
             <button class="button is-outlined design-side-button" type="button">Craft</button>
             <button class="button is-outlined design-side-button" id="openSchemaDemo" type="button" aria-haspopup="dialog" aria-controls="schemaDemoDialog">Demo</button>
-            <button
-                class="button is-outlined design-side-button rover-ai-nav-button"
-                id="ollamaDrawerToggle"
-                type="button"
-                aria-expanded="false"
-                aria-controls="ollamaDrawer"
-            >Rover AI</button>
         </nav>
     </div>
 
@@ -1103,6 +990,7 @@
                     <span id="schemaDatabaseCount">0</span>
                 </div>
                 <form id="schemaCreateForm" class="schema-create-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <label for="schemaNewName">New database</label>
                     <input id="schemaNewName" name="name" type="text" maxlength="128" placeholder="Database name" required>
                     <button class="schema-action" type="submit">Create database</button>
@@ -1181,57 +1069,6 @@
         </div>
     </dialog>
 
-    <div class="api-key-backdrop" id="apiKeyDialog" hidden>
-        <section class="api-key-dialog" role="dialog" aria-modal="true" aria-labelledby="apiKeyDialogTitle" aria-describedby="apiKeyDialogDescription" tabindex="-1">
-            <div class="api-key-dialog-heading">
-                <div>
-                    <h2 class="title is-4 has-text-black" id="apiKeyDialogTitle">Add an API key</h2>
-                    <p class="api-key-dialog-description" id="apiKeyDialogDescription">Save a key label and provider. The secret is encrypted and never shown again.</p>
-                </div>
-                <button class="api-key-close" id="closeApiKeyDialog" type="button" aria-label="Close dialog">&times;</button>
-            </div>
 
-            <form id="apiKeyForm" action="{{ url_for('auth.Save_User_Api_Key') }}" method="post">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                <div class="field">
-                    <label class="label" for="apiKeyName">Name</label>
-                    <div class="control">
-                        <input class="input" id="apiKeyName" name="name" type="text" maxlength="128" autocomplete="off" required>
-                    </div>
-                </div>
-
-                <div class="field">
-                    <label class="label" for="apiKeyType">API key type</label>
-                    <div class="control select is-fullwidth">
-                        <select id="apiKeyType" name="type" required>
-                            <option value="">Select API Key</option>
-                            <option value="ollama">Ollama API Key</option>
-                            <option value="gemini">Google Gemini API Key</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="field">
-                    <label class="label" for="apiKeyValue">API key</label>
-                    <div class="control">
-                        <input class="input" id="apiKeyValue" name="api_key" type="password" maxlength="4096" autocomplete="new-password" spellcheck="false" required>
-                    </div>
-                </div>
-
-                <div class="field is-grouped is-justify-content-flex-end">
-                    <div class="control">
-                        <button class="button is-outlined" id="cancelApiKeyDialog" type="button">Cancel</button>
-                    </div>
-                    <div class="control">
-                        <button class="button api-key-submit" id="saveApiKey" type="submit">Save API key</button>
-                    </div>
-                </div>
-                <p class="api-key-status" id="apiKeyStatus" role="status" aria-live="polite"></p>
-            </form>
-
-        </section>
-    </div>
 </div>
-{% include "Integrations/RoverAI.html" %}
 {% endblock %}

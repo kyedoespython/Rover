@@ -39,7 +39,7 @@ function initializeSchemaEditor() {
     const demoActiveUsers = document.getElementById("schemaDemoActiveUsers");
     const demoStatus = document.getElementById("schemaDemoStatus");
     const viewButtons = document.querySelectorAll("[data-schema-view]");
-    const csrfInput = document.querySelector('#apiKeyForm input[name="csrf_token"]');
+    const csrfInput = createForm?.querySelector('input[name="csrf_token"]');
 
     if (
         !(dialog instanceof HTMLDialogElement) ||
