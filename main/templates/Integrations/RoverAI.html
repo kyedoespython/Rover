@@ -10,6 +10,10 @@
     data-chatbot-settings-url="{{ url_for('Ollama.save_chatbot_settings') }}"
     data-permissions-url="{{ url_for('Ollama.save_chatbot_permissions') }}"
     data-files-url="{{ url_for('Ollama.chatbot_files') }}"
+    data-model-sources-url="{{ url_for('Ollama.model_sources') }}"
+    data-model-source-url="{{ url_for('Ollama.source_models', provider='PROVIDER', source='SOURCE') }}"
+    data-gemini-preferences-url="{{ url_for('Ollama.gemini_preferences') }}"
+    data-ollama-preferences-url="{{ url_for('Ollama.save_preferences') }}"
     data-verified="{{ 'true' if current_user.authentication_data and current_user.authentication_data.authenticated else 'false' }}"
     aria-label="Rover AI assistant"
 >
@@ -31,7 +35,7 @@
     <header class="ollama-drawer-header" id="ollamaDrawerDragHandle">
         <div>
             <h2 class="ollama-assistant-title" id="ollamaChatbotName">Rover AI</h2>
-            <p class="ollama-assistant-model">Model: <span id="ollamaModelName">Checking...</span></p>
+            <p class="ollama-assistant-model">Model: <span id="ollamaModelName">Not selected</span></p>
         </div>
         <div class="ollama-drawer-controls">
             <button class="ollama-drawer-control ollama-end-session" id="ollamaEndSession" type="button" aria-label="End chat session" title="End session and delete its history">×</button>
@@ -101,6 +105,9 @@
             <textarea class="ollama-chat-input" id="ollamaChatInput" rows="2" maxlength="20000" placeholder="Message Rover AI..." aria-label="Message Rover AI" {% if not current_user.authentication_data or not current_user.authentication_data.authenticated %}disabled{% endif %} required></textarea>
             <div class="ollama-input-resize-handle" id="ollamaInputResizeHandle" role="separator" aria-orientation="horizontal" aria-label="Resize message box height" aria-controls="ollamaChatInput" title="Drag or use arrow keys to resize the message box." tabindex="0"></div>
         </div>
-        <button class="ollama-chat-send" id="ollamaChatSend" type="submit" {% if not current_user.authentication_data or not current_user.authentication_data.authenticated %}disabled{% endif %}>Send</button>
+        <div class="ollama-composer-actions">
+            <button class="ollama-model-trigger" id="roverModelTrigger" type="button" aria-expanded="false" aria-controls="roverModelMenu" aria-haspopup="dialog" disabled>Models <span aria-hidden="true">⌄</span></button>
+            <button class="ollama-chat-send" id="ollamaChatSend" type="submit" {% if not current_user.authentication_data or not current_user.authentication_data.authenticated %}disabled{% endif %}>Send</button>
+        </div>
     </form>
 </aside>

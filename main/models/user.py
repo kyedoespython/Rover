@@ -63,7 +63,7 @@ class Accounts(db.Model, UserMixin):
     country_of_origin = db.Column(db.String(64), nullable=False)
     ollama_model = db.Column(db.String(128), nullable=True)
     active_ollama_api_key_id = db.Column(db.Integer, nullable=True)
-    rover_ai_provider = db.Column(db.String(16), nullable=False, server_default="ollama")
+    rover_ai_provider = db.Column(db.String(16), nullable=False, server_default="unselected")
     gemini_model = db.Column(db.String(128), nullable=True)
     active_gemini_api_key_id = db.Column(db.Integer, nullable=True)
 

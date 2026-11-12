@@ -173,9 +173,9 @@ def _available_models(headers: dict[str, str]) -> list[str]:
     )
     response.raise_for_status()
     payload = response.json()
-    models = payload.get("models", []) if isinstance(payload, dict) else []
+    models = payload.get("models") if isinstance(payload, dict) else None
     if not isinstance(models, list):
-        return []
+        raise ValueError("Ollama returned an invalid model list.")
     return [
         model["name"]
         for model in models
@@ -255,6 +255,12 @@ def status():
     ):
         return jsonify(error="Verify your account to use the Ollama assistant."), 403
 
+    if current_user.rover_ai_provider not in ("ollama", "gemini"):
+        return jsonify(
+            status="unconfigured", provider="unselected", model=None,
+            available_models=[], message="Choose a model to start chatting.",
+        )
+
     if current_user.rover_ai_provider == "gemini":
         model_name = current_user.gemini_model
         try:
@@ -284,26 +290,30 @@ def status():
     except OllamaAuthenticationError as error:
         return jsonify(
             status="authentication_required",
+            provider="ollama",
             model=model_name,
             message=str(error),
         ), 401
     except RuntimeError as error:
-        return jsonify(status="error", model=model_name, message=str(error)), 503
+        return jsonify(status="error", provider="ollama", model=model_name, message=str(error)), 503
     except requests.HTTPError as error:
         if error.response is not None and error.response.status_code in (401, 403):
             return jsonify(
                 status="authentication_error",
+                provider="ollama",
                 model=model_name,
                 message="Ollama rejected the API key. Check the saved key and try again.",
             ), 502
         return jsonify(
             status="offline",
+            provider="ollama",
             model=model_name,
             message="Ollama is not reachable.",
         ), 503
     except requests.RequestException:
         return jsonify(
             status="offline",
+            provider="ollama",
             model=model_name,
             message="Ollama is not reachable.",
         ), 503
@@ -318,6 +328,7 @@ def status():
 
     return jsonify(
         status="ready" if model_available else "model_missing",
+        provider="ollama",
         model=model_name,
         available_models=available_models,
         api_key_name=api_key_name if _is_ollama_cloud() else None,
@@ -327,6 +338,84 @@ def status():
             else f"Model {model_name} is not available in Ollama."
         ),
     )
+
+
+@ollama_bp.get("/model-sources")
+@login_required
+@limiter.limit("30 per minute")
+def model_sources():
+    if not _account_is_verified():
+        return jsonify(error="Verify your account to choose a model."), 403
+    keys = (
+        UserApiKey.query.filter(
+            UserApiKey.user_id == current_user.user_id,
+            UserApiKey.key_type.in_(("ollama", "gemini")),
+            UserApiKey.key_ciphertext.is_not(None),
+        )
+        .order_by(UserApiKey.created_at.desc())
+        .all()
+    )
+    sources = []
+    if not _is_ollama_cloud():
+        sources.append({
+            "provider": "ollama", "key_id": None, "name": "Configured endpoint",
+            "active": current_user.rover_ai_provider == "ollama",
+        })
+    for key in keys:
+        if key.key_type == "gemini" or _is_ollama_cloud():
+            sources.append({
+                "provider": key.key_type,
+                "key_id": key.api_key_id,
+                "name": key.key_name,
+                "active": current_user.rover_ai_provider == key.key_type
+                and key.api_key_id == (
+                    current_user.active_gemini_api_key_id
+                    if key.key_type == "gemini" else current_user.active_ollama_api_key_id
+                ),
+            })
+    return jsonify(sources=sources)
+
+
+@ollama_bp.get("/model-sources/<provider>/<source>/models")
+@login_required
+@limiter.limit("60 per minute")
+def source_models(provider, source):
+    if not _account_is_verified():
+        return jsonify(error="Verify your account to choose a model."), 403
+    if provider not in ("ollama", "gemini"):
+        return jsonify(error="Unknown AI provider."), 404
+    if source == "local":
+        if provider != "ollama" or _is_ollama_cloud():
+            return jsonify(error="This model source is unavailable."), 404
+        key = None
+    else:
+        if not source.isascii() or not source.isdigit() or len(source) > 18:
+            return jsonify(error="This model source is unavailable."), 404
+        key = UserApiKey.query.filter_by(
+            user_id=current_user.user_id, key_type=provider, api_key_id=int(source)
+        ).filter(UserApiKey.key_ciphertext.is_not(None)).first()
+        if key is None or (provider == "ollama" and not _is_ollama_cloud()):
+            return jsonify(error="This model source is unavailable."), 404
+    try:
+        if provider == "gemini":
+            models = gemini_service.available_models(_gemini_key(key.api_key_id))
+        else:
+            models = _available_models(_ollama_headers(key))
+    except OllamaAuthenticationError as error:
+        return jsonify(error=str(error)), 400
+    except (RuntimeError, ValueError, requests.RequestException) as error:
+        if provider == "gemini":
+            message, code = _gemini_error(error)
+            return jsonify(error=message), code
+        if isinstance(error, requests.HTTPError) and error.response is not None and error.response.status_code in (401, 403):
+            return jsonify(error="Ollama rejected this API key."), 401
+        if isinstance(error, ValueError):
+            current_app.logger.exception("Ollama returned an invalid model list")
+            return jsonify(error="Ollama returned an invalid model list."), 502
+        if isinstance(error, RuntimeError):
+            return jsonify(error=str(error)), 503
+        return jsonify(error="Could not load models from Ollama."), 503
+    return jsonify(models=models)
 
 
 @ollama_bp.get("/keys")
@@ -676,8 +765,8 @@ def get_chat_session():
     return jsonify(
         session_id=chat_session.session_id,
         chatbot_name=chatbot.chatbot_name,
-        model=chatbot.model_name,
-        provider=current_user.rover_ai_provider,
+        model=chatbot.model_name if current_user.rover_ai_provider in ("ollama", "gemini") else None,
+        provider=current_user.rover_ai_provider if current_user.rover_ai_provider in ("ollama", "gemini") else "unselected",
         messages=[
             {"role": message.role, "content": message.content} for message in messages
         ],
@@ -713,6 +802,8 @@ def end_chat_session():
 def save_chatbot_settings():
     if not _account_is_verified():
         return jsonify(error="Verify your account to configure Rover AI."), 403
+    if current_user.rover_ai_provider not in ("ollama", "gemini"):
+        return jsonify(error="Choose a model before changing chatbot settings."), 409
     if not request.is_json:
         return jsonify(error="A JSON request is required."), 415
 
@@ -903,6 +994,9 @@ def delete_chatbot_file(file_id):
 def chat():
     if not _account_is_verified():
         return jsonify(error="Verify your account to use the Ollama assistant."), 403
+
+    if current_user.rover_ai_provider not in ("ollama", "gemini"):
+        return jsonify(error="Choose a model before sending a message."), 409
 
     if not request.is_json:
         return jsonify(error="A JSON request is required."), 415

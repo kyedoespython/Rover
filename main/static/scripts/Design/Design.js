@@ -120,14 +120,10 @@ function initializeDesignDashboard() {
             }
 
             form.reset();
-            setStatus("API key saved. The secret cannot be viewed again.", "success");
-            if (result.api_key.type === "ollama") {
-                window.dispatchEvent(new CustomEvent("ollama-preferences-updated", {
-                    detail: { apiKeySaved: true, apiKeyId: result.api_key.id },
-                }));
-            } else {
-                setStatus("Gemini key saved. Activate it in Settings → Integrations.", "success");
-            }
+            setStatus("API key saved. Choose a model in Rover AI to use it.", "success");
+            window.dispatchEvent(new CustomEvent("ollama-preferences-updated", {
+                detail: { apiKeySaved: true },
+            }));
         } catch {
             setStatus("Could not reach the server. Please try again.", "error");
         } finally {

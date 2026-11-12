@@ -1284,6 +1284,74 @@
             overflow-wrap: anywhere;
         }
 
+        .ollama-composer-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        body .ollama-model-trigger {
+            min-height: 2rem !important;
+            padding: 0.3rem 0.55rem !important;
+            border: 0 !important;
+            background: transparent !important;
+            color: var(--rover-muted) !important;
+            font-size: 0.75rem !important;
+        }
+
+        .ollama-model-menu {
+            position: fixed;
+            z-index: 2000;
+            width: min(20rem, calc(100vw - 24px));
+            max-height: min(55dvh, 26rem);
+            overflow-y: auto;
+            padding: 0.6rem;
+            border: 1px solid var(--rover-control-border);
+            border-radius: 8px;
+            background: var(--rover-surface-raised);
+            color: var(--rover-text);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            font: 0.75rem/1.4 var(--rover-font-sans);
+        }
+
+        .ollama-model-menu[hidden] {
+            display: none;
+        }
+
+        .ollama-model-heading {
+            margin: 0.5rem 0.35rem 0.2rem;
+            color: var(--rover-muted);
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        body .ollama-model-menu button {
+            display: block;
+            width: 100%;
+            min-height: 2.2rem !important;
+            padding: 0.4rem 0.55rem !important;
+            border: 0 !important;
+            background: transparent !important;
+            font-size: 0.75rem !important;
+            text-align: left;
+            overflow-wrap: anywhere;
+        }
+
+        body .ollama-model-menu button[aria-current="true"] {
+            background: var(--rover-control-hover) !important;
+        }
+
+        .ollama-model-menu-status {
+            margin: 0.35rem;
+            color: var(--rover-muted);
+            overflow-wrap: anywhere;
+        }
+
+        .ollama-model-menu-status[data-error="true"] {
+            color: var(--rover-danger);
+        }
+
         .ollama-chat-send {
             justify-self: end;
             min-height: 2rem;

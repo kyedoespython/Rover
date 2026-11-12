@@ -16,6 +16,7 @@ function initializeOllamaDrawer() {
     const form = document.getElementById("ollamaChatForm");
     const input = document.getElementById("ollamaChatInput");
     const sendButton = document.getElementById("ollamaChatSend");
+    const modelTrigger = document.getElementById("roverModelTrigger");
     const settingsForm = document.getElementById("ollamaChatbotSettingsForm");
     const nameInput = document.getElementById("ollamaChatbotNameInput");
     const modelSelect = document.getElementById("ollamaChatbotModelSelect");
@@ -54,6 +55,7 @@ function initializeOllamaDrawer() {
         !(form instanceof HTMLFormElement) ||
         !(input instanceof HTMLTextAreaElement) ||
         !(sendButton instanceof HTMLButtonElement) ||
+        !(modelTrigger instanceof HTMLButtonElement) ||
         !(settingsForm instanceof HTMLFormElement) ||
         !(nameInput instanceof HTMLInputElement) ||
         !(modelSelect instanceof HTMLSelectElement) ||
@@ -86,10 +88,40 @@ function initializeOllamaDrawer() {
     const messages = [];
     let isSending = false;
     let chatError = false;
-    let activeProvider = "ollama";
+    let activeProvider = "unselected";
+    let isSelectingModel = false;
+    let isSavingSettings = false;
+    let statusRequestId = 0;
+    let modelMenuRequestId = 0;
     let sessionActive = false;
     let directoryHandle = null;
     let latestAssistantReply = "";
+
+    const modelMenu = document.createElement("div");
+    modelMenu.id = "roverModelMenu";
+    modelMenu.className = "ollama-model-menu";
+    modelMenu.setAttribute("role", "dialog");
+    modelMenu.setAttribute("aria-label", "Choose an AI model");
+    modelMenu.tabIndex = -1;
+    modelMenu.hidden = true;
+    document.body.append(modelMenu);
+
+    const closeModelMenu = (restoreFocus = false) => {
+        modelMenu.hidden = true;
+        modelMenuRequestId += 1;
+        modelTrigger.setAttribute("aria-expanded", "false");
+        if (restoreFocus && !modelTrigger.disabled) {
+            modelTrigger.focus();
+        }
+    };
+
+    const positionModelMenu = () => {
+        const bounds = modelTrigger.getBoundingClientRect();
+        const width = Math.min(320, window.innerWidth - 24);
+        modelMenu.style.left = `${Math.max(12, Math.min(bounds.left, window.innerWidth - width - 12))}px`;
+        modelMenu.style.bottom = `${Math.max(12, window.innerHeight - bounds.top + 6)}px`;
+        modelMenu.style.maxHeight = `${Math.min(window.innerHeight * 0.55, Math.max(100, bounds.top - 20))}px`;
+    };
 
     const setStatus = (state, message) => {
         statusPanel.dataset.state = state;
@@ -150,19 +182,23 @@ function initializeOllamaDrawer() {
 
     const setSessionActive = (active) => {
         sessionActive = active;
-        input.disabled = !canChat || !active;
-        sendButton.disabled = !canChat || !active;
-        endSessionButton.disabled = !canChat || !active;
+        input.disabled = !canChat || !active || isSending || isSelectingModel || isSavingSettings;
+        sendButton.disabled = !canChat || !active || isSending || isSelectingModel || isSavingSettings || activeProvider === "unselected";
+        modelTrigger.disabled = !canChat || !active || isSending || isSelectingModel || isSavingSettings;
+        endSessionButton.disabled = !canChat || !active || isSending || isSelectingModel || isSavingSettings;
         newSessionButton.hidden = !canChat || active;
         settingsForm.querySelectorAll("input, select, button").forEach((control) => {
-            control.disabled = !canChat || !active;
+            control.disabled = !canChat || !active || isSending || isSelectingModel || isSavingSettings || activeProvider === "unselected";
         });
         apiKeyForm.querySelectorAll("select, button").forEach((control) => {
-            control.disabled = !canChat || !active;
+            control.disabled = !canChat || !active || isSending || isSelectingModel || isSavingSettings;
         });
         permissionsForm.querySelectorAll("input, button").forEach((control) => {
             control.disabled = !canChat || !active;
         });
+        if (!active) {
+            closeModelMenu();
+        }
     };
 
     const setDrawerOpen = (open) => {
@@ -172,6 +208,7 @@ function initializeOllamaDrawer() {
             window.setTimeout(() => input.focus(), 220);
             refreshStatus();
         } else if (!open) {
+            closeModelMenu();
             toggle.focus();
         }
     };
@@ -247,21 +284,26 @@ function initializeOllamaDrawer() {
     };
 
     const refreshStatus = async () => {
+        const requestId = ++statusRequestId;
         try {
             const response = await fetch(drawer.dataset.statusUrl, {
                 credentials: "same-origin",
                 headers: { Accept: "application/json" },
             });
             const result = await response.json();
-            activeProvider = result.provider || "ollama";
-            apiKeyForm.hidden = activeProvider === "gemini";
-            modelName.textContent = result.model || "Not configured";
+            if (requestId !== statusRequestId || isSelectingModel) {
+                return null;
+            }
+            activeProvider = result.provider || activeProvider;
+            apiKeyForm.hidden = activeProvider !== "ollama";
+            modelName.textContent = result.model || "Not selected";
+            setSessionActive(sessionActive);
             if (Array.isArray(result.available_models)) {
                 updateModelOptions(result.available_models, result.model);
             } else {
                 updateModelOptions([], result.model);
             }
-            if (!isSending && !chatError) {
+            if (requestId === statusRequestId && !isSelectingModel && !isSending && !chatError) {
                 setStatus(
                     result.status || "offline",
                     result.message || "Unable to check Ollama status.",
@@ -269,7 +311,7 @@ function initializeOllamaDrawer() {
             }
             return result;
         } catch {
-            if (!isSending && !chatError) {
+            if (requestId === statusRequestId && !isSelectingModel && !isSending && !chatError) {
                 setStatus("offline", "Could not reach Rover.");
             }
             return null;
@@ -293,6 +335,172 @@ function initializeOllamaDrawer() {
         }
         return result;
     };
+
+    const loadModelMenu = async () => {
+        const requestId = ++modelMenuRequestId;
+        modelMenu.replaceChildren();
+        const title = document.createElement("strong");
+        title.textContent = "Choose a model";
+        const notice = document.createElement("p");
+        notice.className = "ollama-model-menu-status";
+        notice.textContent = "Chat history and checked files are sent to the selected provider.";
+        const loading = document.createElement("p");
+        loading.className = "ollama-model-menu-status";
+        loading.textContent = "Loading integrations...";
+        modelMenu.append(title, notice, loading);
+        try {
+            const response = await fetch(drawer.dataset.modelSourcesUrl, {
+                credentials: "same-origin", headers: { Accept: "application/json" }, cache: "no-store",
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "Could not load integrations.");
+            }
+            if (requestId !== modelMenuRequestId) {
+                return;
+            }
+            loading.remove();
+            if (!result.sources.length) {
+                const empty = document.createElement("p");
+                empty.className = "ollama-model-menu-status";
+                empty.textContent = "No integrations available. Add an API key in the design dashboard.";
+                modelMenu.append(empty);
+                return;
+            }
+            result.sources.forEach(async (source) => {
+                const group = document.createElement("section");
+                const heading = document.createElement("p");
+                heading.className = "ollama-model-heading";
+                heading.textContent = `${source.provider === "gemini" ? "Google Gemini" : "Ollama"} · ${source.name}`;
+                const status = document.createElement("p");
+                status.className = "ollama-model-menu-status";
+                status.setAttribute("role", "status");
+                status.textContent = "Loading models...";
+                group.append(heading, status);
+                modelMenu.append(group);
+                try {
+                    const sourceId = source.key_id === null ? "local" : String(source.key_id);
+                    const url = drawer.dataset.modelSourceUrl
+                        .replace("PROVIDER", encodeURIComponent(source.provider))
+                        .replace("SOURCE", encodeURIComponent(sourceId));
+                    const response = await fetch(url, {
+                        credentials: "same-origin", headers: { Accept: "application/json" }, cache: "no-store",
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.error || "Could not load models.");
+                    }
+                    if (requestId !== modelMenuRequestId) {
+                        return;
+                    }
+                    if (!data.models.length) {
+                        status.textContent = "No models available.";
+                        return;
+                    }
+                    status.remove();
+                    data.models.forEach((name) => {
+                        const button = document.createElement("button");
+                        button.type = "button";
+                        button.textContent = name;
+                        if (source.active && name === modelName.textContent) {
+                            button.setAttribute("aria-current", "true");
+                            button.textContent += " ✓";
+                        }
+                        button.addEventListener("click", async () => {
+                            if (isSelectingModel || isSending || isSavingSettings || !sessionActive) {
+                                return;
+                            }
+                            isSelectingModel = true;
+                            statusRequestId += 1;
+                            setSessionActive(true);
+                            group.append(status);
+                            delete status.dataset.error;
+                            status.textContent = "Selecting model...";
+                            let selected = false;
+                            try {
+                                const url = source.provider === "gemini"
+                                    ? drawer.dataset.geminiPreferencesUrl
+                                    : drawer.dataset.ollamaPreferencesUrl;
+                                const result = await requestJson(url, {
+                                    model: name, api_key_id: source.key_id,
+                                });
+                                activeProvider = source.provider;
+                                chatError = false;
+                                modelName.textContent = result.model;
+                                apiKeyForm.hidden = activeProvider !== "ollama";
+                                closeModelMenu();
+                                setStatus("ready", `${result.model} selected.`);
+                                selected = true;
+                            } catch (error) {
+                                status.dataset.error = "true";
+                                status.textContent = error instanceof SyntaxError
+                                    ? "Could not select the model. Please check your connection and sign-in."
+                                    : error.message || "Could not select the model.";
+                                if (modelMenu.hidden) {
+                                    setStatus("error", status.textContent);
+                                }
+                            } finally {
+                                isSelectingModel = false;
+                                setSessionActive(sessionActive);
+                                if (selected) {
+                                    modelTrigger.focus();
+                                    refreshStatus();
+                                }
+                            }
+                        });
+                        group.append(button);
+                    });
+                } catch (error) {
+                    if (requestId === modelMenuRequestId) {
+                        status.dataset.error = "true";
+                        status.textContent = error instanceof SyntaxError
+                            ? "Could not load models. Please check your connection and sign-in."
+                            : error.message || "Could not load models.";
+                    }
+                }
+            });
+        } catch (error) {
+            if (requestId === modelMenuRequestId) {
+                loading.dataset.error = "true";
+                loading.textContent = error instanceof SyntaxError
+                    ? "Could not load integrations. Please check your connection and sign-in."
+                    : error.message || "Could not load integrations.";
+            }
+        }
+    };
+
+    modelTrigger.addEventListener("click", () => {
+        if (!modelMenu.hidden) {
+            closeModelMenu();
+            return;
+        }
+        positionModelMenu();
+        modelMenu.hidden = false;
+        modelTrigger.setAttribute("aria-expanded", "true");
+        loadModelMenu();
+        modelMenu.focus();
+    });
+    document.addEventListener("click", (event) => {
+        if (!isSelectingModel && !modelMenu.hidden && !modelMenu.contains(event.target) && !modelTrigger.contains(event.target)) {
+            closeModelMenu();
+        }
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !isSelectingModel && !modelMenu.hidden) {
+            event.preventDefault();
+            closeModelMenu(true);
+        }
+    });
+    window.addEventListener("resize", () => {
+        if (!modelMenu.hidden) {
+            positionModelMenu();
+        }
+    });
+    document.addEventListener("scroll", () => {
+        if (!modelMenu.hidden) {
+            positionModelMenu();
+        }
+    }, true);
 
     let filesRequestId = 0;
     const loadSavedFiles = async (newFileId = null) => {
@@ -479,10 +687,10 @@ function initializeOllamaDrawer() {
 
             clearMessages();
             chatbotName.textContent = result.chatbot_name;
-            activeProvider = result.provider || "ollama";
-            apiKeyForm.hidden = activeProvider === "gemini";
+            activeProvider = result.provider || "unselected";
+            apiKeyForm.hidden = activeProvider !== "ollama";
             nameInput.value = result.chatbot_name;
-            modelName.textContent = result.model;
+            modelName.textContent = result.model || "Not selected";
             modelSelect.value = result.model;
             readPermission.checked = result.permissions.read_folder;
             writePermission.checked = result.permissions.write_folder;
@@ -754,10 +962,12 @@ function initializeOllamaDrawer() {
 
     apiKeyForm.addEventListener("submit", async (event) => {
         event.preventDefault();
-        if (!sessionActive) {
+        if (!sessionActive || isSavingSettings || isSending || isSelectingModel) {
             return;
         }
-        loadApiKeyButton.disabled = true;
+        isSavingSettings = true;
+        closeModelMenu();
+        setSessionActive(true);
         settingsStatus.textContent = "Loading saved Ollama API key...";
         const rawKeyId = apiKeySelect.value;
         try {
@@ -779,15 +989,19 @@ function initializeOllamaDrawer() {
         } catch (error) {
             settingsStatus.textContent = error.message;
         } finally {
-            loadApiKeyButton.disabled = !sessionActive;
+            isSavingSettings = false;
+            setSessionActive(sessionActive);
         }
     });
 
     settingsForm.addEventListener("submit", async (event) => {
         event.preventDefault();
-        if (!sessionActive) {
+        if (!sessionActive || isSavingSettings || isSending || isSelectingModel) {
             return;
         }
+        isSavingSettings = true;
+        closeModelMenu();
+        setSessionActive(true);
         settingsStatus.textContent = "Saving chatbot settings...";
         try {
             const result = await requestJson(drawer.dataset.chatbotSettingsUrl, {
@@ -801,6 +1015,9 @@ function initializeOllamaDrawer() {
             window.dispatchEvent(new CustomEvent("ollama-preferences-updated"));
         } catch (error) {
             settingsStatus.textContent = error.message;
+        } finally {
+            isSavingSettings = false;
+            setSessionActive(sessionActive);
         }
     });
 
@@ -969,13 +1186,13 @@ function initializeOllamaDrawer() {
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
         const prompt = input.value.trim();
-        if (!canChat || !sessionActive || !prompt || isSending) {
+        if (!canChat || !sessionActive || !prompt || isSending || isSelectingModel || isSavingSettings || activeProvider === "unselected") {
             return;
         }
         isSending = true;
+        closeModelMenu();
         chatError = false;
-        sendButton.disabled = true;
-        input.disabled = true;
+        setSessionActive(true);
         appendMessage("user", prompt);
         messages.push({ role: "user", content: prompt });
         input.value = "";
@@ -1016,8 +1233,7 @@ function initializeOllamaDrawer() {
             setStatus("error", error.message || "Ollama could not complete the request.");
         } finally {
             isSending = false;
-            input.disabled = !sessionActive;
-            sendButton.disabled = !sessionActive;
+            setSessionActive(sessionActive);
             input.focus();
         }
     });
@@ -1071,18 +1287,8 @@ function initializeOllamaDrawer() {
                 return;
             }
             await loadApiKeys();
-            try {
-                const result = await requestJson(drawer.dataset.selectKeyUrl, {
-                    api_key_id: event.detail.apiKeyId,
-                });
-                chatError = false;
-                modelName.textContent = result.model;
-                updateModelOptions(result.available_models, result.model);
-                settingsStatus.textContent = `Ollama API key connected. ${result.model} is selected.`;
-                setStatus("ready", "Ollama key and models loaded.");
-            } catch (error) {
-                settingsStatus.textContent = `API key saved, but model selection failed: ${error.message}`;
-                setStatus("error", settingsStatus.textContent);
+            if (!modelMenu.hidden) {
+                loadModelMenu();
             }
         });
         window.addEventListener("focus", () => {

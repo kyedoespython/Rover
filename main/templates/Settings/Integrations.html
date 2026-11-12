@@ -92,7 +92,7 @@
         aria-labelledby="integrationsHeading"
     >
         <h1 class="title is-3 has-text-black" id="integrationsHeading">Integrations</h1>
-        <p class="current-model">Rover AI provider: <strong id="activeRoverProvider">{{ 'Google Gemini' if rover_ai_provider == 'gemini' else 'Ollama' }}</strong></p>
+        <p class="current-model">Rover AI provider: <strong id="activeRoverProvider">{{ 'Google Gemini' if rover_ai_provider == 'gemini' else ('Ollama' if rover_ai_provider == 'ollama' else 'Not selected') }}</strong></p>
         <h2 class="title is-5 has-text-black">Google Gemini</h2>
         <form id="geminiPreferencesForm">
             <label class="label" for="geminiApiKeySelect">Gemini API key</label>

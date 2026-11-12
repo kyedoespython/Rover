@@ -75,6 +75,7 @@ def notes_client(tmp_path):
             username="RouteNotes",
             password="hashed-password",
             country_of_origin="United States",
+            rover_ai_provider="ollama",
         )
         db.session.add(account)
         db.session.flush()
@@ -632,7 +633,7 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'class="ollama-mode-section"' in response.data
     assert b'id="ollamaMinimize"' in response.data
     assert b'id="ollamaEndSession"' in response.data
-    assert b"scripts/Integrations/Ollama.js?v=17" in response.data
+    assert b"scripts/Integrations/Ollama.js?v=18" in response.data
     assert response.data.count(b'id="ollamaDrawer"') == 1
     assert (
         b'class="button is-outlined design-side-button rover-ai-nav-button"'
@@ -1479,6 +1480,142 @@ def test_gemini_key_activation_chat_files_and_switch_back(mock_get, mock_post, n
     with notes_client.application.app_context():
         assert ChatbotMessage.query.count() == 4
         assert Accounts.query.filter_by(email="route-notes@example.com").one().ollama_model is None
+
+
+@patch("main.services.gemini_service.available_models")
+@patch("main.blueprints.Integrations.Ollama.routes._available_models")
+@patch("main.services.gemini_service.generate_content", return_value="Chooser reply")
+def test_model_chooser_selects_saved_gemini_key_without_prior_activation(
+    mock_generate, mock_ollama_models, mock_gemini_models, notes_client
+):
+    mock_gemini_models.return_value = ["gemini-test"]
+    mock_ollama_models.return_value = ["local-model"]
+    with notes_client.application.app_context():
+        account = Accounts.query.filter_by(email="route-notes@example.com").one()
+        account.rover_ai_provider = "unselected"
+        db.session.commit()
+    key_id = notes_client.post(
+        "/Rover/Design/API-Keys",
+        json={"name": "Gemini", "type": "gemini", "api_key": "test-key"},
+    ).get_json()["api_key"]["id"]
+    session = notes_client.get("/api/ollama/session").get_json()
+    assert session["provider"] == "unselected"
+    assert session["model"] is None
+    status = notes_client.get("/api/ollama/status").get_json()
+    assert status["status"] == "unconfigured"
+    assert notes_client.post("/api/ollama/chat", json={"message": "Hello"}).status_code == 409
+    assert notes_client.post(
+        "/api/ollama/chatbot/settings", json={"name": "Rover", "model": "local-model"}
+    ).status_code == 409
+    mock_ollama_models.assert_not_called()
+    mock_gemini_models.assert_not_called()
+    sources = notes_client.get("/api/ollama/model-sources").get_json()["sources"]
+    assert sources == [
+        {"provider": "ollama", "key_id": None, "name": "Configured endpoint", "active": False},
+        {"provider": "gemini", "key_id": key_id, "name": "Gemini", "active": False},
+    ]
+    assert notes_client.get(f"/api/ollama/model-sources/gemini/{key_id}/models").get_json() == {
+        "models": ["gemini-test"]
+    }
+    assert notes_client.get("/api/ollama/model-sources/ollama/local/models").get_json() == {
+        "models": ["local-model"]
+    }
+    assert notes_client.get(f"/api/ollama/model-sources/ollama/{key_id}/models").status_code == 404
+    selected = notes_client.post(
+        "/api/ollama/gemini/preferences", json={"api_key_id": key_id, "model": "gemini-test"}
+    )
+    assert selected.status_code == 200
+    assert notes_client.get("/api/ollama/session").get_json()["model"] == "gemini-test"
+    response = notes_client.post("/api/ollama/chat", json={"message": "Hello"})
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True).splitlines()[-1])["message"] == "Chooser reply"
+    assert mock_generate.call_args.args[1] == "gemini-test"
+    sources = notes_client.get("/api/ollama/model-sources").get_json()["sources"]
+    assert sources[1]["active"] is True
+    rejected = notes_client.post(
+        "/api/ollama/preferences", json={"api_key_id": None, "model": "not-available"}
+    )
+    assert rejected.status_code == 400
+    assert notes_client.get("/api/ollama/session").get_json()["provider"] == "gemini"
+    selected = notes_client.post(
+        "/api/ollama/preferences", json={"api_key_id": None, "model": "local-model"}
+    )
+    assert selected.status_code == 200
+    assert notes_client.get("/api/ollama/session").get_json()["provider"] == "ollama"
+
+
+@patch("main.services.gemini_service.available_models")
+def test_model_chooser_rejects_foreign_sources_and_reports_provider_errors(
+    mock_gemini_models, notes_client
+):
+    with notes_client.application.app_context():
+        other = Accounts(
+            email="chooser-foreign@example.com", username="ChooserForeign",
+            password="hash", country_of_origin="United States",
+        )
+        db.session.add(other)
+        db.session.flush()
+        foreign = UserApiKey(
+            user_id=other.user_id, key_name="Other", key_type="gemini",
+            key_hash="hash", key_ciphertext=b"cipher",
+            created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
+        )
+        db.session.add(foreign)
+        db.session.commit()
+        foreign_id = foreign.api_key_id
+    assert notes_client.get(f"/api/ollama/model-sources/gemini/{foreign_id}/models").status_code == 404
+    assert notes_client.get("/api/ollama/model-sources/gemini/local/models").status_code == 404
+    assert notes_client.get("/api/ollama/model-sources/gemini/" + "9" * 100 + "/models").status_code == 404
+    assert notes_client.get("/api/ollama/model-sources/groq/1/models").status_code == 404
+    mock_gemini_models.assert_not_called()
+    key_id = notes_client.post(
+        "/Rover/Design/API-Keys", json={"name": "Mine", "type": "gemini", "api_key": "secret"}
+    ).get_json()["api_key"]["id"]
+    mock_gemini_models.side_effect = requests.Timeout()
+    response = notes_client.get(f"/api/ollama/model-sources/gemini/{key_id}/models")
+    assert response.status_code == 504
+    assert "too long" in response.get_json()["error"]
+
+
+@patch("main.blueprints.Integrations.Ollama.routes._available_models", return_value=["cloud-model"])
+def test_model_chooser_cloud_sources_are_owned_and_identify_active_key(mock_models, notes_client):
+    notes_client.application.config["OLLAMA_BASE_URL"] = "https://ollama.com"
+    first = notes_client.post(
+        "/Rover/Design/API-Keys", json={"name": "First", "type": "ollama", "api_key": "secret-1"}
+    ).get_json()["api_key"]["id"]
+    second = notes_client.post(
+        "/Rover/Design/API-Keys", json={"name": "Second", "type": "ollama", "api_key": "secret-2"}
+    ).get_json()["api_key"]["id"]
+    assert notes_client.post(
+        "/api/ollama/preferences", json={"api_key_id": first, "model": "cloud-model"}
+    ).status_code == 200
+    sources = notes_client.get("/api/ollama/model-sources").get_json()["sources"]
+    assert {source["key_id"]: source["active"] for source in sources} == {first: True, second: False}
+    assert b"secret" not in notes_client.get("/api/ollama/model-sources").data
+    assert notes_client.get(f"/api/ollama/model-sources/ollama/{second}/models").get_json() == {
+        "models": ["cloud-model"]
+    }
+    assert mock_models.call_args.args[0]["Authorization"] == "Bearer secret-2"
+    assert notes_client.get("/api/ollama/model-sources/ollama/local/models").status_code == 404
+
+
+@patch("main.blueprints.Integrations.Ollama.routes.requests.get")
+def test_model_chooser_reports_malformed_ollama_model_list(mock_get, notes_client):
+    mock_get.return_value.json.return_value = {"models": "invalid"}
+    response = notes_client.get("/api/ollama/model-sources/ollama/local/models")
+    assert response.status_code == 502
+    assert "invalid model list" in response.get_json()["error"]
+
+
+def test_new_account_defaults_to_unselected(notes_client):
+    with notes_client.application.app_context():
+        account = Accounts(
+            email="new-chooser@example.com", username="NewChooser",
+            password="hash", country_of_origin="United States",
+        )
+        db.session.add(account)
+        db.session.flush()
+        assert account.rover_ai_provider == "unselected"
 
 
 @patch("main.services.gemini_service.requests.get")

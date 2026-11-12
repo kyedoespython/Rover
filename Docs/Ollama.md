@@ -26,6 +26,10 @@ Rover displays saved key labels, not the secret. Re-enter a key if it needs to b
 
 ## Select and use a model
 
+In Rover AI, open **Models** below the message field. Models are grouped by integration and saved key; selecting one configures the provider without reloading. New accounts have no AI provider selected until a model is chosen. Existing accounts keep their previous selection. Gemini and Ollama are supported; other providers such as Groq are not yet integrated.
+
+The chooser loads each integration's model list when opened and reports errors independently. Model availability does not guarantee generation or billing access. Switching providers sends subsequent prompts, checked files, and relevant existing chat history to the newly selected provider. End the chat session first if that history should not be shared.
+
 The Integrations page checks models offered by the configured endpoint and saves the selected model for the account. The single Rover AI panel can also have its own chatbot name and model setting. Triple Rover slots each have independent model settings.
 
 The assistant panel shows connection/model status. If it reports the service is unreachable or the model is missing, verify:
@@ -45,7 +49,7 @@ When a user sends a chat message, Rover sends the selected model the message, se
 
 ## Google Gemini
 
-Save a **Google Gemini API Key** in the Design Dashboard, then open **Settings → Integrations** and activate it under Google Gemini. Rover loads the models available to that key; select a model and save it. Use **Use Ollama** to switch back. Gemini uses Google's API, not the configured Ollama endpoint. Its key is encrypted at rest using the same stable encryption secret described above and is sent only to Google's Gemini API.
+Save a **Google Gemini API Key** in the Design Dashboard, then select a Gemini model using **Models** in Rover AI. You can also configure it under **Settings → Integrations**. Gemini uses Google's API, not the configured Ollama endpoint. Its key is encrypted at rest using the same stable encryption secret described above and is sent only to Google's Gemini API.
 
 When Gemini is active, Rover sends the prompt, selected attachments, and relevant chat history to Google. Existing chat history can include messages from an earlier provider; end the session first if you do not want that history sent. The status check lists models but does not confirm that generation or billing will succeed. Gemini responses are displayed after generation completes; account usage limits and pricing are controlled by Google.
 
