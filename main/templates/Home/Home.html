@@ -172,9 +172,9 @@
     .landing-copy {
         position: relative;
         z-index: 2;
-        width: min(58%, 48rem);
-        margin: auto 0 0;
-        padding: 0 clamp(1.5rem, 4.5vw, 4rem) clamp(2.5rem, 6vh, 4.5rem);
+        width: min(100%, 42rem);
+        margin: auto;
+        padding: clamp(1.5rem, 4vw, 3rem);
     }
 
     .landing-eyebrow {
@@ -183,7 +183,7 @@
         gap: 0.7rem;
         margin: 0 0 1rem;
         color: #aab4b7;
-        font-size: 0.68rem;
+        font-size: 0.72rem;
         font-weight: 600;
         letter-spacing: 0.18em;
         text-transform: uppercase;
@@ -192,7 +192,7 @@
     .landing-title {
         margin: 0;
         color: #d6dcde;
-        font-size: clamp(2.4rem, 4.3vw, 4.2rem);
+        font-size: clamp(2.5rem, 4.6vw, 4.6rem);
         font-weight: 350;
         letter-spacing: -0.065em;
         line-height: 0.99;
@@ -207,10 +207,10 @@
     }
 
     .landing-description {
-        max-width: 17rem;
+        max-width: 19rem;
         margin: 0;
         color: #aeb7ba;
-        font-size: clamp(0.9rem, 1.2vw, 1.02rem);
+        font-size: clamp(0.95rem, 1.25vw, 1.08rem);
         line-height: 1.65;
     }
 
@@ -257,7 +257,7 @@
 
         .landing-art {
             width: 100%;
-            opacity: 0.5;
+            opacity: 0.28;
         }
 
         .metal-tile {
@@ -265,13 +265,11 @@
         }
 
         .landing-copy {
-            width: auto;
-            margin-top: auto;
-            padding: 0 1.5rem 2rem;
+            padding: 1.5rem;
         }
 
         .landing-title {
-            font-size: clamp(2rem, 8vw, 3rem);
+            font-size: clamp(2.05rem, 8.5vw, 3.2rem);
         }
 
         .landing-footer {
@@ -315,7 +313,13 @@
         }
 
         .landing-title {
-            font-size: clamp(1.95rem, 8vw, 2.4rem);
+            font-size: clamp(2.05rem, 8.5vw, 2.55rem);
+        }
+    }
+
+    @media (max-width: 340px) {
+        .landing-copy {
+            padding: 1rem;
         }
     }
 
