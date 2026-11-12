@@ -1,4 +1,5 @@
 function initializeDesignDashboard() {
+    // Let users switch from the single-agent workspace to Triple Rover.
     const modeSelect = document.getElementById("roverModeSelect");
     if (modeSelect instanceof HTMLSelectElement) {
         modeSelect.addEventListener("change", () => {
@@ -13,6 +14,7 @@ function initializeDesignDashboard() {
         });
     }
 
+    // Manage the API key dialog and clear the secret when it closes.
     const openButton = document.getElementById("openApiKeyDialog");
     const backdrop = document.getElementById("apiKeyDialog");
     const dialog = backdrop?.querySelector('[role="dialog"]');
@@ -61,6 +63,7 @@ function initializeDesignDashboard() {
         }
     });
 
+    // Submit API key settings and report the result to the user.
     const form = document.getElementById("apiKeyForm");
     const status = document.getElementById("apiKeyStatus");
     const apiKeyInput = document.getElementById("apiKeyValue");

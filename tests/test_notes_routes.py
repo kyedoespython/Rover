@@ -40,7 +40,11 @@ from main.services.ollama_service import decrypt_api_key
 @pytest.fixture
 def notes_client(tmp_path):
     template_folder = Path(__file__).parent.parent / "main" / "templates"
-    app = Flask(__name__, template_folder=str(template_folder))
+    app = Flask(
+        __name__,
+        template_folder=str(template_folder),
+        static_folder=str(template_folder.parent / "static"),
+    )
     app.config.update(
         TESTING=True,
         SECRET_KEY="notes-test-secret",
@@ -651,7 +655,7 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert b'id="ollamaChatbotModelInput"' not in response.data
     assert b'id="ollamaApiKeySelect"' in response.data
     assert b'id="ollamaLoadApiKey"' in response.data
-    assert b"scripts/Design/Schema.js?v=3" in response.data
+    assert b'type="module" src="/static/scripts/Design/Schema/Schema.js?v=1"' in response.data
     assert b'id="openSchemaEditor"' in response.data
     assert b'id="schemaEditorDialog"' in response.data
     assert b'data-schema-url="/api/schema"' in response.data
@@ -673,6 +677,27 @@ def test_rover_ai_panel_is_design_page_only_and_labels_are_black(notes_client):
     assert home_page.status_code == 200
     assert b'id="ollamaDrawer"' not in home_page.data
     assert b"scripts/Integrations/Ollama.js?v=8" not in home_page.data
+
+
+def test_schema_editor_module_imports_are_served(notes_client):
+    response = notes_client.get("/DesignDashboard")
+    entry = re.search(
+        rb'type="module" src="([^"]*scripts/Design/Schema/Schema\.js[^"]*)"',
+        response.data,
+    )
+    assert entry is not None
+    entry_url = entry.group(1).decode()
+    script = notes_client.get(entry_url)
+    assert script.status_code == 200
+    assert script.mimetype in ("text/javascript", "application/javascript")
+
+    imports = re.findall(rb'from "\./([^"]+)"', script.data)
+    assert imports
+    module_directory = entry_url.rsplit("/", 1)[0]
+    for imported in imports:
+        module = notes_client.get(f"{module_directory}/{imported.decode()}")
+        assert module.status_code == 200
+        assert module.mimetype in ("text/javascript", "application/javascript")
 
 
 def test_user_schema_saves_connections_and_derived_metadata(notes_client):

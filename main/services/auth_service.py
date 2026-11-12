@@ -4,22 +4,28 @@ from hashlib import sha256
 from html import escape
 
 import resend
-from flask import current_app
+from flask import current_app, render_template
 from sqlalchemy import update
 from werkzeug.security import generate_password_hash
 
 from main.extensions import db
 from main.models.user import Accounts, Authentication, PasswordResetToken
 
+# set a max limit of auth code attempts to 5 via global variable
 AUTH_CODE_MAX_ATTEMPTS = 5
 
-
+# This function is reusable,
+# This email sending function uses the resend api
 def _send_email(to, subject, text, html=None):
     api_key = current_app.config.get("RESEND_API_KEY")
+
+    # if the resend api key isnt used raise a runtime error
     if not api_key:
         raise RuntimeError("RESEND_API_KEY is not configured")
 
     resend.api_key = api_key
+
+    # create the email body setup
     email = {
         "from": current_app.config.get(
             "RESEND_FROM_EMAIL",
@@ -32,16 +38,18 @@ def _send_email(to, subject, text, html=None):
     if html is not None:
         email["html"] = html
 
+    # return the email
     return resend.Emails.send(email)
 
-
+# This is a reusable function for notifying the user via email that their email has been associated with a signup attempt,
 def SignupAttemptMail(email):
-    """Notify an existing account holder without revealing the duplicate to the requester."""
-    user = Accounts.query.filter_by(email=email).first()
+    user = Accounts.query.filter_by(email=email).first() # query for first instance of the users email address in the database
 
+    # if no email instance found return that value
     if not user:
         return
 
+    # if user email instance found then send the email to let the user know that their email has been used on a signup attempt
     try:
         _send_email(
             to=[user.email],
@@ -54,35 +62,38 @@ def SignupAttemptMail(email):
             ),
         )
 
+    # except email sending error
     except Exception:
         current_app.logger.exception(
             "Failed to send duplicate email notification to %s",
             user.email,
         )
 
-
+# Function to create the authentication code for the user account straight after signup,
 def Create_Auth_Code(user_account):
-    """Rotate a verification code, reset its attempt counter, and email the code."""
+
+    # if users account has no authentication data in the database, make the commit to add
     if not user_account.authentication_data:
         auth_row = Authentication(user_id=user_account.user_id)
         db.session.add(auth_row)
     else:
         auth_row = user_account.authentication_data
 
+    # using secrets module to generate a 7 digit auth code
     auth_code_ = str(secrets.randbelow(9_000_000) + 1_000_000)
 
-    # Store only a password hash; plaintext is sent only to the account email.
-    auth_row.auth_code = generate_password_hash(auth_code_)
-    auth_row.auth_code_expires = datetime.now(timezone.utc) + timedelta(minutes=10)
-    auth_row.last_code_sent_at = datetime.now(timezone.utc)
-    auth_row.failed_attempts = 0
-    db.session.commit()
+    # Store only a password hash, plaintext auth code is sent only to the account email address
+    auth_row.auth_code = generate_password_hash(auth_code_) # generate a password hash for auth code
+    auth_row.auth_code_expires = datetime.now(timezone.utc) + timedelta(minutes=10) # set an auth code expiry to 10 minutes
+    auth_row.last_code_sent_at = datetime.now(timezone.utc) # mark a current timestamp for instance of start for 10 minutes
+    auth_row.failed_attempts = 0 # set failed authenticated attempts to 0
+    db.session.commit() # makes the commit to the database for the above data
 
+    # return the values for user_account and the auth code to the send auth code function to send the auth code to the users email address
     return SendAuthCode_EMAIL(user_account, auth_code_)
 
-
+# Function to send the auth code in plain text to the users email address
 def SendAuthCode_EMAIL(user_account, auth_code_):
-    """Send a verification code without exposing it in the application response."""
     try:
         _send_email(
             to=[user_account.email],
@@ -94,8 +105,10 @@ def SendAuthCode_EMAIL(user_account, auth_code_):
             ),
         )
 
+        # return true for a success instance to mark the email sent
         return True, "Auth code sent to your email."
 
+    # except error, then return false instance value
     except Exception:
         current_app.logger.exception(
             "Failed to send authentication code email to %s",
@@ -103,10 +116,9 @@ def SendAuthCode_EMAIL(user_account, auth_code_):
         )
         return False, "Failed to send email."
 
-
+# This function sends an email to the user when their account has been successfully verified
 def SendVerificationConfirmationEmail(user_account):
     username = user_account.username
-    safe_username = escape(username)
 
     text = (
         f"Congratulations {username}!\n\n"
@@ -115,47 +127,10 @@ def SendVerificationConfirmationEmail(user_account):
         "Thanks for joining us,\n"
         "The Rover Team"
     )
-    html = f"""\
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Your Rover account is verified</title>
-</head>
-<body style="margin:0;padding:0;background-color:#f2f2f2;font-family:Arial,Helvetica,sans-serif;color:#202124;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f2f2f2;padding:32px 12px;">
-        <tr>
-            <td align="center">
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-                    <tr>
-                        <td style="padding:28px 32px;background-color:#111111;color:#ffffff;">
-                            <p style="margin:0;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Rover</p>
-                            <h1 style="margin:12px 0 0;font-size:24px;line-height:1.3;">Account verified</h1>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding:32px;">
-                            <p style="margin:0 0 16px;font-size:17px;line-height:1.6;">Congratulations <strong>{safe_username}</strong>!</p>
-                            <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#4b5563;">
-                                Your Rover account has been successfully verified. You can now log in and start using Rover.
-                            </p>
-                            <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">
-                                Thanks for joining us,<br><strong style="color:#202124;">The Rover Team</strong>
-                            </p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding:16px 32px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px;line-height:1.5;">
-                            This message confirms a change to your Rover account.
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>"""
+    html = render_template(
+        "Emails/VerificationConfirmation.html",
+        username=username,
+    )
 
     try:
         _send_email(

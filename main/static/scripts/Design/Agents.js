@@ -14,12 +14,14 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
+    // Return to the single-agent workspace when the mode changes.
     modeSelect.addEventListener("change", () => {
         if (modeSelect.value === "single") {
             window.location.assign(modeSelect.dataset.singleUrl);
         }
     });
 
+    // Share request and rendering helpers across the agent cards.
     const csrfToken = page.dataset.csrfToken;
     const requestJson = async (url, body) => {
         const response = await fetch(url, {
@@ -62,6 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return input;
     };
 
+    // Build an agent card with settings, conversation history, and a chat form.
     const renderAgent = (agent) => {
         const card = document.createElement("article");
         card.className = "rover-agent-card";
@@ -168,6 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
         sendButton.textContent = "Send";
         chatForm.append(chatInput, sendButton);
 
+        // Save settings separately from sending a chat message.
         settingsForm.addEventListener("submit", async (event) => {
             event.preventDefault();
             settingsStatus.textContent = "Saving settings...";
@@ -194,6 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
+        // Send messages and update only this agent's conversation and status.
         chatForm.addEventListener("submit", async (event) => {
             event.preventDefault();
             const content = chatInput.value.trim();
@@ -226,6 +231,7 @@ document.addEventListener("DOMContentLoaded", () => {
         grid.append(card);
     };
 
+    // Load the user's agents before rendering the workspace.
     const loadAgents = async () => {
         try {
             const response = await fetch(page.dataset.agentsUrl, {

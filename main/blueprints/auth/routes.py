@@ -14,6 +14,7 @@ from flask import (
     session,
     url_for,
 )
+
 from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy import case, func, update
 from sqlalchemy.exc import IntegrityError
@@ -29,6 +30,7 @@ from main.models.user import (
     UserSchemaDatabase,
     UserSchema,
 )
+
 from main.services.auth_service import (
     AUTH_CODE_MAX_ATTEMPTS,
     AuthCode_check,
@@ -40,6 +42,7 @@ from main.services.auth_service import (
     SendVerificationConfirmationEmail,
     SignupAttemptMail,
 )
+
 from main.services.notes_service import (
     create_note,
     delete_note,
@@ -47,27 +50,33 @@ from main.services.notes_service import (
     read_note_content,
     update_note,
 )
+
 from main.services.ollama_service import encrypt_api_key
 from main.services.user_service import Account_Exists_Validator, Contents_Checker
 
 from . import auth_bp
 
-
+# This is the route for the signup page
 @auth_bp.route("/Rover/Sign Up")
 def Signup():
     return render_template("Signup/Signup.html")
 
-
+# This is the route for handling the signup request, request must be a post request to perform the signup action,
+# Inside the signup page i use my limiter class to set a rate limit on login attempts to 5 per minute and a max of 50 per day,
 @auth_bp.route("/Handle_signup", methods=["POST", "GET"])
 @limiter.limit("5/minute; 50 per day")
 def Handle_Signup():
     if request.method == "POST":
+
+        # get the form data from the web page inputs, strip whitespace for solving accidental user typing errors,
+        # the password feild isnt stripped of whitespace as the user may want to include that inside their password
         email = request.form.get("email", "").strip()
         username = request.form.get("username", "").strip()
         password = request.form.get("password")
         phone_number = request.form.get("telephone", "").strip()
         country = request.form.get("country", "").strip()
 
+        # run the contents checker function 
         contents_checker = Contents_Checker(
             email, username, password, phone_number, country
         )

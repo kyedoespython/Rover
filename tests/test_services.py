@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import patch
 
 from flask import Flask
@@ -60,7 +61,8 @@ def test_phone_number_validator_skips_missing_number(accounts):
 
 @patch("main.services.auth_service.resend.Emails.send")
 def test_verification_confirmation_email_sends_html_and_text_alternatives(send):
-    app = Flask(__name__)
+    template_folder = Path(__file__).parent.parent / "main" / "templates"
+    app = Flask(__name__, template_folder=str(template_folder))
     app.config["RESEND_API_KEY"] = "test-resend-key"
     app.config["RESEND_FROM_EMAIL"] = "rover@example.com"
     user = type("User", (), {"username": "Alex <Rover>", "email": "alex@example.com"})()

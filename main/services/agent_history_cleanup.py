@@ -5,10 +5,11 @@ from sqlalchemy import text
 from main.extensions import db
 from main.models.user import RoverAgentMessage, RoverAgentSession
 
+# Cleanup expired agent history older than the retention period
 RETENTION_PERIOD = timedelta(days=7)
 POSTGRES_CLEANUP_LOCK_ID = 743820194
 
-
+# Function to cleanup expired agent history based on the retention period
 def cleanup_expired_agent_history(now: datetime | None = None) -> int:
     cutoff = (now or datetime.now(timezone.utc)) - RETENTION_PERIOD
 

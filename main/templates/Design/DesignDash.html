@@ -10,7 +10,7 @@
 
 {% block extra_js %}
     <script src="{{ url_for('static', filename='scripts/Design/Design.js') }}?v=4" defer></script>
-    <script src="{{ url_for('static', filename='scripts/Design/Schema.js') }}?v=3" defer></script>
+    <script type="module" src="{{ url_for('static', filename='scripts/Design/Schema/Schema.js') }}?v=1"></script>
     <script src="{{ url_for('static', filename='scripts/Integrations/Ollama.js') }}?v=11" defer></script>
 {% endblock %}
 
