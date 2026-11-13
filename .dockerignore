@@ -22,6 +22,7 @@ __pycache__/
 .coverage*
 htmlcov/
 tests/
+testing/
 
 # Local frontend install; built/static assets are copied from main/static
 node_modules/

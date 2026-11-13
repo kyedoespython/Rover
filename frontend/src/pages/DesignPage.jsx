@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 const DATA_TYPES = [
     "AutoNumber",
@@ -39,28 +39,11 @@ export default function DesignPage({ csrfToken }) {
     const [relationshipSourceId, setRelationshipSourceId] = useState("");
     const [relationshipTargetId, setRelationshipTargetId] = useState("");
     const [activeView, setActiveView] = useState("tables");
+    const [schemaPanelOpen, setSchemaPanelOpen] = useState(false);
     const [status, setStatus] = useState("Loading saved databases...");
     const [query, setQuery] = useState("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name;");
     const [queryResult, setQueryResult] = useState(null);
     const [queryStatus, setQueryStatus] = useState("");
-    const [demoOpen, setDemoOpen] = useState(false);
-    const [demoActiveUsers, setDemoActiveUsers] = useState(0);
-    const demoDialog = useRef(null);
-
-    useEffect(() => {
-        const dialog = demoDialog.current;
-        if (!dialog) return;
-        if (demoOpen && !dialog.open) dialog.showModal();
-        if (!demoOpen && dialog.open) dialog.close();
-    }, [demoOpen]);
-
-    useEffect(() => {
-        if (!demoOpen) return undefined;
-        const timer = window.setInterval(() => {
-            setDemoActiveUsers((count) => (count + 1) % 9);
-        }, 850);
-        return () => window.clearInterval(timer);
-    }, [demoOpen]);
 
     async function loadDatabases() {
         const result = await requestJson("/api/schema");
@@ -250,35 +233,38 @@ export default function DesignPage({ csrfToken }) {
     const targetTable = tables.find((table) => table.id === relationshipTargetId && table.id !== sourceTable?.id)
         || tables.find((table) => table.id !== sourceTable?.id);
 
-    function openDemo() {
-        if (!selected) {
-            setStatus("Create or load a database before starting the traffic demo.");
-            return;
-        }
-        setDemoActiveUsers(0);
-        setDemoOpen(true);
-    }
-
     return (
         <div className="design-react-page">
             <nav className="design-react-nav" aria-label="Main navigation">
                 <div><a href="/">Home</a><a href="/Rover/Notes">Notes</a></div>
-                <a href="/Rover/Support">Support</a>
+                <div className="design-nav-actions">
+                    <button
+                        aria-controls="design-schema-panel"
+                        aria-expanded={schemaPanelOpen}
+                        onClick={() => setSchemaPanelOpen((isOpen) => !isOpen)}
+                        type="button"
+                    >
+                        Schema
+                    </button>
+                    <a href="/Rover/Support">Support</a>
+                </div>
             </nav>
-            <h1>Your designs</h1>
-            <div className="design-react-layout">
-                <aside className="design-library">
-                    <h2>SQLite databases</h2>
-                    <form onSubmit={createDatabase}>
-                        <label htmlFor="designDatabaseName">New database</label>
-                        <input id="designDatabaseName" maxLength={128} name="name" placeholder="Database name" required />
-                        <button type="submit">Create database</button>
-                    </form>
-                    <label className="design-file-button">
-                        Load SQLite file
-                        <input accept=".sqlite3,.sqlite,.db" onChange={importDatabase} type="file" />
-                    </label>
-                    <p className="design-status" role="status">{status}</p>
+            <h1>Setting up flask</h1>
+            {schemaPanelOpen && (
+                <section aria-labelledby="designSchemaHeading" className="design-schema-panel" id="design-schema-panel">
+                    <div className="design-schema-controls">
+                        <h2 id="designSchemaHeading">SQLite databases</h2>
+                        <form onSubmit={createDatabase}>
+                            <label htmlFor="designDatabaseName">New database</label>
+                            <input id="designDatabaseName" maxLength={128} name="name" placeholder="Database name" required />
+                            <button type="submit">Create database</button>
+                        </form>
+                        <label className="design-file-button">
+                            Load SQLite file
+                            <input accept=".sqlite3,.sqlite,.db" onChange={importDatabase} type="file" />
+                        </label>
+                        <p className="design-status" role="status">{status}</p>
+                    </div>
                     <ul className="design-database-list">
                         {databases.map((database) => (
                             <li key={database.id}>
@@ -294,7 +280,9 @@ export default function DesignPage({ csrfToken }) {
                             </li>
                         ))}
                     </ul>
-                </aside>
+                </section>
+            )}
+            <div className="design-react-layout">
                 <section className="design-editor">
                     <div className="design-toolbar">
                         {["tables", "relationships", "query"].map((view) => (
@@ -307,7 +295,6 @@ export default function DesignPage({ csrfToken }) {
                                 {view[0].toUpperCase() + view.slice(1)}
                             </button>
                         ))}
-                        <button disabled={!selected} onClick={openDemo} type="button">Traffic demo</button>
                         <input
                             aria-label="Database name"
                             disabled={!selected}
@@ -386,30 +373,6 @@ export default function DesignPage({ csrfToken }) {
                     )}
                 </section>
             </div>
-            <dialog className="design-demo-dialog" onClose={() => setDemoOpen(false)} ref={demoDialog}>
-                <header>
-                    <div>
-                        <h2>Database traffic demo</h2>
-                        <p>Simulated traffic passing through {selected?.name}.</p>
-                    </div>
-                    <button aria-label="Close traffic demo" onClick={() => setDemoOpen(false)} type="button">Close</button>
-                </header>
-                <div className="design-demo-track">
-                    <div className="design-demo-nodes">
-                        {tables.slice(0, 8).map((table, index) => (
-                            <span className="design-demo-node" key={table.id} style={{ animationDelay: `${index * 0.12}s` }}>
-                                {table.name}
-                            </span>
-                        ))}
-                        {!tables.length && <span className="design-empty">No tables in this database yet.</span>}
-                    </div>
-                    <span aria-hidden="true" className="design-demo-packet" />
-                </div>
-                <footer>
-                    <span role="status">Simulated active users: {demoActiveUsers}</span>
-                    <span>{tables.length > 8 ? `Showing 8 of ${tables.length} tables.` : `${tables.length} table${tables.length === 1 ? "" : "s"} in this model.`}</span>
-                </footer>
-            </dialog>
         </div>
     );
 }

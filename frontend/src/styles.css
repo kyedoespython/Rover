@@ -504,29 +504,59 @@
     text-align: center;
 }
 
-.design-react-layout {
-    display: grid;
-    grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
-    min-height: 70vh;
-    gap: 1.25rem;
-    padding: 0 clamp(1rem, 3vw, 2.5rem) 2rem;
+.design-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
 }
 
-.design-library,
-.design-editor {
-    min-width: 0;
+.design-schema-panel {
+    display: grid;
+    grid-template-columns: minmax(13rem, 18rem) minmax(0, 1fr);
+    gap: 1rem;
+    margin: 0 clamp(1rem, 3vw, 2.5rem) 1rem;
     padding: 1rem;
     border: 1px solid var(--rover-border);
     border-radius: 8px;
     background: var(--rover-surface);
 }
 
-.design-library h2 {
-    margin: 0 0 1rem;
+.design-schema-controls {
+    display: grid;
+    align-content: start;
+    gap: 0.65rem;
+}
+
+.design-schema-controls h2 {
+    margin: 0;
     font-size: 1.15rem;
 }
 
-.design-library form,
+.design-schema-controls form {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.design-react-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 70vh;
+    gap: 1.25rem;
+    padding: 0 clamp(1rem, 3vw, 2.5rem) 2rem;
+}
+
+.design-schema-panel,
+.design-editor {
+    min-width: 0;
+}
+
+.design-editor {
+    padding: 1rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 8px;
+    background: var(--rover-surface);
+}
+
 .design-query-view form {
     display: grid;
     gap: 0.65rem;
@@ -592,6 +622,7 @@
 .design-database-list,
 .design-relationship-view ul {
     display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
     gap: 0.5rem;
     margin: 0;
     padding: 0;
@@ -601,6 +632,7 @@
 .design-database-list li {
     display: flex;
     gap: 0.35rem;
+    min-width: 0;
 }
 
 .design-database-list li > button:first-child {
@@ -748,99 +780,8 @@
     overflow-wrap: anywhere;
 }
 
-.design-demo-dialog {
-    width: min(94vw, 58rem);
-    padding: 0;
-    border: 1px solid var(--rover-border);
-    border-radius: 8px;
-    background: var(--rover-surface-raised);
-    color: var(--rover-text);
-}
-
-.design-demo-dialog::backdrop {
-    background: rgba(0, 0, 0, 0.72);
-    backdrop-filter: blur(2px);
-}
-
-.design-demo-dialog > header,
-.design-demo-dialog > footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1rem 1.25rem;
-}
-
-.design-demo-dialog h2,
-.design-demo-dialog p {
-    margin: 0;
-}
-
-.design-demo-dialog p,
-.design-demo-dialog footer {
-    color: var(--rover-muted);
-}
-
-.design-demo-track {
-    position: relative;
-    display: grid;
-    min-height: 15rem;
-    align-items: center;
-    overflow: hidden;
-    padding: 2rem;
-    border-block: 1px solid var(--rover-border);
-    background: radial-gradient(ellipse, rgba(194, 203, 207, 0.1), transparent 70%);
-}
-
-.design-demo-nodes {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.65rem;
-}
-
-.design-demo-node {
-    position: relative;
-    z-index: 1;
-    padding: 0.65rem 0.85rem;
-    border: 1px solid var(--rover-border);
-    border-radius: 5px;
-    background: var(--rover-surface);
-    animation: design-demo-pulse 1.7s ease-in-out infinite alternate;
-}
-
-.design-demo-packet {
-    position: absolute;
-    top: 50%;
-    left: -0.5rem;
-    width: 0.65rem;
-    height: 0.65rem;
-    border-radius: 50%;
-    background: var(--rover-accent-hover);
-    box-shadow: 0 0 1rem var(--rover-accent);
-    animation: design-demo-travel 2.4s linear infinite;
-}
-
-@keyframes design-demo-pulse {
-    from { border-color: var(--rover-border); }
-    to { border-color: var(--rover-accent); }
-}
-
-@keyframes design-demo-travel {
-    from { transform: translate(0, -50%); }
-    to { transform: translate(min(90vw, 58rem), -50%); }
-}
-
 @media (max-width: 850px) {
-    .design-react-layout {
-        grid-template-columns: 1fr;
-    }
-
-    .design-library {
-        order: 2;
-    }
-
-    .design-editor {
-        order: 1;
+    .design-schema-panel {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
