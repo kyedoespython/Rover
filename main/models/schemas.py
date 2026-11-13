@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Index, UniqueConstraint, func
+from sqlalchemy import ForeignKey, Index, UniqueConstraint, func, text
 
 from main.extensions import db
 
@@ -17,7 +17,21 @@ class UserSchema(db.Model):
 
 class UserSchemaDatabase(db.Model):
     __tablename__ = "user_schema_databases"
-    __table_args__ = (UniqueConstraint("user_id", "schema_name", name="uq_user_schema_databases_user_name"), Index("ix_user_schema_databases_user_updated", "user_id", "updated_at"))
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "schema_name",
+            name="uq_user_schema_databases_user_name",
+        ),
+        Index("ix_user_schema_databases_user_updated", "user_id", "updated_at"),
+        Index(
+            "uq_user_schema_databases_fastquery_demo",
+            "user_id",
+            unique=True,
+            sqlite_where=text("is_fastquery_demo = 1"),
+            postgresql_where=text("is_fastquery_demo IS TRUE"),
+        ),
+    )
 
     schema_database_id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, ForeignKey("accounts.user_id", ondelete="CASCADE"), nullable=False)
@@ -25,6 +39,9 @@ class UserSchemaDatabase(db.Model):
     file_name = db.Column(db.String(255), nullable=False)
     database_data = db.Column(db.LargeBinary, nullable=False)
     schema_data = db.Column(db.JSON, nullable=False)
+    is_fastquery_demo = db.Column(
+        db.Boolean, nullable=False, default=False, server_default=text("false")
+    )
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     owner = db.relationship("Accounts", back_populates="schema_databases")

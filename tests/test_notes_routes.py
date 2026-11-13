@@ -18,6 +18,9 @@ from main.extensions import csrf, db, limiter, login_manager
 from main.models import (
     Accounts,
     Authentication,
+    FastQueryProgress,
+    FastQuerySection,
+    FastQuerySectionCompletion,
     Notes,
     PasswordResetToken,
     SchemaMetadata,
@@ -27,6 +30,7 @@ from main.models import (
 )
 from main.services import notes_service
 from main.services.auth_service import AUTH_CODE_MAX_ATTEMPTS, Create_Auth_Code
+from main.services.fastquery_service import ensure_fastquery_state
 from main.services.notes_service import create_note
 
 
@@ -223,6 +227,100 @@ def test_authenticated_routes_reject_anonymous_clients(notes_client):
 
     assert anonymous_client.get("/Rover/Notes").status_code == 401
     assert anonymous_client.get("/DesignDashboard").status_code == 401
+    assert anonymous_client.get("/Rover/FastQuery").status_code == 401
+    assert anonymous_client.get("/Rover/Profile").status_code == 401
+    assert anonymous_client.get("/api/fastquery").status_code == 401
+
+
+def test_fastquery_loads_a_private_user_database_and_runnable_lessons(notes_client):
+    state = notes_client.get("/api/fastquery")
+    assert state.status_code == 200
+    payload = state.get_json()
+    assert len(payload["sections"]) >= 10
+    assert payload["progress"]["currentSection"] == payload["sections"][0]["slug"]
+    assert payload["progress"]["startedAt"]
+    assert payload["progress"]["lastAccessedAt"]
+    assert payload["sections"][0]["createdAt"]
+    assert payload["sections"][0]["updatedAt"]
+
+    demo_database = payload["demoDatabase"]
+    with notes_client.application.app_context():
+        database = db.session.get(UserSchemaDatabase, demo_database["id"])
+        account_id = Accounts.query.filter_by(username="RouteNotes").one().user_id
+        assert database.user_id == account_id
+        assert database.file_name == "user.db"
+        assert database.is_fastquery_demo is True
+        assert len(database.schema_data["tables"]) == 4
+        assert len(database.schema_data["relationships"]) == 3
+
+    for section in payload["sections"]:
+        for example in section["lesson"]["examples"]:
+            result = notes_client.post(
+                f"/api/schema/{demo_database['id']}/query",
+                json={"query": example["query"]},
+            )
+            assert result.status_code == 200, (
+                section["slug"],
+                example["title"],
+                result.get_json(),
+            )
+            assert result.get_json()["columns"]
+
+
+def test_fastquery_creates_a_separate_demo_database_per_account(notes_client):
+    with notes_client.application.app_context():
+        first_user_id = Accounts.query.filter_by(username="RouteNotes").one().user_id
+        other_account = Accounts(
+            email="fastquery-other@example.com",
+            username="FastQueryOther",
+            password="hashed-password",
+            country_of_origin="United States",
+        )
+        db.session.add(other_account)
+        db.session.flush()
+        db.session.add(Authentication(user_id=other_account.user_id, authenticated=True))
+        other_user_id = other_account.user_id
+        db.session.commit()
+
+        first_state = ensure_fastquery_state(first_user_id)
+        second_state = ensure_fastquery_state(other_user_id)
+        first_database = db.session.get(
+            UserSchemaDatabase, first_state["demoDatabase"]["id"]
+        )
+        second_database = db.session.get(
+            UserSchemaDatabase, second_state["demoDatabase"]["id"]
+        )
+
+        assert first_database.schema_database_id != second_database.schema_database_id
+        assert first_database.user_id == first_user_id
+        assert second_database.user_id == other_user_id
+
+
+def test_fastquery_progress_resumes_and_profile_is_protected(notes_client):
+    first_state = notes_client.get("/api/fastquery").get_json()
+    next_section = first_state["sections"][1]["slug"]
+    saved = notes_client.put(
+        "/api/fastquery/progress",
+        json={"section": next_section, "complete": True},
+    )
+    assert saved.status_code == 200
+    assert saved.get_json()["progress"]["currentSection"] == next_section
+    assert next_section in saved.get_json()["progress"]["completedSections"]
+
+    resumed = notes_client.get("/api/fastquery").get_json()
+    assert resumed["progress"]["currentSection"] == next_section
+    with notes_client.application.app_context():
+        progress = FastQueryProgress.query.one()
+        assert progress.current_section.slug == next_section
+        assert FastQuerySection.query.count() == len(first_state["sections"])
+        completion = FastQuerySectionCompletion.query.one()
+        assert completion.section.slug == next_section
+        assert completion.completed_at is not None
+
+    profile = notes_client.get("/Rover/Profile")
+    assert profile.status_code == 200
+    assert b'data-page="profile"' in profile.data
+    assert b"RouteNotes" in profile.data
 
 
 def test_notes_routes_reject_access_to_another_users_note(notes_client):

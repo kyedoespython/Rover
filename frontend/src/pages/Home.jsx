@@ -1,6 +1,8 @@
 import React from "react";
 
-export default function Home({ authenticated, logoUrl }) {
+import UserAvatar from "../components/UserAvatar.jsx";
+
+export default function Home({ loggedIn, logoUrl }) {
     return (
         <div className="home-page">
             <section className="landing-shell" id="about">
@@ -13,12 +15,16 @@ export default function Home({ authenticated, logoUrl }) {
                     <div className="landing-links">
                         <a href="/">Home</a>
                         <a href="/DesignDashboard">Workspace</a>
+                        {loggedIn && <a href="/Rover/FastQuery">FastQuery</a>}
                         <a href="/Rover/Support">Contact</a>
                     </div>
 
                     <div className="landing-actions">
-                        {authenticated ? (
-                            <a href="/DesignDashboard">Open workspace</a>
+                        {loggedIn ? (
+                            <>
+                                <UserAvatar href="/Rover/Profile" label="Open your profile" />
+                                <a href="/DesignDashboard">Open workspace</a>
+                            </>
                         ) : (
                             <>
                                 <a href="/Rover/Login">Log in</a>

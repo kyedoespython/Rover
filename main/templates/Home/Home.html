@@ -331,7 +331,7 @@
 <div
     id="react-root"
     data-page="home"
-    data-props="{{ {'authenticated': current_user.is_authenticated and current_user.authentication_data and current_user.authentication_data.authenticated, 'logoUrl': url_for('static', filename='images/Rover_Logo.png')}|tojson|forceescape }}"
+    data-props="{{ {'loggedIn': current_user.is_authenticated, 'logoUrl': url_for('static', filename='images/Rover_Logo.png')}|tojson|forceescape }}"
 >
 </div>
 

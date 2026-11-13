@@ -46,6 +46,10 @@ from main.services.notes_service import (
     read_note_content,
     update_note,
 )
+from main.services.fastquery_service import (
+    ensure_fastquery_state,
+    save_fastquery_progress,
+)
 
 from main.services.user_service import Account_Exists_Validator, Contents_Checker
 
@@ -456,6 +460,18 @@ def Handle_Login():
 @login_required  # only logged in users can access the design dashboard
 def DesignDash():
     return render_template("Design/DesignDash.html")
+
+
+@auth_bp.route("/Rover/FastQuery")
+@login_required
+def FastQuery_Page():
+    return render_template("FastQuery/FastQuery.html")
+
+
+@auth_bp.route("/Rover/Profile")
+@login_required
+def Profile_Page():
+    return render_template("Profile/Profile.html")
 
 
 def _require_verified_account():
@@ -1122,6 +1138,40 @@ def _open_readonly_schema(database_data):
 
     connection.set_authorizer(authorize)
     return connection
+
+
+@auth_bp.route("/api/fastquery", methods=["GET"])
+@login_required
+@limiter.limit("30 per minute")
+def FastQuery_State():
+    return jsonify(ensure_fastquery_state(current_user.user_id))
+
+
+@auth_bp.route("/api/fastquery/progress", methods=["PUT"])
+@login_required
+@limiter.limit("30 per minute")
+def FastQuery_Save_Progress():
+    if not request.is_json:
+        return jsonify(error="A JSON request is required."), 415
+    if len(request.get_data(cache=True)) > 2048:
+        return jsonify(error="Progress data is too large."), 413
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(error="The request body must be valid JSON."), 400
+    section_slug = payload.get("section")
+    complete = payload.get("complete", False)
+    if not isinstance(section_slug, str) or not isinstance(complete, bool):
+        return jsonify(error="Choose a valid tutorial section and completion state."), 400
+    try:
+        return jsonify(
+            save_fastquery_progress(
+                current_user.user_id,
+                section_slug,
+                complete=complete,
+            )
+        )
+    except ValueError as error:
+        return jsonify(error=str(error)), 400
 
 
 @auth_bp.route("/api/schema", methods=["GET", "POST"])

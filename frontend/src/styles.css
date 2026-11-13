@@ -476,45 +476,11 @@
     color: var(--rover-text);
 }
 
-.design-react-nav {
-    display: flex;
-    justify-content: space-between;
-    padding: 1.25rem clamp(1rem, 3vw, 2.5rem);
-}
-
-.design-react-nav > div {
-    display: flex;
-    gap: 0.6rem;
-}
-
-.design-react-nav a {
-    display: inline-flex;
-    min-height: 2.5rem;
-    align-items: center;
-    padding: 0.5rem 0.8rem;
-    border: 1px solid var(--rover-border);
-    border-radius: 4px;
-    color: var(--rover-accent-hover);
-    text-decoration: none;
-}
-
-.design-react-page > h1 {
-    margin: 1.25rem 1rem 2rem;
-    font-size: clamp(1.8rem, 4vw, 2.7rem);
-    text-align: center;
-}
-
-.design-nav-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-}
-
 .design-schema-panel {
     display: grid;
     grid-template-columns: minmax(13rem, 18rem) minmax(0, 1fr);
     gap: 1rem;
-    margin: 0 clamp(1rem, 3vw, 2.5rem) 1rem;
+    margin: 1.25rem clamp(1rem, 3vw, 2.5rem) 1rem;
     padding: 1rem;
     border: 1px solid var(--rover-border);
     border-radius: 8px;
@@ -783,5 +749,466 @@
 @media (max-width: 850px) {
     .design-schema-panel {
         grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.user-avatar {
+    display: inline-grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid var(--rover-border);
+    border-radius: 50%;
+    background: var(--rover-surface-raised);
+    color: var(--rover-text);
+}
+
+.user-avatar svg {
+    width: 1.45rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-width: 1.7;
+}
+
+.user-avatar:hover,
+.user-avatar:focus-visible {
+    border-color: var(--rover-accent);
+    color: var(--rover-accent-hover);
+}
+
+.user-avatar-large {
+    width: 5.5rem;
+    height: 5.5rem;
+}
+
+.user-avatar-large svg {
+    width: 2.75rem;
+}
+
+.landing-actions .user-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.fastquery-page,
+.profile-page {
+    min-height: 100vh;
+    color: var(--rover-text);
+}
+
+.fastquery-header {
+    display: flex;
+    min-height: 4.5rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem clamp(1rem, 4vw, 3rem);
+    border-bottom: 1px solid var(--rover-border);
+    background: rgba(5, 7, 8, 0.78);
+}
+
+.fastquery-brand {
+    color: var(--rover-text);
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    text-decoration: none;
+}
+
+.fastquery-links {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.fastquery-links > a:not(.user-avatar) {
+    color: var(--rover-muted);
+    text-decoration: none;
+}
+
+.fastquery-links > a:not(.user-avatar):hover {
+    color: var(--rover-text);
+}
+
+.fastquery-layout {
+    display: grid;
+    width: min(100% - 2rem, 88rem);
+    grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+    align-items: start;
+    gap: 1.25rem;
+    margin: 1.5rem auto 3rem;
+}
+
+.fastquery-sidebar,
+.fastquery-lesson,
+.profile-card,
+.profile-progress-card {
+    border: 1px solid var(--rover-border);
+    border-radius: 8px;
+    background: var(--rover-surface);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.2);
+}
+
+.fastquery-sidebar {
+    position: sticky;
+    top: 1rem;
+    padding: 1rem;
+}
+
+.fastquery-database-badge {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+    padding: 0.8rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 6px;
+    background: var(--rover-surface-raised);
+}
+
+.fastquery-database-badge span,
+.fastquery-progress-label,
+.fastquery-eyebrow {
+    color: var(--rover-muted);
+    font-size: 0.78rem;
+}
+
+.fastquery-database-badge strong {
+    overflow-wrap: anywhere;
+}
+
+.fastquery-progress-track {
+    height: 0.55rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(194, 203, 207, 0.14);
+}
+
+.fastquery-progress-track > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--rover-accent);
+    transition: width 180ms ease;
+}
+
+.fastquery-progress-label {
+    margin: 0.55rem 0 1rem;
+}
+
+.fastquery-section-list {
+    display: grid;
+    max-height: 68vh;
+    gap: 0.35rem;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.fastquery-section-list button {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 2.8rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.65rem;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--rover-muted);
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.fastquery-section-list button:hover,
+.fastquery-section-list button.is-current {
+    border-color: var(--rover-border);
+    background: var(--rover-surface-raised);
+    color: var(--rover-text);
+}
+
+.fastquery-section-number {
+    color: var(--rover-accent);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.fastquery-lesson {
+    min-width: 0;
+    padding: clamp(1.1rem, 3vw, 2rem);
+}
+
+.fastquery-eyebrow {
+    margin: 0 0 0.4rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.fastquery-lesson h1,
+.profile-content h1 {
+    margin: 0;
+    color: var(--rover-text);
+    font-size: clamp(1.7rem, 3vw, 2.4rem);
+    letter-spacing: -0.04em;
+}
+
+.fastquery-summary {
+    margin: 0.5rem 0 1.5rem;
+    color: var(--rover-muted);
+    font-size: 1.05rem;
+}
+
+.fastquery-intro {
+    max-width: 68ch;
+    line-height: 1.7;
+}
+
+.fastquery-concepts,
+.fastquery-example-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: 0.8rem;
+    margin: 1.25rem 0;
+}
+
+.fastquery-concepts article,
+.fastquery-example {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 6px;
+    background: var(--rover-surface-raised);
+}
+
+.fastquery-concepts h2,
+.fastquery-examples > h2,
+.fastquery-example h3,
+.profile-progress-card h2 {
+    margin: 0 0 0.55rem;
+    font-size: 1rem;
+}
+
+.fastquery-concepts p,
+.fastquery-example p {
+    margin: 0;
+    color: var(--rover-muted);
+    line-height: 1.55;
+}
+
+.fastquery-example pre {
+    overflow: auto;
+    margin: 0.9rem 0;
+    padding: 0.85rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 5px;
+    background: #080a0b;
+    color: var(--rover-text);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    white-space: pre;
+}
+
+.fastquery-page button,
+.profile-continue-button {
+    min-height: 2.5rem;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--rover-control-border);
+    border-radius: 4px;
+    background: var(--rover-control-hover);
+    color: var(--rover-text);
+    cursor: pointer;
+    font: inherit;
+    text-decoration: none;
+}
+
+.fastquery-page button:hover:not(:disabled),
+.profile-continue-button:hover {
+    border-color: var(--rover-accent);
+    background: #303638;
+}
+
+.fastquery-page button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.fastquery-runner {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.16);
+}
+
+.fastquery-runner label {
+    font-weight: 650;
+}
+
+.fastquery-runner textarea {
+    width: 100%;
+    min-height: 10rem;
+    padding: 0.8rem;
+    resize: vertical;
+    border: 1px solid var(--rover-control-border);
+    border-radius: 4px;
+    background: var(--rover-control-bg);
+    color: var(--rover-text);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.fastquery-results {
+    max-width: 100%;
+    overflow: auto;
+}
+
+.fastquery-results table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.fastquery-results th,
+.fastquery-results td {
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--rover-border);
+    overflow-wrap: anywhere;
+}
+
+.fastquery-results th {
+    background: var(--rover-surface-raised);
+}
+
+.fastquery-tip {
+    margin: 1rem 0;
+    padding: 0.8rem 1rem;
+    border-left: 3px solid var(--rover-accent);
+    background: rgba(194, 203, 207, 0.07);
+    color: var(--rover-muted);
+    line-height: 1.5;
+}
+
+.fastquery-status {
+    margin: 0;
+    color: var(--rover-muted);
+}
+
+.fastquery-pager {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
+.profile-content {
+    display: grid;
+    width: min(100% - 2rem, 56rem);
+    gap: 1rem;
+    margin: 2rem auto;
+}
+
+.profile-card,
+.profile-progress-card {
+    padding: clamp(1.1rem, 3vw, 1.75rem);
+}
+
+.profile-card {
+    display: grid;
+    justify-items: start;
+    gap: 0.75rem;
+}
+
+.profile-card > p:last-child {
+    margin: 0;
+    color: var(--rover-muted);
+}
+
+.profile-progress-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.profile-progress-heading > span {
+    color: var(--rover-muted);
+    font-size: 0.85rem;
+}
+
+.profile-current-stage {
+    margin: 1rem 0;
+}
+
+.profile-section-list {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+}
+
+.profile-section-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--rover-border);
+}
+
+.profile-section-list strong {
+    color: var(--rover-muted);
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.profile-continue-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+
+@media (max-width: 760px) {
+    .fastquery-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .fastquery-sidebar {
+        position: static;
+    }
+
+    .fastquery-section-list {
+        max-height: 15rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .fastquery-header {
+        align-items: flex-start;
+    }
+
+    .fastquery-links {
+        gap: 0.55rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .profile-progress-heading,
+    .profile-section-list li {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .fastquery-pager {
+        flex-direction: column;
     }
 }

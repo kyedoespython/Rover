@@ -1,3 +1,4 @@
+from .FastQuery import FastQueryProgress, FastQuerySection, FastQuerySectionCompletion
 from .auth import Authentication, PasswordResetToken
 from .notes import NoteMetadata, Notes
 from .schemas import SchemaMetadata, UserSchema, UserSchemaDatabase
@@ -6,6 +7,9 @@ from .users import Accounts
 
 __all__ = ["Accounts",
            "Authentication",
+           "FastQueryProgress",
+           "FastQuerySection",
+           "FastQuerySectionCompletion",
            "NoteMetadata",
            "Notes",
            "PasswordResetToken",

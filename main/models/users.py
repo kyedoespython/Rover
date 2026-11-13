@@ -13,6 +13,13 @@ class Accounts(db.Model, UserMixin):
     user_tickets = db.relationship("Tickets", backref="user", lazy=True)
     schemas = db.relationship("UserSchema", back_populates="owner", cascade="all, delete-orphan", uselist=False, lazy="joined")
     schema_databases = db.relationship("UserSchemaDatabase", back_populates="owner", cascade="all, delete-orphan", lazy="selectin")
+    fastquery_progress = db.relationship(
+        "FastQueryProgress",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        uselist=False,
+        lazy="joined",
+    )
     email = db.Column(db.String(254), unique=True, nullable=False)
     username = db.Column(db.String(64), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)

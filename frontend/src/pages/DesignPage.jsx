@@ -39,7 +39,6 @@ export default function DesignPage({ csrfToken }) {
     const [relationshipSourceId, setRelationshipSourceId] = useState("");
     const [relationshipTargetId, setRelationshipTargetId] = useState("");
     const [activeView, setActiveView] = useState("tables");
-    const [schemaPanelOpen, setSchemaPanelOpen] = useState(false);
     const [status, setStatus] = useState("Loading saved databases...");
     const [query, setQuery] = useState("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name;");
     const [queryResult, setQueryResult] = useState(null);
@@ -235,53 +234,36 @@ export default function DesignPage({ csrfToken }) {
 
     return (
         <div className="design-react-page">
-            <nav className="design-react-nav" aria-label="Main navigation">
-                <div><a href="/">Home</a><a href="/Rover/Notes">Notes</a></div>
-                <div className="design-nav-actions">
-                    <button
-                        aria-controls="design-schema-panel"
-                        aria-expanded={schemaPanelOpen}
-                        onClick={() => setSchemaPanelOpen((isOpen) => !isOpen)}
-                        type="button"
-                    >
-                        Schema
-                    </button>
-                    <a href="/Rover/Support">Support</a>
+            <section aria-labelledby="designSchemaHeading" className="design-schema-panel" id="design-schema-panel">
+                <div className="design-schema-controls">
+                    <h2 id="designSchemaHeading">SQLite databases</h2>
+                    <form onSubmit={createDatabase}>
+                        <label htmlFor="designDatabaseName">New database</label>
+                        <input id="designDatabaseName" maxLength={128} name="name" placeholder="Database name" required />
+                        <button type="submit">Create database</button>
+                    </form>
+                    <label className="design-file-button">
+                        Load SQLite file
+                        <input accept=".sqlite3,.sqlite,.db" onChange={importDatabase} type="file" />
+                    </label>
+                    <p className="design-status" role="status">{status}</p>
                 </div>
-            </nav>
-            <h1>Setting up flask</h1>
-            {schemaPanelOpen && (
-                <section aria-labelledby="designSchemaHeading" className="design-schema-panel" id="design-schema-panel">
-                    <div className="design-schema-controls">
-                        <h2 id="designSchemaHeading">SQLite databases</h2>
-                        <form onSubmit={createDatabase}>
-                            <label htmlFor="designDatabaseName">New database</label>
-                            <input id="designDatabaseName" maxLength={128} name="name" placeholder="Database name" required />
-                            <button type="submit">Create database</button>
-                        </form>
-                        <label className="design-file-button">
-                            Load SQLite file
-                            <input accept=".sqlite3,.sqlite,.db" onChange={importDatabase} type="file" />
-                        </label>
-                        <p className="design-status" role="status">{status}</p>
-                    </div>
-                    <ul className="design-database-list">
-                        {databases.map((database) => (
-                            <li key={database.id}>
-                                <button
-                                    className={selected?.id === database.id ? "is-selected" : ""}
-                                    onClick={() => selectDatabase(database.id)}
-                                    type="button"
-                                >
-                                    <strong>{database.name}</strong>
-                                    <span>{database.table_count} tables · {database.file_name}</span>
-                                </button>
-                                <button aria-label={`Delete ${database.name}`} onClick={() => deleteDatabase(database)} type="button">×</button>
-                            </li>
-                        ))}
-                    </ul>
-                </section>
-            )}
+                <ul className="design-database-list">
+                    {databases.map((database) => (
+                        <li key={database.id}>
+                            <button
+                                className={selected?.id === database.id ? "is-selected" : ""}
+                                onClick={() => selectDatabase(database.id)}
+                                type="button"
+                            >
+                                <strong>{database.name}</strong>
+                                <span>{database.table_count} tables · {database.file_name}</span>
+                            </button>
+                            <button aria-label={`Delete ${database.name}`} onClick={() => deleteDatabase(database)} type="button">×</button>
+                        </li>
+                    ))}
+                </ul>
+            </section>
             <div className="design-react-layout">
                 <section className="design-editor">
                     <div className="design-toolbar">

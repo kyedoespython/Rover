@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block title %}<title>FastQuery SQL Tutorial</title>{% endblock %}
+{% block extra_js %}
+    <script type="module" src="{{ url_for('static', filename='react/app.js') }}"></script>
+{% endblock %}
+{% block content %}
+<div id="react-root" data-page="fastquery" data-csrf-token="{{ csrf_token() }}"></div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}<title>Rover Profile</title>{% endblock %}
+{% block extra_js %}
+    <script type="module" src="{{ url_for('static', filename='react/app.js') }}"></script>
+{% endblock %}
+{% block content %}
+<div
+    id="react-root"
+    data-page="profile"
+    data-csrf-token="{{ csrf_token() }}"
+    data-props="{{ {'username': current_user.username}|tojson|forceescape }}"
+></div>
+{% endblock %}
