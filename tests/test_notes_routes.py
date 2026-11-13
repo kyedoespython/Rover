@@ -13,7 +13,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from main.blueprints.auth import auth_bp
 from main.blueprints.home import home_bp
 from main.extensions import csrf, db, limiter, login_manager
-from main.models.user import (
+from main.models.DBimports import (
     Accounts,
     Authentication,
     Notes,

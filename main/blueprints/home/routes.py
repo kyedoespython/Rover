@@ -5,7 +5,7 @@ from flask_login import current_user, login_required
 from sqlalchemy.exc import SQLAlchemyError
 
 from main.extensions import db, limiter
-from main.models.user import Tickets as SupportTicket
+from main.models.tickets import Tickets as SupportTicket
 
 from . import home_bp
 

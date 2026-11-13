@@ -5,7 +5,7 @@ import pytest
 from flask import Flask
 
 from main.extensions import db
-from main.models.user import Accounts, NoteMetadata, Notes
+from main.models.DBimports import Accounts, NoteMetadata, Notes
 from main.services import notes_service
 from main.services.notes_service import (
     create_note,

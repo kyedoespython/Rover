@@ -9,7 +9,8 @@ from sqlalchemy import update
 from werkzeug.security import generate_password_hash
 
 from main.extensions import db
-from main.models.user import Accounts, Authentication, PasswordResetToken
+from main.models.auth import Authentication, PasswordResetToken
+from main.models.users import Accounts
 
 # set a max limit of auth code attempts to 5 via global variable
 AUTH_CODE_MAX_ATTEMPTS = 5

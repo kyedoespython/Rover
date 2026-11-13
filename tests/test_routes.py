@@ -14,7 +14,7 @@ from main import create_app
 from main.blueprints.auth import auth_bp
 from main.blueprints.home import home_bp
 from main.extensions import csrf, db, limiter, login_manager
-from main.models.user import Accounts, Authentication
+from main.models.DBimports import Accounts, Authentication
 
 
 def test_retired_assistant_routes_are_not_registered():

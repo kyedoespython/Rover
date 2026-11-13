@@ -22,13 +22,10 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 from main.extensions import db, limiter
-from main.models.user import (
-    Accounts,
-    Authentication,
-    Notes,
-    UserSchemaDatabase,
-    UserSchema,
-)
+from main.models.auth import Authentication
+from main.models.notes import Notes
+from main.models.schemas import UserSchema, UserSchemaDatabase
+from main.models.users import Accounts
 
 from main.services.auth_service import (
     AUTH_CODE_MAX_ATTEMPTS,

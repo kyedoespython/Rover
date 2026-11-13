@@ -31,7 +31,7 @@ limiter = Limiter(
 
 @login_manager.user_loader
 def load_user(user_id):
-    from main.models.user import Accounts
+    from main.models.users import Accounts
 
     account_id, separator, raw_session_version = user_id.partition(":")
     try:

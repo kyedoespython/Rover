@@ -2,7 +2,7 @@ import re
 
 import phonenumbers
 
-from main.models.user import Accounts
+from main.models.users import Accounts
 
 # These regions are the only countries accepted by the signup form.
 country_regions = {

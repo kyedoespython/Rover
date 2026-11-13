@@ -7,7 +7,7 @@ from flask import current_app
 from sqlalchemy.exc import IntegrityError
 
 from main.extensions import db
-from main.models.user import NoteMetadata, Notes
+from main.models.notes import NoteMetadata, Notes
 
 
 def _storage_root() -> Path:
