@@ -1,163 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}
-    <title>Rover Contact</title>
+{% block title %}<title>Rover Contact</title>{% endblock %}
+{% block extra_js %}
+    <script type="module" src="{{ url_for('static', filename='react/app.js') }}"></script>
 {% endblock %}
-
-{% block extra_css %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma/bulma.min.css') }}">
-{% endblock %}
-
 {% block content %}
-
-<style>
-    body, body * {
-        font-family: var(--rover-font-sans) !important;
-    }
-
-    #supportPage {
-        min-height: 100vh;
-        min-height: 100dvh;
-        display: flex;
-        flex-direction: column;
-    }
-
-    #supportPage .support-content {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        min-height: 0;
-        padding: 0 1rem 1rem;
-        transform: translateY(-8px);
-    }
-
-    #supportPage .support-title {
-        margin: 0 0 0.5rem;
-    }
-
-    #supportPage .support-card {
-        width: 100%;
-        max-width: 640px;
-        margin-top: clamp(1.25rem, 5vh, 4rem);
-        padding: 1.5rem 2rem 1.25rem;
-        background: white;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    }
-
-    #supportPage .ticket-title,
-    #supportPage .field .label {
-        text-align: center;
-    }
-
-    #supportPage .input,
-    #supportPage .select select,
-    #supportPage .textarea {
-        background-color: white !important;
-        color: black !important;
-        border: 1px solid #dbdbdb !important;
-        box-shadow: none !important;
-    }
-
-    #supportPage .input:focus,
-    #supportPage .select select:focus,
-    #supportPage .textarea:focus {
-        border-color: black !important;
-        box-shadow: 0 0 0 0.125em rgba(0, 0, 0, 0.1) !important;
-    }
-
-    #supportPage .select:not(.is-multiple):not(.is-loading)::after {
-        border-color: black !important;
-    }
-
-    #supportPage .textarea {
-        min-height: 120px;
-        max-height: 160px;
-        resize: none;
-    }
-
-    #supportPage .support-link {
-        color: var(--rover-accent-hover);
-    }
-
-    #supportPage .hover_designNow {
-        transition: all 0.5s ease;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    }
-
-    #supportPage .hover_designNow:hover {
-        background-color: white;
-        color: black;
-        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
-    }
-
-    @media (max-width: 600px) {
-        #supportPage .support-content {
-            padding: 0 0.75rem 0.75rem;
-        }
-
-        #supportPage .support-card {
-            margin-top: 1rem;
-            padding: 1.25rem 1.25rem 1rem;
-        }
-    }
-</style>
-
-<div id="supportPage">
-    <nav class="top-nav p-4" style="display: flex; justify-content: space-between; align-items: center;" aria-label="Main navigation">
-        <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6">Home</a>
-        <a href="{{ url_for('auth.Settings') }}" class="button is-black is-outlined is-size-6">Settings</a>
-    </nav>
-
-    <div class="support-content">
-        <h1 class="title is-2 has-text-centered has-text-black support-title">Rover Support</h1>
-        <section class="box support-card">
-            <h2 class="title is-4 has-text-centered has-text-black ticket-title mb-4">Create a ticket</h2>
-            {% if not current_user.is_authenticated %}
-                <p class="has-text-centered mb-3"><a href="{{ url_for('auth.Login') }}">Sign in</a> before submitting a ticket.</p>
-            {% endif %}
-            <form action="{{ url_for('home.Tickets') }}" method="post">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                <div class="field">
-                    <label class="label has-text-black" for="ticketType">Ticket type</label>
-                    <div class="control">
-                        <div class="select is-fullwidth">
-                            <select id="ticketType" name="ticketType" required>
-                                <option value="">Select a ticket type</option>
-                                <option value="bug" {% if request.form.get('ticketType') == 'bug' %}selected{% endif %}>Found a bug</option>
-                                <option value="recommendation" {% if request.form.get('ticketType') == 'recommendation' %}selected{% endif %}>Recommendation</option>
-                                <option value="question" {% if request.form.get('ticketType') == 'question' %}selected{% endif %}>Question</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="field">
-                    <label class="label has-text-black" for="nameTicket">Ticket name</label>
-                    <div class="control">
-                        <input class="input" id="nameTicket" type="text" name="ticketName" placeholder="Ticket name" maxlength="64" value="{{ request.form.get('ticketName', '') }}" required>
-                    </div>
-                </div>
-
-                <div class="field">
-                    <label class="label has-text-black" for="TicketContent">Description</label>
-                    <div class="control">
-                        <textarea class="textarea" id="TicketContent" name="TicketContent" placeholder="Describe the issue or suggestion" maxlength="512" required>{{ request.form.get('TicketContent', '') }}</textarea>
-                    </div>
-                </div>
-
-                <div class="has-text-centered mt-5">
-                    <button class="button is-black is-size-6 hover_designNow" type="submit">Submit your ticket</button>
-                </div>
-            </form>
-
-            <p class="has-text-centered has-text-grey mt-5">
-                More information about this site
-                <a class="support-link" href="https://github.com/kyedoespython/Rover.git">here</a>
-            </p>
-        </section>
-    </div>
-</div>
-
+<div
+    id="react-root"
+    data-page="support"
+    data-csrf-token="{{ csrf_token() }}"
+    data-props="{{ {
+        'authenticated': current_user.is_authenticated,
+        'ticketContent': request.form.get('TicketContent', ''),
+        'ticketName': request.form.get('ticketName', ''),
+        'ticketType': request.form.get('ticketType', '')
+    }|tojson|forceescape }}"
+></div>
 {% endblock %}

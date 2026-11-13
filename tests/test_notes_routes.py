@@ -1,7 +1,9 @@
 import io
+import json
 import re
 import sqlite3
 from datetime import datetime, timedelta, timezone
+from html import unescape
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,7 +15,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from main.blueprints.auth import auth_bp
 from main.blueprints.home import home_bp
 from main.extensions import csrf, db, limiter, login_manager
-from main.models.DBimports import (
+from main.models import (
     Accounts,
     Authentication,
     Notes,
@@ -78,6 +80,16 @@ def notes_client(tmp_path):
         db.drop_all()
 
 
+def _react_props(response):
+    match = re.search(
+        r'<script id="react-props" type="application/json">\s*(.*?)\s*</script>',
+        response.get_data(as_text=True),
+        re.DOTALL,
+    )
+    assert match is not None
+    return json.loads(match.group(1))
+
+
 def test_support_ticket_is_saved_and_duplicate_names_are_allowed(notes_client):
     payload = {"ticketType": "bug", "ticketName": " Problem ", "TicketContent": " Details "}
     first = notes_client.post("/Tickets/Rover", data=payload, follow_redirects=True)
@@ -117,8 +129,8 @@ def test_support_ticket_database_failure_preserves_form(notes_client):
         response = notes_client.post("/Tickets/Rover", data=payload)
     assert response.status_code == 503
     assert b"Your ticket could not be saved" in response.data
-    assert b'value="Help"' in response.data
-    assert b"My description</textarea>" in response.data
+    assert '"ticketName": "Help"' in unescape(response.get_data(as_text=True))
+    assert '"ticketContent": "My description"' in unescape(response.get_data(as_text=True))
     with notes_client.application.app_context():
         assert Tickets.query.count() == 0
 
@@ -135,10 +147,11 @@ def test_support_ticket_requires_login(notes_client):
         assert Tickets.query.count() == 0
 
 
-def test_signup_fields_have_associated_labels(notes_client):
+def test_signup_route_mounts_react_page(notes_client):
     response = notes_client.get("/Rover/Sign%20Up")
-    for field in ("email", "username", "password", "telephone", "signupCountry"):
-        assert f'for="{field}"'.encode() in response.data
+    assert response.status_code == 200
+    assert b'data-page="signup"' in response.data
+    assert b"react/app.js" in response.data
 
 
 def test_notes_route_create_load_edit_and_delete(notes_client):
@@ -162,19 +175,10 @@ def test_notes_route_create_load_edit_and_delete(notes_client):
 
     response = notes_client.get(f"/Rover/Notes?load_id={note_id}")
     assert response.status_code == 200
-    assert b"# Route note\nInitial content" in response.data
-    assert b"Save note" in response.data
-    assert b'id="noteHeadingMenu"' in response.data
-    assert b'id="headingSelectToggle"' in response.data
-    assert b'id="headingSelect" hidden' in response.data
-    assert b'id="noteContentEditor"' in response.data
-    assert b'data-heading-level="6"' in response.data
-    notes_heading = response.data.index(b">Notes</h1>")
-    heading_button = response.data.index(b">Heading select</button>")
-    support_button = response.data.index(b">Support</a>")
-    assert notes_heading < heading_button < support_button
-    assert b'id="notePreview"' not in response.data
-    assert b"Preview" not in response.data
+    props = _react_props(response)
+    assert props["selectedContent"] == "# Route note\nInitial content"
+    assert props["selectedNote"]["name"] == "Route plan"
+    assert b'data-page="notes"' in response.data
 
     response = notes_client.post(
         f"/Rover/Notes/{note_id}/update",
@@ -194,11 +198,9 @@ def test_notes_route_create_load_edit_and_delete(notes_client):
 
     response = notes_client.get(f"/Rover/Notes?load_id={note_id}")
     assert response.status_code == 200
-    assert b'id="noteName"' in response.data
-    assert b'name="note_name"' in response.data
-    assert b'value="Updated route plan"' in response.data
-    assert b'id="noteHeadingMenu"' in response.data
-    assert b'data-heading-level="1"' in response.data
+    props = _react_props(response)
+    assert props["selectedNote"]["name"] == "Updated route plan"
+    assert props["selectedContent"] == "# Updated route note"
 
     response = notes_client.post(
         f"/Rover/Notes/{note_id}/description",
@@ -405,10 +407,11 @@ def test_home_uses_metallic_dark_hero(notes_client):
     assert response.status_code == 200
     assert b"WorldImage.jpg" not in response.data
     assert b"Rover_backgroundVideo" not in response.data
-    assert b'class="landing-title"' in response.data
-    assert b'class="metal-tile"' in response.data
-    assert b"One workspace.<br>Clear direction.<br>Complete execution." in response.data
-    assert b"Rover_Logo.png" in response.data
+    assert b'id="react-root"' in response.data
+    assert b'data-page="home"' in response.data
+    assert b"react/app.js" in response.data
+    assert b"css/bulma" not in response.data
+    assert b"scripts/navigation.js" not in response.data
 
 
 @pytest.mark.parametrize(
@@ -449,8 +452,8 @@ def test_signup_phone_country_mismatch_flashes_red_error(notes_client):
     assert response.status_code == 200
     assert b'class="flash-message flash-message-error"' in response.data
     assert b"phone number and country doesnt match" in response.data
-    assert b"scripts/Signup.js?v=1" in response.data
-    assert b'data-calling-code="44"' in response.data
+    assert b"react/app.js" in response.data
+    assert b'data-page="signup"' in response.data
     with notes_client.application.app_context():
         assert (
             Accounts.query.filter_by(email="signup-mismatch@example.com").first()
@@ -538,12 +541,9 @@ def test_password_reset_request_is_generic_and_reset_token_is_single_use(notes_c
 def test_notes_page_creates_default_note_and_sidebar_creates_named_notes(notes_client):
     page = notes_client.get("/Rover/Notes")
     assert page.status_code == 200
-    assert b"Empty note" in page.data
-    assert b"New note name" in page.data
-    assert b"Your notes" in page.data
-    assert b"scripts/Notes/Notes.js?v=5" in page.data
-    assert b"notePreview" not in page.data
-    assert b"Preview" not in page.data
+    assert b'data-page="notes"' in page.data
+    assert b"react/app.js" in page.data
+    assert _react_props(page)["notes"][0]["name"] == "Empty note"
 
     with notes_client.application.app_context():
         default_note = Notes.query.filter_by(note_name="Empty note").one()
@@ -565,9 +565,8 @@ def test_notes_page_creates_default_note_and_sidebar_creates_named_notes(notes_c
 
     opened = notes_client.get(f"/Rover/Notes?load_id={default_note_id}")
     assert opened.status_code == 200
-    assert b'id="noteContent"' in opened.data
-    assert b"Double-click text to show the Heading select menu" in opened.data
-    assert b'id="noteContentEditor"' in opened.data
+    assert _react_props(opened)["selectedNote"]["name"] == "Empty note"
+    assert b"react/app.js" in opened.data
 
 
 def test_notes_page_remains_usable_when_markdown_storage_is_unavailable(
@@ -580,7 +579,7 @@ def test_notes_page_remains_usable_when_markdown_storage_is_unavailable(
 
     page = notes_client.get("/Rover/Notes")
     assert page.status_code == 200
-    assert b"Empty note" in page.data
+    assert _react_props(page)["notes"][0]["name"] == "Empty note"
     assert b"Your default note could not be created" not in page.data
 
     response = notes_client.post(
@@ -619,49 +618,33 @@ def test_note_names_are_unique_per_user(notes_client):
         assert Notes.query.filter_by(note_name="Shared name").count() == 2
 
 
-def test_schema_editor_module_imports_are_served(notes_client):
+def test_design_dashboard_mounts_react_page(notes_client):
     response = notes_client.get("/DesignDashboard")
-    entry = re.search(
-        rb'type="module" src="([^"]*scripts/Design/Schema/Schema\.js[^"]*)"',
-        response.data,
-    )
-    assert entry is not None
-    entry_url = entry.group(1).decode()
-    script = notes_client.get(entry_url)
-    assert script.status_code == 200
-    assert script.mimetype in ("text/javascript", "application/javascript")
-
-    imports = re.findall(rb'from "\./([^"]+)"', script.data)
-    assert imports
-    module_directory = entry_url.rsplit("/", 1)[0]
-    for imported in imports:
-        module = notes_client.get(f"{module_directory}/{imported.decode()}")
-        assert module.status_code == 200
-        assert module.mimetype in ("text/javascript", "application/javascript")
+    assert response.status_code == 200
+    assert b'data-page="design"' in response.data
+    assert b"react/app.js" in response.data
+    assert b"react/assets/main.css" in response.data
+    assert b"scripts/Design/Schema/Schema.js" not in response.data
 
 
 def test_dashboard_and_settings_no_longer_show_assistant_controls(notes_client):
     dashboard = notes_client.get("/DesignDashboard")
     assert dashboard.status_code == 200
-    assert b'id="openSchemaEditor"' in dashboard.data
-    assert b'id="openSchemaDemo"' in dashboard.data
-    assert b'<form id="schemaCreateForm" class="schema-create-form">\n                    <input type="hidden" name="csrf_token"' in dashboard.data
+    assert b'data-page="design"' in dashboard.data
     assert b'ollamaDrawer' not in dashboard.data
     assert b'openApiKeyDialog' not in dashboard.data
     assert b"Rover AI" not in dashboard.data
 
     settings = notes_client.get("/Rover/Settings")
     assert settings.status_code == 200
-    assert b"No settings are available yet." in settings.data
+    assert b'data-page="settings"' in settings.data
     assert b"Saved API keys" not in settings.data
 
 
-def test_schema_form_provides_its_own_valid_csrf_token(notes_client):
+def test_design_shell_provides_its_own_valid_csrf_token(notes_client):
     notes_client.application.config["WTF_CSRF_ENABLED"] = True
     dashboard = notes_client.get("/DesignDashboard")
-    form = re.search(rb'<form id="schemaCreateForm".*?</form>', dashboard.data, re.DOTALL)
-    assert form is not None
-    token = re.search(rb'name="csrf_token" value="([^"]+)"', form.group())
+    token = re.search(rb'data-csrf-token="([^"]+)"', dashboard.data)
     assert token is not None
     payload = {"name": "Token test", "schema": {"tables": [], "relationships": []}}
     assert notes_client.post("/api/schema", json=payload).status_code == 400
@@ -930,8 +913,8 @@ def test_schema_database_crud_is_scoped_to_the_owner(notes_client):
 def test_settings_navigation_is_only_on_support_page(notes_client):
     support_page = notes_client.get("/Rover/Support")
     assert support_page.status_code == 200
-    assert b"justify-content: space-between" in support_page.data
-    assert b'href="/Rover/Settings"' in support_page.data
+    assert b'data-page="support"' in support_page.data
+    assert '"authenticated": true' in unescape(support_page.get_data(as_text=True))
 
     notes_page = notes_client.get("/Rover/Notes")
     assert notes_page.status_code == 200

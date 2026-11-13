@@ -4,12 +4,8 @@
     <title>Rover Home</title>
 {% endblock %}
 
-{% block extra_css %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma/bulma.min.css') }}">
-{% endblock %}
-
 {% block extra_js %}
-    <script src="{{ url_for('static', filename='scripts/Home/Home.js') }}" defer></script>
+    <script type="module" src="{{ url_for('static', filename='react/app.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -332,54 +328,11 @@
     }
 </style>
 
-<div class="home-page">
-    <section class="landing-shell" id="about">
-        <nav class="landing-nav" aria-label="Main navigation">
-            <a class="landing-brand" href="{{ url_for('home.Rover_Home_Page') }}" aria-label="Rover home">
-                <img src="{{ url_for('static', filename='images/Rover_Logo.png') }}" alt="">
-                <span>Rover</span>
-            </a>
-
-            <div class="landing-links">
-                <a href="{{ url_for('home.Rover_Home_Page') }}">Home</a>
-                <a href="{{ url_for('auth.DesignDash') }}">Workspace</a>
-                <a href="{{ url_for('home.Contact') }}">Contact</a>
-            </div>
-
-            <div class="landing-actions">
-                {% if current_user.is_authenticated and current_user.authentication_data and current_user.authentication_data.authenticated %}
-                    <a href="{{ url_for('auth.DesignDash') }}">Open workspace</a>
-                {% else %}
-                    <a href="{{ url_for('auth.Login') }}">Log in</a>
-                    <a class="landing-signup" href="{{ url_for('auth.Signup') }}">Get started</a>
-                {% endif %}
-            </div>
-        </nav>
-
-        <div class="landing-art" aria-hidden="true">
-            <span class="metal-tile"></span>
-            <span class="metal-tile"></span>
-            <span class="metal-tile"></span>
-            <span class="metal-tile"></span>
-            <span class="metal-tile"></span>
-            <span class="metal-tile"></span>
-            <span class="metal-tile"></span>
-            <span class="metal-tile"></span>
-        </div>
-
-        <section class="landing-copy" aria-labelledby="landing-title">
-            <p class="landing-eyebrow">Ideas into intelligent software</p>
-            <h1 class="landing-title" id="landing-title">Backend design choices made easy with Flask</h1>
-            <div class="landing-footer">
-                <p class="landing-description">
-                    Design, explore, and build with a workspace that keeps your tools and ideas together.
-                </p>
-                <a class="landing-cta" href="{{ url_for('auth.DesignDash') }}">
-                    Start building <span aria-hidden="true">→</span>
-                </a>
-            </div>
-        </section>
-    </section>
+<div
+    id="react-root"
+    data-page="home"
+    data-props="{{ {'authenticated': current_user.is_authenticated and current_user.authentication_data and current_user.authentication_data.authenticated, 'logoUrl': url_for('static', filename='images/Rover_Logo.png')}|tojson|forceescape }}"
+>
 </div>
 
 {% endblock %}

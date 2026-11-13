@@ -14,7 +14,7 @@ from main import create_app
 from main.blueprints.auth import auth_bp
 from main.blueprints.home import home_bp
 from main.extensions import csrf, db, limiter, login_manager
-from main.models.DBimports import Accounts, Authentication
+from main.models import Accounts, Authentication
 
 
 def test_retired_assistant_routes_are_not_registered():
@@ -222,20 +222,19 @@ def test_failed_login_does_not_enable_remember_me(redis_login_app):
 
 
 @pytest.mark.parametrize(
-    ("path", "autocomplete"),
+    "path",
     [
-        ("/Rover/Login", b"current-password"),
-        ("/Rover/Sign%20Up", b"new-password"),
+        "/Rover/Login",
+        "/Rover/Sign%20Up",
     ],
 )
-def test_auth_forms_include_password_toggle(redis_login_app, path, autocomplete):
+def test_auth_pages_mount_react_forms(redis_login_app, path):
     app, _, _ = redis_login_app
     client = app.test_client()
     page = client.get(path)
 
     assert page.status_code == 200
-    assert b'autocomplete="' + autocomplete + b'"' in page.data
-    assert b'aria-controls="password" aria-pressed="false"' in page.data
-    assert b"scripts/Auth/PasswordToggle.js?v=1" in page.data
-    assert client.get("/static/scripts/Auth/PasswordToggle.js?v=1").status_code == 200
-    assert (b'name="remember_me"' in page.data) == (path == "/Rover/Login")
+    expected_page = b"login" if path == "/Rover/Login" else b"signup"
+    assert b'data-page="' + expected_page + b'"' in page.data
+    assert b"react/app.js" in page.data
+    assert b"scripts/Auth/PasswordToggle.js" not in page.data

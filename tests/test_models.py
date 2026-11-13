@@ -1,7 +1,7 @@
 from sqlalchemy import inspect
 
 from main.extensions import db
-from main.models import DBimports
+from main import models as model_package
 from main.models.auth import Authentication, PasswordResetToken
 from main.models.notes import NoteMetadata, Notes
 from main.models.schemas import SchemaMetadata, UserSchema, UserSchemaDatabase
@@ -13,7 +13,7 @@ def test_model_sections_preserve_central_imports_and_relationships():
     models = (Accounts, Authentication, PasswordResetToken, Notes, NoteMetadata, Tickets, UserSchema, UserSchemaDatabase, SchemaMetadata)
 
     for model in models:
-        assert getattr(DBimports, model.__name__) is model
+        assert getattr(model_package, model.__name__) is model
         assert db.metadata.tables[model.__tablename__] is model.__table__
 
     assert inspect(Accounts).relationships["authentication_data"].mapper.class_ is Authentication

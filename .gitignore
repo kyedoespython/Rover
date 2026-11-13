@@ -7,7 +7,10 @@ __pycache__/
 *.so
 
 # 3rd party packages CSS
+node_modules/
 static/node_modules/
+/main/static/react/
+/flask_session/
 
 # Distribution / packaging
 .Python

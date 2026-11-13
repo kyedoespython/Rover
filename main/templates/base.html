@@ -9,8 +9,6 @@
 
     {% block extra_js %}{% endblock %}
 
-    <script src="{{ url_for('static', filename='scripts/navigation.js') }}" defer></script>
-
     <style>
         html,
         body {
@@ -529,6 +527,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='react/assets/main.css') }}">
 </head>
 
 <body>

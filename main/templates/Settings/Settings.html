@@ -1,25 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}
-    <title>Rover Settings</title>
+{% block title %}<title>Rover Settings</title>{% endblock %}
+{% block extra_js %}
+    <script type="module" src="{{ url_for('static', filename='react/app.js') }}"></script>
 {% endblock %}
-
-{% block extra_css %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/bulma/bulma.min.css') }}">
-{% endblock %}
-
 {% block content %}
-<div id="settingsPage">
-    <nav class="top-nav p-4" style="display: flex; justify-content: space-between; align-items: center;">
-        <a href="{{ url_for('home.Rover_Home_Page') }}" class="button is-black is-outlined is-size-6">Home</a>
-        <div style="display: flex; gap: 10px;">
-            <a href="{{ url_for('auth.Notes_Page') }}" class="button is-black is-outlined is-size-6">Note</a>
-            <a href="{{ url_for('home.Contact') }}" class="button is-black is-outlined is-size-6">Support</a>
-        </div>
-    </nav>
-    <main class="has-text-centered">
-        <h1 class="title is-2">Settings</h1>
-        <p>No settings are available yet.</p>
-    </main>
-</div>
+<div id="react-root" data-page="settings"></div>
 {% endblock %}

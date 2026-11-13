@@ -1,0 +1,846 @@
+.app-page {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    min-height: 100vh;
+    min-height: 100dvh;
+    flex-direction: column;
+    padding-bottom: 2rem;
+    color: var(--rover-text);
+}
+
+.app-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1.25rem clamp(1rem, 3vw, 2.5rem);
+}
+
+.app-navigation a,
+.app-card a {
+    color: var(--rover-accent-hover);
+}
+
+.app-navigation a {
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.app-navigation a:hover,
+.app-navigation a:focus-visible {
+    border-color: var(--rover-accent);
+    background: var(--rover-control-hover);
+}
+
+.app-card {
+    width: min(100% - 2rem, 30rem);
+    margin: auto;
+    padding: clamp(1.25rem, 4vw, 2rem);
+    border: 1px solid var(--rover-border);
+    border-radius: 8px;
+    background: var(--rover-surface);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
+}
+
+.app-card.app-support-card {
+    width: min(100% - 2rem, 40rem);
+}
+
+.app-title,
+.app-page-heading h1 {
+    margin: 0 0 1.5rem;
+    color: var(--rover-text);
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 650;
+    text-align: center;
+}
+
+.app-page-heading h1 {
+    margin-bottom: 0;
+}
+
+.app-intro {
+    margin: -0.5rem 0 1.25rem;
+    color: var(--rover-muted);
+    line-height: 1.55;
+    text-align: center;
+}
+
+.app-form {
+    display: grid;
+    gap: 1.1rem;
+}
+
+.app-field {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.app-field > label {
+    color: var(--rover-text);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.app-field > label span {
+    color: var(--rover-muted);
+    font-weight: 400;
+}
+
+.app-field input,
+.app-field select,
+.app-field textarea {
+    width: 100%;
+    min-height: 2.8rem;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid var(--rover-control-border);
+    border-radius: 4px;
+    background: var(--rover-control-bg);
+    color: var(--rover-text);
+    font: inherit;
+}
+
+.app-field textarea {
+    min-height: 7rem;
+    resize: vertical;
+}
+
+.app-field input::placeholder,
+.app-field textarea::placeholder {
+    color: var(--rover-muted);
+    opacity: 1;
+}
+
+.app-field input:focus,
+.app-field select:focus,
+.app-field textarea:focus {
+    border-color: var(--rover-accent);
+    outline: 2px solid rgba(194, 203, 207, 0.2);
+}
+
+.app-password-control {
+    position: relative;
+}
+
+.app-password-control input {
+    padding-right: 4.5rem;
+}
+
+.app-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.7rem;
+    transform: translateY(-50%);
+    border: 0;
+    background: transparent;
+    color: var(--rover-accent-hover);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.8rem;
+}
+
+.app-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--rover-text);
+    font-size: 0.9rem;
+}
+
+.app-checkbox input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--rover-accent);
+}
+
+.app-primary-button,
+.app-secondary-button {
+    min-height: 2.8rem;
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--rover-accent);
+    border-radius: 4px;
+    background: var(--rover-accent);
+    color: #141719;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+}
+
+.app-primary-button:hover,
+.app-secondary-button:hover {
+    background: var(--rover-accent-hover);
+    border-color: var(--rover-accent-hover);
+}
+
+.app-secondary-button {
+    width: 100%;
+    background: transparent;
+    color: var(--rover-text);
+}
+
+.app-secondary-form {
+    margin-top: 0.8rem;
+}
+
+.app-card-footer {
+    margin: 1.25rem 0 0;
+    color: var(--rover-muted);
+    line-height: 1.8;
+    text-align: center;
+}
+
+.app-page-heading {
+    margin: clamp(1.5rem, 4vh, 3rem) 1rem 0;
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    .app-navigation {
+        padding: 0.75rem;
+    }
+
+    .app-navigation a {
+        min-height: 2.35rem;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.82rem;
+    }
+}
+
+.notes-react-page {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    height: 100vh;
+    height: 100dvh;
+    flex-direction: column;
+    color: var(--rover-text);
+}
+
+.notes-react-nav {
+    display: grid;
+    flex: 0 0 auto;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 1rem;
+}
+
+.notes-react-nav > :last-child {
+    justify-self: end;
+}
+
+.notes-react-nav h1 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.notes-nav-link,
+.notes-react-page button {
+    display: inline-flex;
+    min-height: 2.4rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--rover-control-border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--rover-text);
+    cursor: pointer;
+    font: inherit;
+    text-decoration: none;
+}
+
+.notes-react-page button:hover,
+.notes-nav-link:hover {
+    border-color: var(--rover-accent);
+    background: var(--rover-control-hover);
+}
+
+.notes-react-workspace {
+    display: grid;
+    flex: 1;
+    grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr);
+    min-height: 0;
+    gap: 1rem;
+    padding: 0 1rem 1rem;
+}
+
+.notes-react-sidebar,
+.notes-react-editor {
+    min-height: 0;
+    padding: 1rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 6px;
+    background: var(--rover-surface);
+}
+
+.notes-react-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow: auto;
+}
+
+.notes-react-sidebar h2,
+.notes-empty-editor h2 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.notes-create-form,
+.notes-react-row form {
+    display: flex;
+    gap: 0.45rem;
+}
+
+.notes-create-form input,
+.notes-react-row input,
+.notes-editor-name input,
+.notes-markdown-editor textarea {
+    min-width: 0;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--rover-control-border);
+    border-radius: 4px;
+    background: var(--rover-control-bg);
+    color: var(--rover-text);
+    font: inherit;
+}
+
+.notes-create-form input,
+.notes-editor-name input {
+    flex: 1;
+}
+
+.notes-create-form button,
+.notes-react-row form button,
+.notes-save-button {
+    background: var(--rover-accent);
+    color: #141719;
+    font-weight: 700;
+}
+
+.notes-react-list {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.notes-react-row {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.7rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 4px;
+    background: var(--rover-surface-raised);
+}
+
+.notes-react-row > a {
+    display: grid;
+    gap: 0.25rem;
+    color: var(--rover-text);
+    text-decoration: none;
+}
+
+.notes-react-row > a span,
+.notes-empty-state,
+.notes-empty-editor p {
+    color: var(--rover-muted);
+    font-size: 0.85rem;
+}
+
+.notes-react-row > a.is-selected {
+    color: var(--rover-accent-hover);
+}
+
+.notes-react-row details summary {
+    color: var(--rover-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.notes-react-row details form {
+    margin-top: 0.5rem;
+}
+
+.notes-react-row input {
+    flex: 1;
+}
+
+.notes-react-row .notes-delete-button {
+    min-height: 2rem;
+    border-color: var(--rover-danger);
+    color: #ff9aa2;
+    font-size: 0.8rem;
+}
+
+.notes-react-pagination {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: auto;
+    color: var(--rover-muted);
+    font-size: 0.8rem;
+}
+
+.notes-react-pagination a {
+    color: var(--rover-accent-hover);
+}
+
+.notes-react-editor {
+    overflow: auto;
+}
+
+.notes-react-editor form {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.notes-markdown-editor {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.notes-format-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.notes-format-toolbar button {
+    min-height: 2rem;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.8rem;
+}
+
+.notes-markdown-editor textarea {
+    flex: 1;
+    min-height: 16rem;
+    resize: vertical;
+    line-height: 1.55;
+}
+
+.notes-save-button {
+    align-self: flex-start;
+}
+
+.notes-empty-editor {
+    display: grid;
+    min-height: 100%;
+    align-content: center;
+    justify-items: center;
+    color: var(--rover-muted);
+    text-align: center;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+}
+
+@media (max-width: 700px) {
+    .notes-react-page {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .notes-react-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .notes-react-sidebar {
+        max-height: 40vh;
+    }
+
+    .notes-react-editor {
+        min-height: 55vh;
+    }
+}
+
+.design-react-page {
+    min-height: 100vh;
+    color: var(--rover-text);
+}
+
+.design-react-nav {
+    display: flex;
+    justify-content: space-between;
+    padding: 1.25rem clamp(1rem, 3vw, 2.5rem);
+}
+
+.design-react-nav > div {
+    display: flex;
+    gap: 0.6rem;
+}
+
+.design-react-nav a {
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 4px;
+    color: var(--rover-accent-hover);
+    text-decoration: none;
+}
+
+.design-react-page > h1 {
+    margin: 1.25rem 1rem 2rem;
+    font-size: clamp(1.8rem, 4vw, 2.7rem);
+    text-align: center;
+}
+
+.design-react-layout {
+    display: grid;
+    grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
+    min-height: 70vh;
+    gap: 1.25rem;
+    padding: 0 clamp(1rem, 3vw, 2.5rem) 2rem;
+}
+
+.design-library,
+.design-editor {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 8px;
+    background: var(--rover-surface);
+}
+
+.design-library h2 {
+    margin: 0 0 1rem;
+    font-size: 1.15rem;
+}
+
+.design-library form,
+.design-query-view form {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.design-react-page input:not([type="checkbox"]):not([type="file"]),
+.design-react-page select,
+.design-react-page textarea {
+    min-width: 0;
+    min-height: 2.5rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--rover-control-border);
+    border-radius: 4px;
+    background: var(--rover-control-bg);
+    color: var(--rover-text);
+    font: inherit;
+}
+
+.design-react-page button,
+.design-file-button {
+    min-height: 2.5rem;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--rover-control-border);
+    border-radius: 4px;
+    background: var(--rover-control-hover);
+    color: var(--rover-text);
+    cursor: pointer;
+    font: inherit;
+}
+
+.design-react-page button:hover:not(:disabled),
+.design-file-button:hover {
+    border-color: var(--rover-accent);
+    background: #303638;
+}
+
+.design-react-page button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.design-file-button {
+    display: block;
+    margin-top: 0.65rem;
+    text-align: center;
+}
+
+.design-file-button input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+}
+
+.design-status,
+.design-query-view > p {
+    min-height: 1.4rem;
+    color: var(--rover-muted);
+    font-size: 0.88rem;
+}
+
+.design-database-list,
+.design-relationship-view ul {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.design-database-list li {
+    display: flex;
+    gap: 0.35rem;
+}
+
+.design-database-list li > button:first-child {
+    display: grid;
+    flex: 1;
+    gap: 0.25rem;
+    text-align: left;
+}
+
+.design-database-list li > button:first-child span {
+    color: var(--rover-muted);
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+}
+
+.design-database-list .is-selected {
+    border-color: var(--rover-accent);
+}
+
+.design-editor {
+    overflow: auto;
+}
+
+.design-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--rover-border);
+}
+
+.design-toolbar input {
+    flex: 1;
+}
+
+.design-table-view,
+.design-relationship-view,
+.design-query-view {
+    padding-top: 1rem;
+}
+
+.design-table-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.design-table {
+    display: grid;
+    align-content: start;
+    gap: 0.6rem;
+    padding: 0.85rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 6px;
+    background: var(--rover-surface-raised);
+}
+
+.design-table header,
+.design-column {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.design-table header input,
+.design-column > input {
+    flex: 1;
+}
+
+.design-column select {
+    flex: 1;
+    max-width: 10rem;
+    font-size: 0.85rem !important;
+}
+
+.design-column label {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.8rem;
+}
+
+.design-column input[type="checkbox"] {
+    accent-color: var(--rover-accent);
+}
+
+.design-table button,
+.design-column button,
+.design-relationship-view li button {
+    min-height: 2rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.design-empty {
+    color: var(--rover-muted);
+}
+
+.design-relationship-view form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.design-relationship-view label {
+    display: grid;
+    flex: 1 1 9rem;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+}
+
+.design-relationship-view li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--rover-border);
+}
+
+.design-query-view textarea {
+    min-height: 10rem;
+    resize: vertical;
+    font-family: Consolas, monospace !important;
+}
+
+.design-query-results {
+    overflow: auto;
+    margin-top: 1rem;
+}
+
+.design-query-results table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.design-query-results th,
+.design-query-results td {
+    padding: 0.55rem;
+    border: 1px solid var(--rover-border);
+    overflow-wrap: anywhere;
+}
+
+.design-demo-dialog {
+    width: min(94vw, 58rem);
+    padding: 0;
+    border: 1px solid var(--rover-border);
+    border-radius: 8px;
+    background: var(--rover-surface-raised);
+    color: var(--rover-text);
+}
+
+.design-demo-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(2px);
+}
+
+.design-demo-dialog > header,
+.design-demo-dialog > footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+}
+
+.design-demo-dialog h2,
+.design-demo-dialog p {
+    margin: 0;
+}
+
+.design-demo-dialog p,
+.design-demo-dialog footer {
+    color: var(--rover-muted);
+}
+
+.design-demo-track {
+    position: relative;
+    display: grid;
+    min-height: 15rem;
+    align-items: center;
+    overflow: hidden;
+    padding: 2rem;
+    border-block: 1px solid var(--rover-border);
+    background: radial-gradient(ellipse, rgba(194, 203, 207, 0.1), transparent 70%);
+}
+
+.design-demo-nodes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.65rem;
+}
+
+.design-demo-node {
+    position: relative;
+    z-index: 1;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 5px;
+    background: var(--rover-surface);
+    animation: design-demo-pulse 1.7s ease-in-out infinite alternate;
+}
+
+.design-demo-packet {
+    position: absolute;
+    top: 50%;
+    left: -0.5rem;
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+    background: var(--rover-accent-hover);
+    box-shadow: 0 0 1rem var(--rover-accent);
+    animation: design-demo-travel 2.4s linear infinite;
+}
+
+@keyframes design-demo-pulse {
+    from { border-color: var(--rover-border); }
+    to { border-color: var(--rover-accent); }
+}
+
+@keyframes design-demo-travel {
+    from { transform: translate(0, -50%); }
+    to { transform: translate(min(90vw, 58rem), -50%); }
+}
+
+@media (max-width: 850px) {
+    .design-react-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .design-library {
+        order: 2;
+    }
+
+    .design-editor {
+        order: 1;
+    }
+}
