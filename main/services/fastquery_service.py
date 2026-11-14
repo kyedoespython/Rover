@@ -493,7 +493,7 @@ def _schema_data_from_connection(connection):
                     "targetTableId": table_ids[target_table],
                     "sourceColumnId": column_ids[table_name][source_column],
                     "targetColumnId": column_ids[target_table][target_column],
-                    "color": "#2878b5",
+                    "color": "#111111",
                 }
             )
             next_relationship_id += 1

@@ -237,6 +237,7 @@ def test_authenticated_routes_reject_anonymous_clients(notes_client):
 
     assert anonymous_client.get("/Rover/Notes").status_code == 401
     assert anonymous_client.get("/DesignDashboard").status_code == 401
+    assert anonymous_client.get("/DatabaseConfigurations").status_code == 401
     assert anonymous_client.get("/Rover/FastQuery").status_code == 401
     assert anonymous_client.get("/Rover/Profile").status_code == 401
     assert anonymous_client.get("/api/fastquery").status_code == 401
@@ -414,6 +415,13 @@ def test_workspace_project_file_and_folder_crud(notes_client):
     assert file_response.status_code == 201
     file_item = file_response.get_json()["item"]
 
+    nested_folder_response = notes_client.post(
+        f"/api/projects/{project['id']}/items",
+        json={"name": "nested", "kind": "folder", "parentId": folder["id"]},
+    )
+    assert nested_folder_response.status_code == 201
+    nested_folder = nested_folder_response.get_json()["item"]
+
     saved = notes_client.patch(
         f"/api/projects/{project['id']}/items/{file_item['id']}",
         json={"name": "main.py", "content": "print('updated')"},
@@ -428,9 +436,68 @@ def test_workspace_project_file_and_folder_crud(notes_client):
     )
     assert duplicate.status_code == 409
 
+    invalid_parent = notes_client.patch(
+        f"/api/projects/{project['id']}/items/{folder['id']}",
+        json={"parentId": file_item["id"]},
+    )
+    assert invalid_parent.status_code == 400
+
+    cycle = notes_client.patch(
+        f"/api/projects/{project['id']}/items/{folder['id']}",
+        json={"parentId": nested_folder["id"]},
+    )
+    assert cycle.status_code == 400
+
+    moved_folder_to_root = notes_client.patch(
+        f"/api/projects/{project['id']}/items/{nested_folder['id']}",
+        json={"parentId": None},
+    )
+    assert moved_folder_to_root.status_code == 200
+    assert moved_folder_to_root.get_json()["item"]["parentId"] is None
+    moved_folder_back = notes_client.patch(
+        f"/api/projects/{project['id']}/items/{nested_folder['id']}",
+        json={"parentId": folder["id"]},
+    )
+    assert moved_folder_back.status_code == 200
+    assert moved_folder_back.get_json()["item"]["parentId"] == folder["id"]
+
+    root_sibling = notes_client.post(
+        f"/api/projects/{project['id']}/items",
+        json={"name": "main.py", "kind": "file"},
+    )
+    assert root_sibling.status_code == 201
+    before_duplicate_move = notes_client.get(f"/api/projects/{project['id']}").get_json()["items"]
+    assert any(
+        item["name"] == "main.py" and item["parentId"] == folder["id"]
+        for item in before_duplicate_move
+    ), before_duplicate_move
+    assert any(item["name"] == "main.py" and item["parentId"] is None for item in before_duplicate_move)
+    duplicate_move = notes_client.patch(
+        f"/api/projects/{project['id']}/items/{file_item['id']}",
+        json={"parentId": None},
+    )
+    assert duplicate_move.status_code == 409
+
+    notes_client.delete(
+        f"/api/projects/{project['id']}/items/{root_sibling.get_json()['item']['id']}"
+    )
+    moved_to_root = notes_client.patch(
+        f"/api/projects/{project['id']}/items/{file_item['id']}",
+        json={"parentId": None},
+    )
+    assert moved_to_root.status_code == 200
+    assert moved_to_root.get_json()["item"]["parentId"] is None
+
+    moved_back = notes_client.patch(
+        f"/api/projects/{project['id']}/items/{file_item['id']}",
+        json={"parentId": folder["id"]},
+    )
+    assert moved_back.status_code == 200
+    assert moved_back.get_json()["item"]["parentId"] == folder["id"]
+
     loaded = notes_client.get(f"/api/projects/{project['id']}")
     assert loaded.status_code == 200
-    assert len(loaded.get_json()["items"]) == 2
+    assert len(loaded.get_json()["items"]) == 3
 
     deleted_folder = notes_client.delete(
         f"/api/projects/{project['id']}/items/{folder['id']}"
@@ -602,18 +669,21 @@ def test_home_uses_metallic_dark_hero(notes_client):
         "/",
         "/Rover/Notes",
         "/DesignDashboard",
+        "/DatabaseConfigurations",
         "/Rover/Support",
         "/Rover/Settings",
         "/Rover/Login",
         "/Rover/Sign%20Up",
     ],
 )
-def test_site_pages_share_silver_theme_and_responsive_viewport(notes_client, path):
+def test_site_pages_share_minimal_white_theme_and_responsive_viewport(notes_client, path):
     response = notes_client.get(path, follow_redirects=True)
 
     assert response.status_code == 200
     assert b'content="width=device-width, initial-scale=1.0"' in response.data
-    assert b"--rover-accent: #bcc6ca" in response.data
+    assert b"color-scheme: light" in response.data
+    assert b"--rover-background: #ffffff" in response.data
+    assert b"--rover-text: #111111" in response.data
     assert b"WorldImage.jpg" not in response.data
     assert b"RoverBackground" not in response.data
 
@@ -809,6 +879,14 @@ def test_design_dashboard_mounts_react_page(notes_client):
     assert b"scripts/Design/Schema/Schema.js" not in response.data
 
 
+def test_database_configurations_page_mounts_react_page(notes_client):
+    response = notes_client.get("/DatabaseConfigurations")
+    assert response.status_code == 200
+    assert b'data-page="database-configurations"' in response.data
+    assert b"Database Configurations" in response.data
+    assert b"react/app.js" in response.data
+
+
 def test_dashboard_and_settings_no_longer_show_assistant_controls(notes_client):
     dashboard = notes_client.get("/DesignDashboard")
     assert dashboard.status_code == 200
@@ -883,7 +961,7 @@ def test_user_schema_saves_connections_and_derived_metadata(notes_client):
                 "targetTableId": "2",
                 "sourceColumnId": "11",
                 "targetColumnId": "22",
-                "color": "#2878b5",
+                "color": "#2563eb",
             }
         ],
     }

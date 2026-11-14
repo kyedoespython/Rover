@@ -13,7 +13,7 @@ const DATA_TYPES = [
     "Currency",
     "Attachment",
 ];
-const LINE_COLORS = ["#2878b5", "#d64545", "#2b8a3e", "#9c36b5", "#e67700", "#00838f", "#343a40"];
+const LINE_COLORS = ["#111111", "#444444", "#777777", "#aaaaaa"];
 
 async function requestJson(url, options = {}) {
     const response = await fetch(url, {
@@ -32,7 +32,22 @@ function createId() {
     return crypto.randomUUID();
 }
 
-function ProjectTree({ items, parentId = null, depth = 0, selectedId, onSelect, onRename, onDelete }) {
+function ProjectTree({
+    items,
+    parentId = null,
+    depth = 0,
+    selectedId,
+    draggedItemId,
+    dropTargetId,
+    onSelect,
+    onRename,
+    onDelete,
+    onDragStart,
+    onDragEnd,
+    onDropTarget,
+    onMove,
+    canMove,
+}) {
     const children = items.filter((item) => item.parentId === parentId);
     if (!children.length) return null;
 
@@ -40,7 +55,33 @@ function ProjectTree({ items, parentId = null, depth = 0, selectedId, onSelect, 
         <ul className="project-tree">
             {children.map((item) => (
                 <li key={item.id}>
-                    <div className="project-tree-row" style={{ "--tree-depth": depth }}>
+                    <div
+                        className={`project-tree-row${dropTargetId === item.id ? " is-drop-target" : ""}${draggedItemId === item.id ? " is-dragging" : ""}`}
+                        draggable
+                        onDragEnd={onDragEnd}
+                        onDragOver={(event) => {
+                            if (!draggedItemId) return;
+                            event.stopPropagation();
+                            if (!canMove(draggedItemId, item.id)) return;
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = "move";
+                            onDropTarget(item.id);
+                        }}
+                        onDragLeave={(event) => {
+                            if (!event.currentTarget.contains(event.relatedTarget)) onDropTarget(null);
+                        }}
+                        onDragStart={(event) => {
+                            event.dataTransfer.effectAllowed = "move";
+                            event.dataTransfer.setData("text/plain", item.id);
+                            onDragStart(item.id);
+                        }}
+                        onDrop={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onMove(event.dataTransfer.getData("text/plain") || draggedItemId, item.id);
+                        }}
+                        style={{ "--tree-depth": depth }}
+                    >
                         <button
                             aria-pressed={selectedId === item.id}
                             className="project-tree-item"
@@ -58,9 +99,16 @@ function ProjectTree({ items, parentId = null, depth = 0, selectedId, onSelect, 
                             depth={depth + 1}
                             items={items}
                             onDelete={onDelete}
+                            onDragEnd={onDragEnd}
+                            onDragStart={onDragStart}
+                            onDropTarget={onDropTarget}
+                            onMove={onMove}
                             onRename={onRename}
                             onSelect={onSelect}
                             parentId={item.id}
+                            canMove={canMove}
+                            draggedItemId={draggedItemId}
+                            dropTargetId={dropTargetId}
                             selectedId={selectedId}
                         />
                     )}
@@ -96,6 +144,8 @@ export default function DesignPage({ csrfToken, username = "" }) {
     const [browseOffset, setBrowseOffset] = useState(0);
     const [browseResult, setBrowseResult] = useState(null);
     const [browseStatus, setBrowseStatus] = useState("");
+    const [draggedItemId, setDraggedItemId] = useState(null);
+    const [dropTargetId, setDropTargetId] = useState(null);
 
     async function loadDatabases() {
         const result = await requestJson("/api/schema");
@@ -309,6 +359,52 @@ export default function DesignPage({ csrfToken, username = "" }) {
         }
     }
 
+    function canMoveProjectItem(itemId, parentId) {
+        const source = projectItems.find((item) => item.id === itemId);
+        if (!source) return false;
+        if (parentId === null) return true;
+
+        const parent = projectItems.find((item) => item.id === parentId);
+        if (!parent || parent.kind !== "folder" || parent.id === source.id) return false;
+        if (source.kind !== "folder") return true;
+
+        const descendants = new Set([source.id]);
+        let currentIds = [source.id];
+        while (currentIds.length) {
+            currentIds = projectItems
+                .filter((item) => currentIds.includes(item.parentId) && !descendants.has(item.id))
+                .map((item) => item.id);
+            currentIds.forEach((id) => descendants.add(id));
+        }
+        return !descendants.has(parent.id);
+    }
+
+    async function moveProjectItem(itemId, parentId) {
+        const item = projectItems.find((entry) => entry.id === itemId);
+        if (!item || !selectedProject || !canMoveProjectItem(itemId, parentId)) return;
+        if (item.parentId === parentId) {
+            setProjectStatus("Item is already in that location.");
+            return;
+        }
+        try {
+            const result = await requestJson(`/api/projects/${selectedProject.id}/items/${item.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                body: JSON.stringify({ parentId }),
+            });
+            setProjectItems(result.items);
+            const destination = projectItems.find((entry) => entry.id === parentId);
+            setProjectStatus(`Moved "${item.name}" to ${destination?.name || selectedProject.name}.`);
+        } catch (error) {
+            setProjectStatus(error.message);
+        }
+    }
+
+    function endProjectItemDrag() {
+        setDraggedItemId(null);
+        setDropTargetId(null);
+    }
+
     async function createDatabase(event) {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
@@ -476,6 +572,9 @@ export default function DesignPage({ csrfToken, username = "" }) {
     const targetTable = tables.find((table) => table.id === relationshipTargetId && table.id !== sourceTable?.id)
         || tables.find((table) => table.id !== sourceTable?.id);
     const selectedProjectItem = projectItems.find((item) => item.id === selectedItemId);
+    const activeBrowseTable = tables.find((table) => table.name === browseTable);
+    const projectFileCount = projectItems.filter((item) => item.kind === "file").length;
+    const projectFolderCount = projectItems.filter((item) => item.kind === "folder").length;
 
     return (
         <div className="design-react-page builder-page">
@@ -483,6 +582,7 @@ export default function DesignPage({ csrfToken, username = "" }) {
                 <a className="builder-brand" href="/">Rover</a>
                 <span className="builder-header-title">Workspace</span>
                 <nav aria-label="Workspace navigation" className="builder-header-actions">
+                    <a href="/DatabaseConfigurations">Database configurations</a>
                     <a href="/">Home</a>
                     <span>{username}</span>
                     <UserAvatar href="/Rover/Profile" label="Open your profile" />
@@ -526,17 +626,44 @@ export default function DesignPage({ csrfToken, username = "" }) {
                                     <input aria-label={`New ${newItemKind} name`} maxLength={128} onChange={(event) => setNewItemName(event.target.value)} placeholder={newItemKind === "folder" ? "Folder name" : "File name"} value={newItemName} />
                                     <button aria-label={`Create ${newItemKind}`} disabled={!newItemName.trim()} type="submit">+</button>
                                 </form>
-                                <ProjectTree
-                                    items={projectItems}
-                                    onDelete={deleteProjectItem}
-                                    onRename={renameProjectItem}
-                                    onSelect={(item) => {
-                                        setSelectedItemId(item.id);
-                                        setFileContent(item.kind === "file" ? item.content : "");
-                                        setActiveView("project");
+                                <div
+                                    aria-label="Project root drop target"
+                                    className={`project-tree-root${dropTargetId === "__root__" ? " is-drop-target" : ""}`}
+                                    onDragLeave={(event) => {
+                                        if (!event.currentTarget.contains(event.relatedTarget)) setDropTargetId(null);
                                     }}
-                                    selectedId={selectedItemId}
-                                />
+                                    onDragOver={(event) => {
+                                        if (!draggedItemId) return;
+                                        event.preventDefault();
+                                        event.dataTransfer.dropEffect = "move";
+                                        setDropTargetId("__root__");
+                                    }}
+                                    onDrop={(event) => {
+                                        event.preventDefault();
+                                        moveProjectItem(event.dataTransfer.getData("text/plain") || draggedItemId, null);
+                                        endProjectItemDrag();
+                                    }}
+                                >
+                                    <ProjectTree
+                                        canMove={canMoveProjectItem}
+                                        draggedItemId={draggedItemId}
+                                        dropTargetId={dropTargetId}
+                                        items={projectItems}
+                                        onDelete={deleteProjectItem}
+                                        onDragEnd={endProjectItemDrag}
+                                        onDragStart={setDraggedItemId}
+                                        onDropTarget={setDropTargetId}
+                                        onMove={moveProjectItem}
+                                        onRename={renameProjectItem}
+                                        onSelect={(item) => {
+                                            setSelectedItemId(item.id);
+                                            setFileContent(item.kind === "file" ? item.content : "");
+                                            setActiveView("project");
+                                        }}
+                                        selectedId={selectedItemId}
+                                    />
+                                    {draggedItemId && <p className="project-tree-root-hint">Drop here to move to project root</p>}
+                                </div>
                             </>
                         )}
                         {projectStatus && <p className="builder-status" role="status">{projectStatus}</p>}
@@ -722,6 +849,50 @@ export default function DesignPage({ csrfToken, username = "" }) {
                     )}
                 </section>
                 </main>
+                <aside aria-label="Workspace properties" className="builder-inspector">
+                    <h2>Properties</h2>
+                    {selectedProject && (
+                        <section>
+                            <h3>Project</h3>
+                            <dl>
+                                <div><dt>Name</dt><dd>{selectedProject.name}</dd></div>
+                                <div><dt>Files</dt><dd>{projectFileCount}</dd></div>
+                                <div><dt>Folders</dt><dd>{projectFolderCount}</dd></div>
+                            </dl>
+                            {selectedProjectItem && (
+                                <>
+                                    <h3>Selected item</h3>
+                                    <dl>
+                                        <div><dt>Name</dt><dd>{selectedProjectItem.name}</dd></div>
+                                        <div><dt>Type</dt><dd>{selectedProjectItem.kind}</dd></div>
+                                        <div><dt>Location</dt><dd>{projectItems.find((item) => item.id === selectedProjectItem.parentId)?.name || "Project root"}</dd></div>
+                                    </dl>
+                                </>
+                            )}
+                        </section>
+                    )}
+                    {selected && (
+                        <section>
+                            <h3>Database</h3>
+                            <dl>
+                                <div><dt>Name</dt><dd>{selected.name}</dd></div>
+                                <div><dt>Tables</dt><dd>{tables.length}</dd></div>
+                                <div><dt>Fields</dt><dd>{tables.reduce((count, table) => count + table.columns.length, 0)}</dd></div>
+                                <div><dt>Relations</dt><dd>{relationships.length}</dd></div>
+                            </dl>
+                            {activeBrowseTable && (
+                                <>
+                                    <h3>Selected table</h3>
+                                    <dl>
+                                        <div><dt>Name</dt><dd>{activeBrowseTable.name}</dd></div>
+                                        <div><dt>Fields</dt><dd>{activeBrowseTable.columns.length}</dd></div>
+                                    </dl>
+                                </>
+                            )}
+                        </section>
+                    )}
+                    {!selectedProject && !selected && <p>Select a project or database to inspect its properties.</p>}
+                </aside>
             </div>
         </div>
     );

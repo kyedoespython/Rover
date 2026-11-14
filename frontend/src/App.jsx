@@ -3,6 +3,7 @@ import React from "react";
 import Home from "./pages/Home.jsx";
 import NotesPage from "./pages/NotesPage.jsx";
 import DesignPage from "./pages/DesignPage.jsx";
+import DatabaseConfigurationsPage from "./pages/DatabaseConfigurationsPage.jsx";
 import FastQueryPage from "./pages/FastQueryPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import {
@@ -19,6 +20,7 @@ const pages = {
     auth: AuthenticatePage,
     "forgot-password": ForgotPasswordPage,
     design: DesignPage,
+    "database-configurations": DatabaseConfigurationsPage,
     fastquery: FastQueryPage,
     home: Home,
     login: LoginPage,

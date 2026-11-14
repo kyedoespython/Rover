@@ -14,6 +14,7 @@ export default function Home({ loggedIn, logoUrl, username = "" }) {
 
                     <div className="landing-links">
                         <a href="/">Home</a>
+                        {loggedIn && <a href="/DatabaseConfigurations">Database configurations</a>}
                         <a href="/Rover/Support">Contact</a>
                     </div>
 

@@ -464,6 +464,12 @@ def DesignDash():
     return render_template("Design/DesignDash.html")
 
 
+@auth_bp.route("/DatabaseConfigurations")
+@login_required
+def Database_Configurations_Page():
+    return render_template("Design/DatabaseConfigurations.html")
+
+
 @auth_bp.route("/Rover/FastQuery")
 @login_required
 def FastQuery_Page():
@@ -668,6 +674,17 @@ SCHEMA_LINE_COLORS = {
     "#e67700",
     "#00838f",
     "#343a40",
+    "#111111",
+    "#444444",
+    "#777777",
+    "#aaaaaa",
+    "#2563eb",
+    "#dc2626",
+    "#16a34a",
+    "#9333ea",
+    "#d97706",
+    "#0891b2",
+    "#111827",
 }
 SCHEMA_FILE_EXTENSIONS = {"db", "sqlite", "sqlite3"}
 MAX_SCHEMA_FILE_BYTES = 25 * 1024 * 1024
@@ -1018,7 +1035,7 @@ def _schema_from_sqlite(database_data):
                             "targetTableId": target_table_id,
                             "sourceColumnId": source_column_id,
                             "targetColumnId": target_column_id,
-                            "color": "#2878b5",
+                            "color": "#111111",
                         }
                     )
                     next_id += 1
@@ -1148,6 +1165,20 @@ def _project_summary(project):
         "name": project.name,
         "updated_at": project.updated_at.isoformat(),
     }
+
+
+def _project_item_descendants(items, root_id):
+    descendants = {root_id}
+    while True:
+        child_ids = {
+            item.get("id")
+            for item in items
+            if item.get("parentId") in descendants
+        }
+        new_ids = child_ids - descendants
+        if not new_ids:
+            return descendants
+        descendants.update(new_ids)
 
 
 def _project_name_error(name):
@@ -1333,23 +1364,13 @@ def Workspace_Project_Item(project_id, item_id):
         project_id=project_id,
         user_id=current_user.user_id,
     ).first_or_404()
-    items = list(project.items or [])
+    items = [dict(entry) for entry in project.items or []]
     item = next((entry for entry in items if entry.get("id") == item_id), None)
     if item is None:
         return jsonify(error="Project item not found."), 404
 
     if request.method == "DELETE":
-        removed_ids = {item_id}
-        while True:
-            child_ids = {
-                entry.get("id")
-                for entry in items
-                if entry.get("parentId") in removed_ids
-            }
-            new_ids = child_ids - removed_ids
-            if not new_ids:
-                break
-            removed_ids.update(new_ids)
+        removed_ids = _project_item_descendants(items, item_id)
         project.items = [entry for entry in items if entry.get("id") not in removed_ids]
         project.updated_at = datetime.now(timezone.utc)
         db.session.commit()
@@ -1358,22 +1379,38 @@ def Workspace_Project_Item(project_id, item_id):
     payload, error_response = _project_request_payload()
     if error_response:
         return error_response
-    if not payload or set(payload) - {"name", "content"}:
-        return jsonify(error="Update a file name or its content."), 400
+    if not payload or set(payload) - {"name", "content", "parentId"}:
+        return jsonify(error="Update an item's name, location, or file content."), 400
+    item_name = item.get("name", "")
     if "name" in payload:
-        name = payload.get("name")
-        name_error = _project_item_name_error(name)
+        item_name = payload.get("name")
+        name_error = _project_item_name_error(item_name)
         if name_error:
             return jsonify(error=name_error), 400
-        name = name.strip()
+        item_name = item_name.strip()
+
+    parent_id = item.get("parentId")
+    if "parentId" in payload:
+        parent_id = payload.get("parentId")
+        if parent_id is not None and not isinstance(parent_id, str):
+            return jsonify(error="Choose a valid parent folder."), 400
+        if parent_id is not None:
+            parent = next((entry for entry in items if entry.get("id") == parent_id), None)
+            if parent is None or parent.get("kind") != "folder":
+                return jsonify(error="Choose a valid parent folder."), 400
+        if item.get("kind") == "folder" and parent_id in _project_item_descendants(items, item_id):
+            return jsonify(error="A folder cannot be moved inside itself or one of its subfolders."), 400
+
+    if "name" in payload or "parentId" in payload:
         if any(
             entry.get("id") != item_id
-            and entry.get("parentId") == item.get("parentId")
-            and entry.get("name", "").casefold() == name.casefold()
+            and entry.get("parentId") == parent_id
+            and entry.get("name", "").casefold() == item_name.casefold()
             for entry in items
         ):
             return jsonify(error="That folder already contains an item with this name."), 409
-        item["name"] = name
+
+    content = item.get("content", "")
     if "content" in payload:
         content = payload.get("content")
         if item.get("kind") != "file":
@@ -1386,6 +1423,9 @@ def Workspace_Project_Item(project_id, item_id):
         )
         if content_size > MAX_PROJECT_CONTENT_BYTES:
             return jsonify(error="Project files may contain up to 5 MB of text in total."), 413
+    item["name"] = item_name
+    item["parentId"] = parent_id
+    if "content" in payload:
         item["content"] = content
     project.items = items
     project.updated_at = datetime.now(timezone.utc)

@@ -37,31 +37,28 @@
         }
 
         :root {
-            color-scheme: dark;
-            --rover-background: #111416;
-            --rover-surface: rgba(5, 7, 8, 0.96);
-            --rover-surface-raised: rgba(16, 19, 21, 0.98);
-            --rover-border: rgba(194, 203, 207, 0.2);
-            --rover-text: #d7dddf;
-            --rover-muted: #a4adb0;
-            --rover-accent: #bcc6ca;
-            --rover-accent-hover: #f0f3f4;
-            --rover-accent-strong: #c5ced1;
-            --rover-accent-strong-hover: #e2e8ea;
-            --rover-control-bg: #0d1011;
-            --rover-control-hover: #1c2123;
-            --rover-control-border: #586165;
-            --rover-danger: #d76b5f;
+            color-scheme: light;
+            --rover-background: #ffffff;
+            --rover-surface: #ffffff;
+            --rover-surface-raised: #f7f7f7;
+            --rover-border: #dddddd;
+            --rover-text: #111111;
+            --rover-muted: #555555;
+            --rover-accent: #111111;
+            --rover-accent-hover: #333333;
+            --rover-accent-strong: #111111;
+            --rover-accent-strong-hover: #333333;
+            --rover-control-bg: #ffffff;
+            --rover-control-hover: #f2f2f2;
+            --rover-control-border: #aaaaaa;
+            --rover-danger: #555555;
             --rover-font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
         }
 
         body {
             margin: 0;
             overflow-y: auto;
-            background-image:
-                radial-gradient(ellipse at 18% 0%, rgba(194, 203, 207, 0.09), transparent 42%),
-                linear-gradient(135deg, #1a1e20 0%, #0c0f10 52%, #1a1e20 100%);
-            background-color: var(--rover-background);
+            background: var(--rover-background);
             color: var(--rover-text);
             font-family: var(--rover-font-sans);
             font-size: clamp(0.875rem, 0.84rem + 0.16vw, 1rem);
@@ -248,14 +245,14 @@
 
         body .button,
         body button:not(.schema-line-swatch) {
-            min-height: 2.55rem !important;
-            padding: 0.55rem 0.95rem !important;
+            min-height: 1.9rem !important;
+            padding: 0.3rem 0.65rem !important;
             border: 1px solid var(--rover-control-border) !important;
             border-radius: 4px !important;
             background: var(--rover-control-bg) !important;
             color: var(--rover-text) !important;
             font-family: var(--rover-font-sans) !important;
-            font-size: 0.85rem !important;
+            font-size: 0.8rem !important;
             font-weight: 600 !important;
             line-height: 1.2 !important;
             box-shadow: none !important;
@@ -267,7 +264,7 @@
         body button:not(.schema-line-swatch):hover:not(:disabled) {
             border-color: var(--rover-accent-hover) !important;
             background: var(--rover-control-hover) !important;
-            color: #fff !important;
+            color: var(--rover-text) !important;
         }
 
         body .button.is-black:not(.is-outlined),
@@ -276,7 +273,7 @@
         body #schemaEditorDialog .schema-tool[aria-pressed="true"] {
             border-color: var(--rover-accent-strong) !important;
             background: var(--rover-accent-strong) !important;
-            color: #101314 !important;
+            color: #ffffff !important;
         }
 
         body .button.is-black:not(.is-outlined):hover,
@@ -285,7 +282,7 @@
         body #schemaEditorDialog .schema-tool[aria-pressed="true"]:hover {
             border-color: var(--rover-accent-hover) !important;
             background: var(--rover-accent-strong-hover) !important;
-            color: #101314 !important;
+            color: #ffffff !important;
         }
 
         body .button.is-black.is-outlined,
@@ -299,7 +296,7 @@
         body .button.is-outlined:hover {
             border-color: var(--rover-accent-hover) !important;
             background: rgba(194, 203, 207, 0.15) !important;
-            color: #fff !important;
+            color: var(--rover-text) !important;
         }
 
         body .button.is-black,
@@ -324,25 +321,25 @@
         }
 
         body a:not(.button) {
-            color: var(--rover-accent-hover) !important;
-            text-decoration-color: rgba(194, 203, 207, 0.55);
+            color: var(--rover-text) !important;
+            text-decoration-color: rgba(17, 17, 17, 0.45);
             text-underline-offset: 0.18em;
         }
 
         body button.delete-note-button,
         body button.schema-close,
         body button.schema-remove-column {
-            border-color: rgba(224, 90, 102, 0.72) !important;
-            background: rgba(224, 90, 102, 0.12) !important;
-            color: #ff9aa2 !important;
+            border-color: var(--rover-border) !important;
+            background: var(--rover-surface-raised) !important;
+            color: var(--rover-text) !important;
         }
 
         body button.delete-note-button:hover:not(:disabled),
         body button.schema-close:hover,
         body button.schema-remove-column:hover {
-            border-color: var(--rover-danger) !important;
-            background: rgba(224, 90, 102, 0.24) !important;
-            color: #ffd9dc !important;
+            border-color: var(--rover-control-border) !important;
+            background: var(--rover-control-hover) !important;
+            color: var(--rover-text) !important;
         }
 
         body #supportPage .input,
@@ -474,18 +471,18 @@
 
             body .top-nav .button,
             body .notes-nav .button {
-                min-height: 2.45rem !important;
-                padding: 0.45rem 0.6rem !important;
-                font-size: 0.76rem !important;
+                min-height: 1.85rem !important;
+                padding: 0.25rem 0.5rem !important;
+                font-size: 0.74rem !important;
             }
         }
 
         @media (max-width: 380px) {
             body .top-nav .button,
             body .notes-nav .button {
-                min-height: 2.25rem !important;
-                padding: 0.35rem 0.45rem !important;
-                font-size: 0.7rem !important;
+                min-height: 1.75rem !important;
+                padding: 0.2rem 0.4rem !important;
+                font-size: 0.68rem !important;
             }
 
             .flash-message-stack {
