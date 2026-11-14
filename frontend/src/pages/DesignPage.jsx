@@ -154,6 +154,7 @@ export default function DesignPage({ csrfToken, username = "" }) {
     const [dropTargetId, setDropTargetId] = useState(null);
     const [actionTarget, setActionTarget] = useState(null);
     const [terminalOpen, setTerminalOpen] = useState(false);
+    const [navigationOpen, setNavigationOpen] = useState(false);
     const [savedSchema, setSavedSchema] = useState(null);
     const currentProjectId = useRef(null);
     const currentProjectItems = useRef([]);
@@ -161,6 +162,8 @@ export default function DesignPage({ csrfToken, username = "" }) {
     const currentDatabase = useRef(null);
     const actionTrigger = useRef(null);
     const terminalTrigger = useRef(null);
+    const navigationMenu = useRef(null);
+    const navigationTrigger = useRef(null);
     currentProjectId.current = selectedProject?.id;
     currentProjectItems.current = projectItems;
     currentSelectedItemId.current = selectedItemId;
@@ -174,6 +177,25 @@ export default function DesignPage({ csrfToken, username = "" }) {
         window.addEventListener("keydown", closeOnEscape);
         return () => window.removeEventListener("keydown", closeOnEscape);
     }, [actionTarget]);
+
+    useEffect(() => {
+        if (!navigationOpen) return undefined;
+        function closeOnOutsideClick(event) {
+            if (!navigationMenu.current?.contains(event.target)) setNavigationOpen(false);
+        }
+        function closeOnEscape(event) {
+            if (event.key === "Escape") {
+                setNavigationOpen(false);
+                navigationTrigger.current?.focus();
+            }
+        }
+        document.addEventListener("pointerdown", closeOnOutsideClick);
+        document.addEventListener("keydown", closeOnEscape);
+        return () => {
+            document.removeEventListener("pointerdown", closeOnOutsideClick);
+            document.removeEventListener("keydown", closeOnEscape);
+        };
+    }, [navigationOpen]);
 
     function openActions(target, trigger) {
         actionTrigger.current = trigger;
@@ -663,14 +685,31 @@ export default function DesignPage({ csrfToken, username = "" }) {
     return (
         <div className="design-react-page builder-page">
             <header className="builder-header">
-                <a className="builder-brand" href="/">Rover</a>
-                <span className="builder-header-title">Workspace</span>
+                <div className="builder-header-identity">
+                    <a className="builder-brand" href="/">Rover</a>
+                    <span className="builder-header-title">Workspace</span>
+                </div>
                 <nav aria-label="Workspace navigation" className="builder-header-actions">
-                    <a href="/DatabaseConfigurations">Database configurations</a>
-                    <a href="/">Home</a>
+                    <div className="builder-navigation-menu" ref={navigationMenu}>
+                        <button
+                            aria-controls="workspace-navigation-menu"
+                            aria-expanded={navigationOpen}
+                            onClick={() => setNavigationOpen((open) => !open)}
+                            ref={navigationTrigger}
+                            type="button"
+                        >Navigate <span aria-hidden="true">⌄</span></button>
+                        {navigationOpen && (
+                            <div className="builder-navigation-links" id="workspace-navigation-menu">
+                                <a href="/">Home</a>
+                                <a href="/DatabaseConfigurations">Database configurations</a>
+                            </div>
+                        )}
+                    </div>
                     <button aria-controls="rover-terminal" aria-expanded={terminalOpen} onClick={() => setTerminalOpen((open) => !open)} ref={terminalTrigger} type="button">Terminal</button>
-                    <span>{username}</span>
-                    <UserAvatar href="/Rover/Profile" label="Open your profile" />
+                    <div className="builder-header-profile">
+                        <span>{username}</span>
+                        <UserAvatar href="/Rover/Profile" label="Open your profile" />
+                    </div>
                 </nav>
             </header>
             <div className="builder-layout">
