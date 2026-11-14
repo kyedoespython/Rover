@@ -39,9 +39,7 @@ class UserSchemaDatabase(db.Model):
     file_name = db.Column(db.String(255), nullable=False)
     database_data = db.Column(db.LargeBinary, nullable=False)
     schema_data = db.Column(db.JSON, nullable=False)
-    is_fastquery_demo = db.Column(
-        db.Boolean, nullable=False, default=False, server_default=text("false")
-    )
+    is_fastquery_demo = db.Column(db.Boolean, nullable=False, default=False, server_default=text("false"))
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     owner = db.relationship("Accounts", back_populates="schema_databases")

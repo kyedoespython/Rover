@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from math import isfinite
+from uuid import uuid4
 
 from flask import (
     current_app,
@@ -24,6 +25,7 @@ from werkzeug.utils import secure_filename
 from main.extensions import db, limiter
 from main.models.auth import Authentication
 from main.models.notes import Notes
+from main.models.projects import WorkspaceProject
 from main.models.schemas import UserSchema, UserSchemaDatabase
 from main.models.users import Accounts
 
@@ -1138,6 +1140,257 @@ def _open_readonly_schema(database_data):
 
     connection.set_authorizer(authorize)
     return connection
+
+
+def _project_summary(project):
+    return {
+        "id": project.project_id,
+        "name": project.name,
+        "updated_at": project.updated_at.isoformat(),
+    }
+
+
+def _project_name_error(name):
+    if not isinstance(name, str) or not name.strip() or len(name.strip()) > 128:
+        return "Project name must be between 1 and 128 characters."
+    return None
+
+
+def _project_item_name_error(name):
+    if not isinstance(name, str):
+        return "Item name must be text."
+    name = name.strip()
+    if (
+        not name
+        or len(name) > 128
+        or name in {".", ".."}
+        or any(ord(character) < 32 or character in '<>:"/\\|?*' for character in name)
+    ):
+        return "Use a valid file or folder name up to 128 characters."
+    return None
+
+
+MAX_PROJECT_ITEMS = 1000
+MAX_PROJECT_CONTENT_BYTES = 5 * 1024 * 1024
+
+
+def _project_request_payload(max_bytes=1_050_000):
+    if not request.is_json:
+        return None, (jsonify(error="A JSON request is required."), 415)
+    if len(request.get_data(cache=True)) > max_bytes:
+        return None, (jsonify(error="Project data is too large."), 413)
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return None, (jsonify(error="The request body must be valid JSON."), 400)
+    return payload, None
+
+
+@auth_bp.route("/api/projects", methods=["GET", "POST"])
+@login_required
+@limiter.limit("30 per minute")
+def Workspace_Projects():
+    if request.method == "GET":
+        projects = (
+            WorkspaceProject.query.filter_by(user_id=current_user.user_id)
+            .order_by(WorkspaceProject.updated_at.desc())
+            .all()
+        )
+        return jsonify(projects=[_project_summary(project) for project in projects])
+
+    payload, error_response = _project_request_payload()
+    if error_response:
+        return error_response
+    name = payload.get("name")
+    name_error = _project_name_error(name)
+    if name_error:
+        return jsonify(error=name_error), 400
+    name = name.strip()
+    if WorkspaceProject.query.filter(
+        WorkspaceProject.user_id == current_user.user_id,
+        func.lower(WorkspaceProject.name) == name.lower(),
+    ).first():
+        return jsonify(error="A project with that name already exists."), 409
+    project = WorkspaceProject(user_id=current_user.user_id, name=name, items=[])
+    db.session.add(project)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify(error="A project with that name already exists."), 409
+    return jsonify(project=_project_summary(project), items=project.items), 201
+
+
+@auth_bp.route("/api/projects/<int:project_id>", methods=["GET", "PUT", "DELETE"])
+@login_required
+@limiter.limit("30 per minute")
+def Workspace_Project(project_id):
+    project = WorkspaceProject.query.filter_by(
+        project_id=project_id,
+        user_id=current_user.user_id,
+    ).first_or_404()
+
+    if request.method == "GET":
+        return jsonify(project=_project_summary(project), items=project.items)
+    if request.method == "DELETE":
+        db.session.delete(project)
+        db.session.commit()
+        return jsonify(deleted=True)
+
+    payload, error_response = _project_request_payload()
+    if error_response:
+        return error_response
+    name = payload.get("name")
+    name_error = _project_name_error(name)
+    if name_error:
+        return jsonify(error=name_error), 400
+    name = name.strip()
+    if WorkspaceProject.query.filter(
+        WorkspaceProject.user_id == current_user.user_id,
+        WorkspaceProject.project_id != project_id,
+        func.lower(WorkspaceProject.name) == name.lower(),
+    ).first():
+        return jsonify(error="A project with that name already exists."), 409
+    project.name = name
+    project.updated_at = datetime.now(timezone.utc)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify(error="A project with that name already exists."), 409
+    return jsonify(project=_project_summary(project), items=project.items)
+
+
+@auth_bp.route(
+    "/api/projects/<int:project_id>/items",
+    methods=["POST"],
+)
+@login_required
+@limiter.limit("60 per minute")
+def Workspace_Project_Create_Item(project_id):
+    project = WorkspaceProject.query.filter_by(
+        project_id=project_id,
+        user_id=current_user.user_id,
+    ).first_or_404()
+    payload, error_response = _project_request_payload()
+    if error_response:
+        return error_response
+    name = payload.get("name")
+    name_error = _project_item_name_error(name)
+    if name_error:
+        return jsonify(error=name_error), 400
+    name = name.strip()
+    kind = payload.get("kind")
+    parent_id = payload.get("parentId")
+    content = payload.get("content", "")
+    if not isinstance(kind, str) or kind not in {"file", "folder"}:
+        return jsonify(error="Choose a file or folder."), 400
+    if parent_id is not None and not isinstance(parent_id, str):
+        return jsonify(error="Choose a valid parent folder."), 400
+    if kind == "file" and (not isinstance(content, str) or len(content) > 1_000_000):
+        return jsonify(error="File content must be text smaller than 1 MB."), 400
+    if kind == "folder":
+        content = ""
+
+    items = list(project.items or [])
+    if len(items) >= MAX_PROJECT_ITEMS:
+        return jsonify(error=f"A project can contain at most {MAX_PROJECT_ITEMS:,} files and folders."), 400
+    if parent_id is not None:
+        parent = next((item for item in items if item.get("id") == parent_id), None)
+        if parent is None or parent.get("kind") != "folder":
+            return jsonify(error="Choose a valid parent folder."), 400
+    if any(
+        item.get("parentId") == parent_id
+        and item.get("name", "").casefold() == name.casefold()
+        for item in items
+    ):
+        return jsonify(error="That folder already contains an item with this name."), 409
+    content_size = sum(len(entry.get("content", "").encode("utf-8")) for entry in items)
+    if content_size + len(content.encode("utf-8")) > MAX_PROJECT_CONTENT_BYTES:
+        return jsonify(error="Project files may contain up to 5 MB of text in total."), 413
+
+    item = {
+        "id": uuid4().hex,
+        "parentId": parent_id,
+        "name": name,
+        "kind": kind,
+        "content": content,
+    }
+    items.append(item)
+    project.items = items
+    project.updated_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return jsonify(item=item, items=items), 201
+
+
+@auth_bp.route(
+    "/api/projects/<int:project_id>/items/<string:item_id>",
+    methods=["PATCH", "DELETE"],
+)
+@login_required
+@limiter.limit("60 per minute")
+def Workspace_Project_Item(project_id, item_id):
+    project = WorkspaceProject.query.filter_by(
+        project_id=project_id,
+        user_id=current_user.user_id,
+    ).first_or_404()
+    items = list(project.items or [])
+    item = next((entry for entry in items if entry.get("id") == item_id), None)
+    if item is None:
+        return jsonify(error="Project item not found."), 404
+
+    if request.method == "DELETE":
+        removed_ids = {item_id}
+        while True:
+            child_ids = {
+                entry.get("id")
+                for entry in items
+                if entry.get("parentId") in removed_ids
+            }
+            new_ids = child_ids - removed_ids
+            if not new_ids:
+                break
+            removed_ids.update(new_ids)
+        project.items = [entry for entry in items if entry.get("id") not in removed_ids]
+        project.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+        return jsonify(deleted=True, items=project.items)
+
+    payload, error_response = _project_request_payload()
+    if error_response:
+        return error_response
+    if not payload or set(payload) - {"name", "content"}:
+        return jsonify(error="Update a file name or its content."), 400
+    if "name" in payload:
+        name = payload.get("name")
+        name_error = _project_item_name_error(name)
+        if name_error:
+            return jsonify(error=name_error), 400
+        name = name.strip()
+        if any(
+            entry.get("id") != item_id
+            and entry.get("parentId") == item.get("parentId")
+            and entry.get("name", "").casefold() == name.casefold()
+            for entry in items
+        ):
+            return jsonify(error="That folder already contains an item with this name."), 409
+        item["name"] = name
+    if "content" in payload:
+        content = payload.get("content")
+        if item.get("kind") != "file":
+            return jsonify(error="Only files can contain text."), 400
+        if not isinstance(content, str) or len(content) > 1_000_000:
+            return jsonify(error="File content must be text smaller than 1 MB."), 400
+        content_size = sum(
+            len((content if entry.get("id") == item_id else entry.get("content", "")).encode("utf-8"))
+            for entry in items
+        )
+        if content_size > MAX_PROJECT_CONTENT_BYTES:
+            return jsonify(error="Project files may contain up to 5 MB of text in total."), 413
+        item["content"] = content
+    project.items = items
+    project.updated_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return jsonify(item=item, items=items)
 
 
 @auth_bp.route("/api/fastquery", methods=["GET"])

@@ -12,6 +12,7 @@ from main.models.FastQuery import (
 )
 from main.models.auth import Authentication, PasswordResetToken
 from main.models.notes import NoteMetadata, Notes
+from main.models.projects import WorkspaceProject
 from main.models.schemas import SchemaMetadata, UserSchema, UserSchemaDatabase
 from main.models.tickets import Tickets
 from main.models.users import Accounts
@@ -31,6 +32,7 @@ def test_model_sections_preserve_central_imports_and_relationships():
         FastQuerySection,
         FastQueryProgress,
         FastQuerySectionCompletion,
+        WorkspaceProject,
     )
 
     for model in models:

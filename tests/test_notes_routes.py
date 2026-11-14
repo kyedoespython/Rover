@@ -27,6 +27,7 @@ from main.models import (
     Tickets,
     UserSchemaDatabase,
     UserSchema,
+    WorkspaceProject,
 )
 from main.services import notes_service
 from main.services.auth_service import AUTH_CODE_MAX_ATTEMPTS, Create_Auth_Code
@@ -156,6 +157,15 @@ def test_signup_route_mounts_react_page(notes_client):
     assert response.status_code == 200
     assert b'data-page="signup"' in response.data
     assert b"react/app.js" in response.data
+
+
+def test_home_mounts_minimal_landing_page_with_username(notes_client):
+    response = notes_client.get("/")
+
+    assert response.status_code == 200
+    assert b"RouteNotes" in response.data
+    assert b"FastQuery" not in response.data
+    assert b"Open workspace" not in response.data
 
 
 def test_notes_route_create_load_edit_and_delete(notes_client):
@@ -378,6 +388,80 @@ def test_notes_write_rejects_missing_csrf_token(notes_client):
     )
 
     assert response.status_code == 400
+
+
+def test_workspace_project_file_and_folder_crud(notes_client):
+    created = notes_client.post("/api/projects", json={"name": "Demo app"})
+    assert created.status_code == 201
+    project = created.get_json()["project"]
+
+    folder_response = notes_client.post(
+        f"/api/projects/{project['id']}/items",
+        json={"name": "src", "kind": "folder"},
+    )
+    assert folder_response.status_code == 201
+    folder = folder_response.get_json()["item"]
+
+    file_response = notes_client.post(
+        f"/api/projects/{project['id']}/items",
+        json={
+            "name": "app.py",
+            "kind": "file",
+            "parentId": folder["id"],
+            "content": "print('hello')",
+        },
+    )
+    assert file_response.status_code == 201
+    file_item = file_response.get_json()["item"]
+
+    saved = notes_client.patch(
+        f"/api/projects/{project['id']}/items/{file_item['id']}",
+        json={"name": "main.py", "content": "print('updated')"},
+    )
+    assert saved.status_code == 200
+    assert saved.get_json()["item"]["name"] == "main.py"
+    assert saved.get_json()["item"]["content"] == "print('updated')"
+
+    duplicate = notes_client.post(
+        f"/api/projects/{project['id']}/items",
+        json={"name": "SRC", "kind": "folder"},
+    )
+    assert duplicate.status_code == 409
+
+    loaded = notes_client.get(f"/api/projects/{project['id']}")
+    assert loaded.status_code == 200
+    assert len(loaded.get_json()["items"]) == 2
+
+    deleted_folder = notes_client.delete(
+        f"/api/projects/{project['id']}/items/{folder['id']}"
+    )
+    assert deleted_folder.status_code == 200
+    assert deleted_folder.get_json()["items"] == []
+
+    deleted_project = notes_client.delete(f"/api/projects/{project['id']}")
+    assert deleted_project.status_code == 200
+    with notes_client.application.app_context():
+        assert WorkspaceProject.query.count() == 0
+
+
+def test_workspace_project_is_private_to_its_owner(notes_client):
+    created = notes_client.post("/api/projects", json={"name": "Private"})
+    project_id = created.get_json()["project"]["id"]
+    with notes_client.application.app_context():
+        other_account = Accounts(
+            email="project-owner@example.com",
+            username="ProjectOwner",
+            password=generate_password_hash("test-password"),
+            country_of_origin="United States",
+        )
+        db.session.add(other_account)
+        db.session.commit()
+        other_user_id = other_account.user_id
+
+    with notes_client.session_transaction() as session:
+        session["_user_id"] = str(other_user_id)
+        session["_fresh"] = True
+    assert notes_client.get(f"/api/projects/{project_id}").status_code == 404
     with notes_client.application.app_context():
         assert Notes.query.filter_by(note_name="CSRF attempt").first() is None
 
