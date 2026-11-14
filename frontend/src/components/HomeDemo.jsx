@@ -33,8 +33,8 @@ function DemoTable({ title, subtitle, rows }) {
 }
 
 export default function HomeDemo() {
-    const sectionRef = useRef(null);
     const flowRef = useRef(null);
+    const autoScrolling = useRef(false);
     const [step, setStep] = useState(-1);
     const [run, setRun] = useState(0);
     const [typedLength, setTypedLength] = useState(0);
@@ -52,24 +52,62 @@ export default function HomeDemo() {
         const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
         if (preference.matches || window.scrollY > 2) return undefined;
 
+        let frame;
         const timer = window.setTimeout(() => {
-            if (document.visibilityState === "visible") {
-                sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            const flow = flowRef.current;
+            if (!flow || document.visibilityState !== "visible" || window.scrollY > 2) return;
+
+            const start = window.scrollY;
+            const destination = Math.min(
+                start + flow.getBoundingClientRect().top,
+                document.documentElement.scrollHeight - window.innerHeight,
+            );
+            let startedAt;
+            autoScrolling.current = true;
+
+            function scroll(timestamp) {
+                if (startedAt === undefined) startedAt = timestamp;
+                const progress = Math.min((timestamp - startedAt) / 4000, 1);
+                const eased = progress * progress * (3 - 2 * progress);
+                window.scrollTo(0, start + (destination - start) * eased);
+                if (progress < 1) {
+                    frame = window.requestAnimationFrame(scroll);
+                } else {
+                    autoScrolling.current = false;
+                    setStep((current) => current < 0 ? 0 : current);
+                }
             }
+            frame = window.requestAnimationFrame(scroll);
         }, 4000);
-        const cancel = () => window.clearTimeout(timer);
+        const cancel = () => {
+            window.clearTimeout(timer);
+            window.cancelAnimationFrame(frame);
+            if (autoScrolling.current) {
+                autoScrolling.current = false;
+                const bounds = flowRef.current?.getBoundingClientRect();
+                if (bounds && bounds.bottom > 0 && bounds.top < window.innerHeight) {
+                    setStep((current) => current < 0 ? 0 : current);
+                }
+            }
+        };
 
         window.addEventListener("wheel", cancel, { passive: true });
         window.addEventListener("touchstart", cancel, { passive: true });
         window.addEventListener("pointerdown", cancel, { passive: true });
         window.addEventListener("keydown", cancel);
+        window.addEventListener("resize", cancel);
+        document.addEventListener("visibilitychange", cancel);
         preference.addEventListener("change", cancel);
         return () => {
-            cancel();
+            window.clearTimeout(timer);
+            window.cancelAnimationFrame(frame);
+            autoScrolling.current = false;
             window.removeEventListener("wheel", cancel);
             window.removeEventListener("touchstart", cancel);
             window.removeEventListener("pointerdown", cancel);
             window.removeEventListener("keydown", cancel);
+            window.removeEventListener("resize", cancel);
+            document.removeEventListener("visibilitychange", cancel);
             preference.removeEventListener("change", cancel);
         };
     }, []);
@@ -82,8 +120,8 @@ export default function HomeDemo() {
             return undefined;
         }
         const observer = new IntersectionObserver((entries) => {
-            if (entries.some((entry) => entry.isIntersecting)) {
-                setStep(0);
+            if (!autoScrolling.current && entries.some((entry) => entry.isIntersecting)) {
+                setStep((current) => current < 0 ? 0 : current);
                 observer.disconnect();
             }
         }, { threshold: 0.1 });
@@ -126,7 +164,7 @@ export default function HomeDemo() {
     }
 
     return (
-        <section className="home-demo" ref={sectionRef} aria-labelledby="home-demo-title">
+        <section className="home-demo" aria-labelledby="home-demo-title">
             <div className="home-demo-intro">
                 <div>
                     <p className="home-demo-eyebrow">From idea to architecture</p>
