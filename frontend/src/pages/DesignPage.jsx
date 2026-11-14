@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
+import RoverTerminal from "../components/RoverTerminal.jsx";
 import UserAvatar from "../components/UserAvatar.jsx";
 
 const DATA_TYPES = [
@@ -40,8 +41,7 @@ function ProjectTree({
     draggedItemId,
     dropTargetId,
     onSelect,
-    onRename,
-    onDelete,
+    onActions,
     onDragStart,
     onDragEnd,
     onDropTarget,
@@ -86,24 +86,30 @@ function ProjectTree({
                             aria-pressed={selectedId === item.id}
                             className="project-tree-item"
                             onClick={() => onSelect(item)}
+                            onContextMenu={(event) => { event.preventDefault(); onActions(item, event.currentTarget); }}
+                            onDoubleClick={(event) => onActions(item, event.currentTarget)}
+                            onKeyDown={(event) => {
+                                if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+                                    event.preventDefault();
+                                    onActions(item, event.currentTarget);
+                                }
+                            }}
+                            title="Double-click or right-click for actions"
                             type="button"
                         >
                             <span aria-hidden="true">{item.kind === "folder" ? "▸" : "·"}</span>
                             <span>{item.name}</span>
                         </button>
-                        <button aria-label={`Rename ${item.name}`} onClick={() => onRename(item)} type="button">···</button>
-                        <button aria-label={`Delete ${item.name}`} onClick={() => onDelete(item)} type="button">×</button>
                     </div>
                     {item.kind === "folder" && (
                         <ProjectTree
                             depth={depth + 1}
                             items={items}
-                            onDelete={onDelete}
+                            onActions={onActions}
                             onDragEnd={onDragEnd}
                             onDragStart={onDragStart}
                             onDropTarget={onDropTarget}
                             onMove={onMove}
-                            onRename={onRename}
                             onSelect={onSelect}
                             parentId={item.id}
                             canMove={canMove}
@@ -146,6 +152,38 @@ export default function DesignPage({ csrfToken, username = "" }) {
     const [browseStatus, setBrowseStatus] = useState("");
     const [draggedItemId, setDraggedItemId] = useState(null);
     const [dropTargetId, setDropTargetId] = useState(null);
+    const [actionTarget, setActionTarget] = useState(null);
+    const [terminalOpen, setTerminalOpen] = useState(false);
+    const [savedSchema, setSavedSchema] = useState(null);
+    const currentProjectId = useRef(null);
+    const currentProjectItems = useRef([]);
+    const currentSelectedItemId = useRef(null);
+    const currentDatabase = useRef(null);
+    const actionTrigger = useRef(null);
+    const terminalTrigger = useRef(null);
+    currentProjectId.current = selectedProject?.id;
+    currentProjectItems.current = projectItems;
+    currentSelectedItemId.current = selectedItemId;
+    currentDatabase.current = { selected, name, savedSchema };
+
+    useEffect(() => {
+        if (!actionTarget) return undefined;
+        function closeOnEscape(event) {
+            if (event.key === "Escape") closeActions();
+        }
+        window.addEventListener("keydown", closeOnEscape);
+        return () => window.removeEventListener("keydown", closeOnEscape);
+    }, [actionTarget]);
+
+    function openActions(target, trigger) {
+        actionTrigger.current = trigger;
+        setActionTarget(target);
+    }
+
+    function closeActions() {
+        setActionTarget(null);
+        setTimeout(() => actionTrigger.current?.focus(), 0);
+    }
 
     async function loadDatabases() {
         const result = await requestJson("/api/schema");
@@ -190,6 +228,7 @@ export default function DesignPage({ csrfToken, username = "" }) {
             setName(result.database.name);
             setTables(result.schema.tables);
             setRelationships(result.schema.relationships);
+            setSavedSchema(JSON.stringify({ name: result.database.name, tables: result.schema.tables, relationships: result.schema.relationships }));
             setQueryResult(null);
             setActiveView("data");
             setStatus(`Loaded ${result.database.name}.`);
@@ -326,7 +365,7 @@ export default function DesignPage({ csrfToken, username = "" }) {
     }
 
     async function deleteProjectItem(item) {
-        if (item.kind === "folder" && !window.confirm(`Delete "${item.name}" and everything inside it?`)) return;
+        if (!window.confirm(`Delete "${item.name}"${item.kind === "folder" ? " and everything inside it" : ""}?`)) return;
         try {
             const result = await requestJson(`/api/projects/${selectedProject.id}/items/${item.id}`, {
                 method: "DELETE",
@@ -456,7 +495,9 @@ export default function DesignPage({ csrfToken, username = "" }) {
                 body: JSON.stringify({ name, schema: { tables, relationships } }),
             });
             setSelected(result.database);
+            setName(result.database.name);
             setDatabases((items) => items.map((item) => item.id === result.database.id ? result.database : item));
+            setSavedSchema(JSON.stringify({ name: result.database.name, tables, relationships }));
             setStatus(`Saved ${result.metadata.table_count} tables and ${result.metadata.column_count} fields.`);
         } catch (error) {
             setStatus(error.message);
@@ -476,6 +517,7 @@ export default function DesignPage({ csrfToken, username = "" }) {
                 setName("");
                 setTables([]);
                 setRelationships([]);
+                setSavedSchema(null);
                 setBrowseTable("");
                 setBrowseResult(null);
                 setBrowseStatus("");
@@ -575,6 +617,48 @@ export default function DesignPage({ csrfToken, username = "" }) {
     const activeBrowseTable = tables.find((table) => table.name === browseTable);
     const projectFileCount = projectItems.filter((item) => item.kind === "file").length;
     const projectFolderCount = projectItems.filter((item) => item.kind === "folder").length;
+    const dirtyItemId = selectedProjectItem?.kind === "file" && fileContent !== selectedProjectItem.content ? selectedItemId : null;
+    const dirtyDatabaseId = selected && savedSchema !== JSON.stringify({ name, tables, relationships }) ? selected.id : null;
+
+    function handleTerminalItemsChanged(projectId, items) {
+        if (currentProjectId.current !== projectId) return;
+        const oldSelected = currentProjectItems.current.find((item) => item.id === currentSelectedItemId.current);
+        const updatedSelected = items.find((item) => item.id === currentSelectedItemId.current);
+        setProjectItems(items);
+        if (oldSelected && !updatedSelected) {
+            setSelectedItemId(null);
+            setFileContent("");
+        } else if (oldSelected?.kind === "file" && updatedSelected?.kind === "file") {
+            setFileContent((current) => current === oldSelected.content ? updatedSelected.content : current);
+        }
+    }
+
+    function handleTerminalDatabasesChanged(database, deletedId) {
+        setDatabases((current) => {
+            if (deletedId) return current.filter((entry) => entry.id !== deletedId);
+            return current.some((entry) => entry.id === database.id)
+                ? current.map((entry) => entry.id === database.id ? database : entry)
+                : [database, ...current];
+        });
+        const current = currentDatabase.current;
+        if (deletedId && current.selected?.id === deletedId) {
+            setSelected(null);
+            setName("");
+            setTables([]);
+            setRelationships([]);
+            setSavedSchema(null);
+            setBrowseTable("");
+            setBrowseResult(null);
+            setQueryResult(null);
+        } else if (database && current.selected?.id === database.id) {
+            setSelected(database);
+            if (current.name === current.selected.name) setName(database.name);
+            if (current.savedSchema) {
+                const baseline = JSON.parse(current.savedSchema);
+                setSavedSchema(JSON.stringify({ ...baseline, name: database.name }));
+            }
+        }
+    }
 
     return (
         <div className="design-react-page builder-page">
@@ -584,6 +668,7 @@ export default function DesignPage({ csrfToken, username = "" }) {
                 <nav aria-label="Workspace navigation" className="builder-header-actions">
                     <a href="/DatabaseConfigurations">Database configurations</a>
                     <a href="/">Home</a>
+                    <button aria-controls="rover-terminal" aria-expanded={terminalOpen} onClick={() => setTerminalOpen((open) => !open)} ref={terminalTrigger} type="button">Terminal</button>
                     <span>{username}</span>
                     <UserAvatar href="/Rover/Profile" label="Open your profile" />
                 </nav>
@@ -612,11 +697,19 @@ export default function DesignPage({ csrfToken, username = "" }) {
                         {selectedProject && (
                             <>
                                 <div className="builder-section-heading builder-files-heading">
-                                    <h3>{selectedProject.name}</h3>
-                                    <div>
-                                        <button aria-label="Rename project" onClick={renameProject} type="button">···</button>
-                                        <button aria-label="Delete project" onClick={deleteProject} type="button">×</button>
-                                    </div>
+                                    <button
+                                        className="builder-project-actions-trigger"
+                                        onContextMenu={(event) => { event.preventDefault(); openActions({ kind: "project" }, event.currentTarget); }}
+                                        onDoubleClick={(event) => openActions({ kind: "project" }, event.currentTarget)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Enter" || event.key === " " || event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+                                                event.preventDefault();
+                                                openActions({ kind: "project" }, event.currentTarget);
+                                            }
+                                        }}
+                                        title="Double-click or right-click for project actions"
+                                        type="button"
+                                    >{selectedProject.name}</button>
                                 </div>
                                 <form className="builder-create-item" onSubmit={createProjectItem}>
                                     <select aria-label="Item type" onChange={(event) => setNewItemKind(event.target.value)} value={newItemKind}>
@@ -649,16 +742,16 @@ export default function DesignPage({ csrfToken, username = "" }) {
                                         draggedItemId={draggedItemId}
                                         dropTargetId={dropTargetId}
                                         items={projectItems}
-                                        onDelete={deleteProjectItem}
+                                        onActions={(item, trigger) => openActions({ kind: "item", item }, trigger)}
                                         onDragEnd={endProjectItemDrag}
                                         onDragStart={setDraggedItemId}
                                         onDropTarget={setDropTargetId}
                                         onMove={moveProjectItem}
-                                        onRename={renameProjectItem}
                                         onSelect={(item) => {
+                                            setActiveView("project");
+                                            if (selectedItemId === item.id) return;
                                             setSelectedItemId(item.id);
                                             setFileContent(item.kind === "file" ? item.content : "");
-                                            setActiveView("project");
                                         }}
                                         selectedId={selectedItemId}
                                     />
@@ -684,12 +777,20 @@ export default function DesignPage({ csrfToken, username = "" }) {
                                     <button
                                         aria-current={selected?.id === database.id ? "true" : undefined}
                                         className={selected?.id === database.id ? "is-selected" : ""}
+                                        onContextMenu={(event) => { event.preventDefault(); openActions({ kind: "database", database }, event.currentTarget); }}
+                                        onDoubleClick={(event) => openActions({ kind: "database", database }, event.currentTarget)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+                                                event.preventDefault();
+                                                openActions({ kind: "database", database }, event.currentTarget);
+                                            }
+                                        }}
                                         onClick={() => selectDatabase(database.id)}
+                                        title="Double-click or right-click for database actions"
                                         type="button"
                                     >
                                         <span>{database.name}</span><small>{database.table_count} tables</small>
                                     </button>
-                                    <button aria-label={`Delete ${database.name}`} onClick={() => deleteDatabase(database)} type="button">×</button>
                                 </li>
                             ))}
                         </ul>
@@ -894,6 +995,54 @@ export default function DesignPage({ csrfToken, username = "" }) {
                     {!selectedProject && !selected && <p>Select a project or database to inspect its properties.</p>}
                 </aside>
             </div>
+            {actionTarget && (
+                <div className="builder-action-backdrop" onClick={closeActions}>
+                    <section aria-label="Workspace item actions" aria-modal="true" className="builder-action-dialog" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
+                        if (event.key !== "Tab") return;
+                        const buttons = Array.from(event.currentTarget.querySelectorAll("button:not(:disabled)"));
+                        if (event.shiftKey && document.activeElement === buttons[0]) {
+                            event.preventDefault();
+                            buttons[buttons.length - 1].focus();
+                        } else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) {
+                            event.preventDefault();
+                            buttons[0].focus();
+                        }
+                    }} role="dialog">
+                        <h2>{actionTarget.kind === "project" ? selectedProject?.name : actionTarget.kind === "item" ? actionTarget.item.name : actionTarget.database.name}</h2>
+                        <p>{actionTarget.kind === "database" ? "Database" : actionTarget.kind === "item" ? actionTarget.item.kind : "Project"} actions</p>
+                        {actionTarget.kind !== "database" && (
+                            <button autoFocus onClick={() => {
+                                const target = actionTarget;
+                                closeActions();
+                                if (target.kind === "project") renameProject();
+                                else renameProjectItem(target.item);
+                            }} type="button">Rename</button>
+                        )}
+                        <button autoFocus={actionTarget.kind === "database"} onClick={() => {
+                            const target = actionTarget;
+                            closeActions();
+                            if (target.kind === "project") deleteProject();
+                            else if (target.kind === "item") deleteProjectItem(target.item);
+                            else deleteDatabase(target.database);
+                        }} type="button">Delete</button>
+                        <button onClick={closeActions} type="button">Cancel</button>
+                    </section>
+                </div>
+            )}
+            <RoverTerminal
+                confirm={window.confirm.bind(window)}
+                csrfToken={csrfToken}
+                databases={databases}
+                dirtyDatabaseId={dirtyDatabaseId}
+                dirtyItemId={dirtyItemId}
+                items={projectItems}
+                onClose={() => { setTerminalOpen(false); terminalTrigger.current?.focus(); }}
+                onDatabasesChanged={handleTerminalDatabasesChanged}
+                onItemsChanged={handleTerminalItemsChanged}
+                open={terminalOpen}
+                project={selectedProject}
+                request={requestJson}
+            />
         </div>
     );
 }

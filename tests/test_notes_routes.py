@@ -1034,6 +1034,31 @@ def test_user_schema_saves_connections_and_derived_metadata(notes_client):
     assert notes_client.get("/api/schema").get_json()["databases"] == []
 
 
+def test_renaming_imported_database_preserves_database_bytes(notes_client):
+    source = sqlite3.connect(":memory:")
+    source.execute("CREATE TABLE Sample (id INTEGER PRIMARY KEY, value TEXT)")
+    source.execute("CREATE INDEX sample_value_idx ON Sample(value)")
+    source.execute("INSERT INTO Sample VALUES (1, 'stored')")
+    database_file = source.serialize()
+    source.close()
+
+    imported = notes_client.post(
+        "/api/schema/import",
+        data={"file": (io.BytesIO(database_file), "sample.db")},
+        content_type="multipart/form-data",
+    )
+    assert imported.status_code == 201
+    database_id = imported.get_json()["database"]["id"]
+    schema = notes_client.get(f"/api/schema/{database_id}").get_json()["schema"]
+    renamed = notes_client.put(
+        f"/api/schema/{database_id}", json={"name": "renamed", "schema": schema}
+    )
+    assert renamed.status_code == 200
+    with notes_client.application.app_context():
+        database = db.session.get(UserSchemaDatabase, database_id)
+        assert database.database_data == database_file
+
+
 def test_sqlite_upload_preserves_data_and_rejects_writes(notes_client):
     source = sqlite3.connect(":memory:")
     source.execute("CREATE TABLE Sample (id INTEGER PRIMARY KEY, value TEXT)")

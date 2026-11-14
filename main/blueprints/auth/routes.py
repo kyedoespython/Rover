@@ -1627,13 +1627,15 @@ def User_Schema_Database(schema_id):
     ).first():
         return jsonify(error="A database with that name already exists."), 409
 
-    try:
-        updated_data = _create_schema_database(
-            clean_schema,
-            source_database=database.database_data,
-        )
-    except sqlite3.DatabaseError:
-        return jsonify(error="Schema edits could not preserve the existing database."), 400
+    updated_data = database.database_data
+    if clean_schema != database.schema_data:
+        try:
+            updated_data = _create_schema_database(
+                clean_schema,
+                source_database=database.database_data,
+            )
+        except sqlite3.DatabaseError:
+            return jsonify(error="Schema edits could not preserve the existing database."), 400
 
     database.schema_name = name.strip()
     database.file_name = _schema_file_name(name.strip())
