@@ -35,7 +35,6 @@ function DemoTable({ title, subtitle, rows }) {
 export default function HomeDemo() {
     const sectionRef = useRef(null);
     const flowRef = useRef(null);
-    const flowStartRef = useRef(null);
     const [step, setStep] = useState(-1);
     const [run, setRun] = useState(0);
     const [typedLength, setTypedLength] = useState(0);
@@ -53,20 +52,12 @@ export default function HomeDemo() {
         const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
         if (preference.matches || window.scrollY > 2) return undefined;
 
-        let flowTimer;
-        const cancel = () => {
-            window.clearTimeout(introTimer);
-            window.clearTimeout(flowTimer);
-        };
-        const introTimer = window.setTimeout(() => {
-            if (document.visibilityState !== "visible") return;
-            sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-            flowTimer = window.setTimeout(() => {
-                if (document.visibilityState === "visible") {
-                    flowRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }
-            }, 3500);
+        const timer = window.setTimeout(() => {
+            if (document.visibilityState === "visible") {
+                sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
         }, 4000);
+        const cancel = () => window.clearTimeout(timer);
 
         window.addEventListener("wheel", cancel, { passive: true });
         window.addEventListener("touchstart", cancel, { passive: true });
@@ -84,19 +75,19 @@ export default function HomeDemo() {
     }, []);
 
     useEffect(() => {
-        const flowStart = flowStartRef.current;
-        if (!flowStart) return undefined;
+        const flow = flowRef.current;
+        if (!flow) return undefined;
         if (!("IntersectionObserver" in window)) {
             setStep(0);
             return undefined;
         }
         const observer = new IntersectionObserver((entries) => {
-            if (entries.some((entry) => entry.intersectionRatio >= 0.8)) {
+            if (entries.some((entry) => entry.isIntersecting)) {
                 setStep(0);
                 observer.disconnect();
             }
-        }, { threshold: 0.8 });
-        observer.observe(flowStart);
+        }, { threshold: 0.1 });
+        observer.observe(flow);
         return () => observer.disconnect();
     }, []);
 
@@ -175,7 +166,7 @@ export default function HomeDemo() {
                 <p className="home-demo-flow-note">An illustrative flow, not a live account or production request.</p>
                 <div className="home-demo-flow">
                     {steps.map((item, index) => (
-                        <div key={item.number} ref={index === 0 ? flowStartRef : null} className={`home-demo-step${step === index ? " is-active" : ""}${step > index ? " is-complete" : ""}`}>
+                        <div key={item.number} className={`home-demo-step${step === index ? " is-active" : ""}${step > index ? " is-complete" : ""}`}>
                             <span className="home-demo-step-number">{item.number}</span>
                             <h4>{item.title}</h4>
                             <p>{item.detail}</p>
