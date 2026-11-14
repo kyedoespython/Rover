@@ -1,5 +1,6 @@
 import React from "react";
 
+import HomeDemo from "../components/HomeDemo.jsx";
 import UserAvatar from "../components/UserAvatar.jsx";
 
 export default function Home({ loggedIn, logoUrl, username = "" }) {
@@ -50,6 +51,7 @@ export default function Home({ loggedIn, logoUrl, username = "" }) {
                     </div>
                 </section>
             </section>
+            <HomeDemo />
         </div>
     );
 }
