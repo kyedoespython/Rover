@@ -1980,10 +1980,23 @@ body .home-page .landing-cta:hover {
 }
 
 .home-demo {
+    position: relative;
+    isolation: isolate;
     width: min(100%, 76rem);
     align-self: center;
     padding: clamp(4rem, 8vw, 7rem) clamp(1rem, 4vw, 3rem);
-    color: #111111;
+    color: #f5f5f5;
+}
+
+.home-demo::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0 auto;
+    left: 50%;
+    width: 100vw;
+    background: #111111;
+    content: "";
+    transform: translateX(-50%);
 }
 
 .home-demo-intro {
@@ -1997,7 +2010,7 @@ body .home-page .landing-cta:hover {
 .home-demo-eyebrow,
 .home-demo-section-heading span,
 .home-demo-response-label {
-    color: #666666;
+    color: #b6b6b6;
     font-size: 0.7rem;
     font-weight: 700;
     letter-spacing: 0.1em;
@@ -2020,13 +2033,12 @@ body .home-page .landing-cta:hover {
 .home-demo-intro > p {
     max-width: 22rem;
     margin: 0;
-    color: #666666;
+    color: #b6b6b6;
     line-height: 1.6;
 }
 
 .home-demo-panel {
     padding: clamp(1.25rem, 3vw, 2rem);
-    background: #ffffff;
 }
 
 .home-demo-panel + .home-demo-panel {
@@ -2051,7 +2063,7 @@ body .home-page .landing-cta:hover {
 .home-demo-flow-note,
 .home-demo-caption {
     margin: 0;
-    color: #666666;
+    color: #b6b6b6;
     font-size: 0.76rem;
     line-height: 1.5;
 }
@@ -2069,6 +2081,7 @@ body .home-page .landing-cta:hover {
     border: 1px solid #444444;
     border-radius: 5px;
     background: #ffffff;
+    color: #111111;
 }
 
 .home-demo-table-heading {
@@ -2131,14 +2144,14 @@ body .home-page .landing-cta:hover {
 .home-demo-relationship {
     display: flex;
     align-items: center;
-    color: #555555;
+    color: #b6b6b6;
     font-size: 0.8rem;
 }
 
 .home-demo-relationship div {
     height: 1px;
     flex: 1;
-    background: #555555;
+    background: #b6b6b6;
 }
 
 .home-demo-relationship span {
@@ -2175,9 +2188,9 @@ body .home-demo .home-demo-replay {
     position: relative;
     min-width: 0;
     padding: 1rem;
-    border: 1px solid #d3d3d3;
+    border: 1px solid #555555;
     border-radius: 6px;
-    background: #ffffff;
+    background: #1c1c1c;
 }
 
 .home-demo-step:not(:nth-child(3))::after {
@@ -2202,11 +2215,11 @@ body .home-demo .home-demo-replay {
 
 .home-demo-step.is-active,
 .home-demo-step.is-complete {
-    border-color: #222222;
+    border-color: #eeeeee;
 }
 
 .home-demo-step.is-complete::after {
-    background: #222222;
+    background: #eeeeee;
 }
 
 .home-demo-step.is-active::before {
@@ -2217,7 +2230,7 @@ body .home-demo .home-demo-replay {
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #111111;
+    background: #ffffff;
     content: "";
     animation: home-demo-travel-right 1.1s linear forwards;
 }
@@ -2231,7 +2244,7 @@ body .home-demo .home-demo-replay {
 
 .home-demo-step-number,
 .home-demo-target > div > span {
-    color: #777777;
+    color: #b6b6b6;
     font-size: 0.65rem;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -2246,7 +2259,7 @@ body .home-demo .home-demo-replay {
 .home-demo-step p,
 .home-demo-target p {
     margin: 0;
-    color: #666666;
+    color: #b6b6b6;
     font-size: 0.75rem;
     line-height: 1.5;
 }
@@ -2265,7 +2278,7 @@ body .home-demo .home-demo-replay {
 .home-demo-target > strong {
     align-self: start;
     margin-left: auto;
-    color: #777777;
+    color: #b6b6b6;
     font-size: 0.62rem;
     text-transform: uppercase;
 }
@@ -2275,7 +2288,7 @@ body .home-demo .home-demo-replay {
 }
 
 .home-demo-target.is-reached > strong {
-    color: #a62424;
+    color: #ff8585;
 }
 
 .home-demo-target-icon {
@@ -2303,9 +2316,9 @@ body .home-demo .home-demo-replay {
     min-height: 7rem;
     margin-top: 2rem;
     padding: 1rem 1.2rem;
-    border: 1px solid #e1e1e1;
+    border: 1px solid #555555;
     border-radius: 5px;
-    background: #f9f9f9;
+    background: #1c1c1c;
 }
 
 .home-demo-response-label span {
@@ -2314,7 +2327,7 @@ body .home-demo .home-demo-replay {
     height: 0.4rem;
     margin-right: 0.4rem;
     border-radius: 50%;
-    background: #222222;
+    background: #eeeeee;
     vertical-align: middle;
 }
 
@@ -2330,7 +2343,7 @@ body .home-demo .home-demo-replay {
     width: 1px;
     height: 1em;
     margin-left: 2px;
-    background: #111111;
+    background: #ffffff;
     animation: home-demo-blink 0.8s step-end infinite;
 }
 
