@@ -14,7 +14,8 @@ Database commands:
   db delete <name>             Delete a database (with confirmation)
   db query <name> <sql>        Run a read-only SQL query
 Use quotes around names or text containing spaces. Type clear to clear the terminal.
-This terminal manages Rover data; it does not run operating-system commands.`;
+Select Python for a separate in-browser Python session.
+Rover commands manage Rover data; they do not run operating-system commands.`;
 
 export function parseCommand(line) {
     const words = [];

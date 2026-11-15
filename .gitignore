@@ -12,6 +12,7 @@ static/node_modules/
 /main/static/react/
 /flask_session/
 /testing/data/
+/rover_tests/data/
 
 # Distribution / packaging
 .Python

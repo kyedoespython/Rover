@@ -461,7 +461,10 @@ def Handle_Login():
 @auth_bp.route("/DesignDashboard")
 @login_required  # only logged in users can access the design dashboard
 def DesignDash():
-    return render_template("Design/DesignDash.html")
+    response = make_response(render_template("Design/DesignDash.html"))
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+    return response
 
 
 @auth_bp.route("/DatabaseConfigurations")

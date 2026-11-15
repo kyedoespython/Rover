@@ -1,19 +1,22 @@
 import React, { useEffect, useRef, useState } from "react";
 
+import PythonTerminal from "./PythonTerminal.jsx";
 import { executeTerminalCommand, TERMINAL_HELP } from "./terminalCommands.mjs";
 
 export default function RoverTerminal({ open, onClose, ...context }) {
     const [lines, setLines] = useState([{ text: "Rover terminal. Type help for available commands." }]);
     const [input, setInput] = useState("");
     const [busy, setBusy] = useState(false);
+    const [mode, setMode] = useState("rover");
+    const [pythonStarted, setPythonStarted] = useState(false);
     const [height, setHeight] = useState(280);
     const outputRef = useRef(null);
     const inputRef = useRef(null);
     const resizeRef = useRef(null);
 
     useEffect(() => {
-        if (open) inputRef.current?.focus();
-    }, [open]);
+        if (open && mode === "rover") inputRef.current?.focus();
+    }, [open, mode]);
 
     useEffect(() => {
         if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight;
@@ -83,13 +86,17 @@ export default function RoverTerminal({ open, onClose, ...context }) {
             />
             <div className="rover-terminal-header">
                 <strong>Rover terminal</strong>
+                <div aria-label="Terminal mode" className="rover-terminal-modes" role="group">
+                    <button aria-pressed={mode === "rover"} onClick={() => setMode("rover")} type="button">Rover</button>
+                    <button aria-pressed={mode === "python"} onClick={() => { setPythonStarted(true); setMode("python"); }} type="button">Python</button>
+                </div>
                 <span>{context.project ? `Project: ${context.project.name}` : "Select a project for file commands"}</span>
                 <button aria-label="Close terminal" onClick={onClose} type="button">×</button>
             </div>
-            <div aria-live="polite" className="rover-terminal-output" ref={outputRef}>
+            <div aria-live="polite" className="rover-terminal-output" hidden={mode !== "rover"} ref={outputRef}>
                 {lines.map((line, index) => <pre className={line.error ? "is-error" : ""} key={index}>{line.text}</pre>)}
             </div>
-            <form className="rover-terminal-input" onSubmit={run}>
+            <form className="rover-terminal-input" hidden={mode !== "rover"} onSubmit={run}>
                 <span aria-hidden="true">&gt;</span>
                 <input
                     aria-label="Terminal command"
@@ -103,6 +110,7 @@ export default function RoverTerminal({ open, onClose, ...context }) {
                 />
                 <button disabled={busy || !input.trim()} type="submit">Run</button>
             </form>
+            {pythonStarted && <PythonTerminal active={open && mode === "python"} />}
         </section>
     );
 }

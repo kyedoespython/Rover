@@ -3339,6 +3339,21 @@ body .builder-page .rover-terminal button:hover:not(:disabled) {
     margin-left: auto;
 }
 
+.rover-terminal-modes {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 0.25rem;
+}
+
+.rover-terminal-header .rover-terminal-modes button {
+    margin-left: 0;
+}
+
+body .builder-page .rover-terminal-modes button[aria-pressed="true"] {
+    border-color: #ffffff !important;
+    background: #333333 !important;
+}
+
 .rover-terminal-output {
     min-height: 0;
     flex: 1;
@@ -3365,6 +3380,55 @@ body .builder-page .rover-terminal button:hover:not(:disabled) {
     gap: 0.5rem;
     padding: 0.4rem 0.75rem;
     border-top: 1px solid #555555;
+}
+
+.rover-terminal-output[hidden],
+.rover-terminal-input[hidden],
+.rover-python[hidden] {
+    display: none;
+}
+
+.rover-python {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+}
+
+.rover-python-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    color: #bbbbbb;
+    font-size: 0.72rem;
+}
+
+.rover-python-toolbar button {
+    flex: 0 0 auto;
+}
+
+.rover-python-status {
+    margin: 0;
+    padding: 0.35rem 0.75rem;
+    color: #dddddd;
+    line-height: 1.4;
+}
+
+.rover-python-status[role="alert"] {
+    color: #ffb1b1;
+}
+
+.rover-python-output {
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
+    padding: 0 0.5rem;
+}
+
+.rover-python-output .xterm {
+    height: 100%;
 }
 
 body .builder-page .rover-terminal-input input {
