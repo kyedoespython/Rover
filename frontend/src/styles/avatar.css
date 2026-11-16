@@ -1,0 +1,42 @@
+/* Profile and navigation avatars. */
+
+.user-avatar {
+    display: inline-grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid var(--rover-border);
+    border-radius: 50%;
+    background: var(--rover-surface-raised);
+    color: var(--rover-text);
+}
+
+.user-avatar svg {
+    width: 1.45rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-width: 1.7;
+}
+
+.user-avatar:hover,
+.user-avatar:focus-visible {
+    border-color: var(--rover-accent);
+    color: var(--rover-accent-hover);
+}
+
+.user-avatar-large {
+    width: 5.5rem;
+    height: 5.5rem;
+}
+
+.user-avatar-large svg {
+    width: 2.75rem;
+}
+
+.landing-actions .user-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+}

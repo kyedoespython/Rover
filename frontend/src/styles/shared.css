@@ -1,0 +1,22 @@
+/* Utilities used by more than one page. */
+
+.visually-hidden,
+.home-demo-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.design-file-button input,
+.configuration-import-button input,
+.builder-import-button input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+}

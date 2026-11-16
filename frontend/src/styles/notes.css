@@ -1,0 +1,230 @@
+/* Notes workspace. */
+
+.notes-react-page {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    height: 100vh;
+    height: 100dvh;
+    flex-direction: column;
+    color: var(--rover-text);
+}
+
+.notes-react-nav {
+    display: grid;
+    flex: 0 0 auto;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 1rem;
+}
+
+.notes-react-nav > :last-child {
+    justify-self: end;
+}
+
+.notes-react-nav h1 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.notes-nav-link,
+.notes-react-page button {
+    display: inline-flex;
+    min-height: 2.4rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--rover-control-border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--rover-text);
+    cursor: pointer;
+    font: inherit;
+    text-decoration: none;
+}
+
+.notes-react-page button:hover,
+.notes-nav-link:hover {
+    border-color: var(--rover-accent);
+    background: var(--rover-control-hover);
+}
+
+.notes-react-workspace {
+    display: grid;
+    flex: 1;
+    grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr);
+    min-height: 0;
+    gap: 1rem;
+    padding: 0 1rem 1rem;
+}
+
+.notes-react-sidebar,
+.notes-react-editor {
+    min-height: 0;
+    padding: 1rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 6px;
+    background: var(--rover-surface);
+}
+
+.notes-react-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow: auto;
+}
+
+.notes-react-sidebar h2,
+.notes-empty-editor h2 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.notes-create-form,
+.notes-react-row form {
+    display: flex;
+    gap: 0.45rem;
+}
+
+.notes-create-form input,
+.notes-react-row input,
+.notes-editor-name input,
+.notes-markdown-editor textarea {
+    min-width: 0;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--rover-control-border);
+    border-radius: 4px;
+    background: var(--rover-control-bg);
+    color: var(--rover-text);
+    font: inherit;
+}
+
+.notes-create-form input,
+.notes-editor-name input {
+    flex: 1;
+}
+
+.notes-create-form button,
+.notes-react-row form button,
+.notes-save-button {
+    background: var(--rover-accent);
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.notes-react-list {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.notes-react-row {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.7rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 4px;
+    background: var(--rover-surface-raised);
+}
+
+.notes-react-row > a {
+    display: grid;
+    gap: 0.25rem;
+    color: var(--rover-text);
+    text-decoration: none;
+}
+
+.notes-react-row > a span,
+.notes-empty-state,
+.notes-empty-editor p {
+    color: var(--rover-muted);
+    font-size: 0.85rem;
+}
+
+.notes-react-row > a.is-selected {
+    color: var(--rover-accent-hover);
+}
+
+.notes-react-row details summary {
+    color: var(--rover-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.notes-react-row details form {
+    margin-top: 0.5rem;
+}
+
+.notes-react-row input {
+    flex: 1;
+}
+
+.notes-react-row .notes-delete-button {
+    min-height: 2rem;
+    border-color: var(--rover-danger);
+    color: #ff9aa2;
+    font-size: 0.8rem;
+}
+
+.notes-react-pagination {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: auto;
+    color: var(--rover-muted);
+    font-size: 0.8rem;
+}
+
+.notes-react-pagination a {
+    color: var(--rover-accent-hover);
+}
+
+.notes-react-editor {
+    overflow: auto;
+}
+
+.notes-react-editor form {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.notes-markdown-editor {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.notes-format-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.notes-format-toolbar button {
+    min-height: 2rem;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.8rem;
+}
+
+.notes-markdown-editor textarea {
+    flex: 1;
+    min-height: 16rem;
+    resize: vertical;
+    line-height: 1.55;
+}
+
+.notes-save-button {
+    align-self: flex-start;
+}
+
+.notes-empty-editor {
+    display: grid;
+    min-height: 100%;
+    align-content: center;
+    justify-items: center;
+    color: var(--rover-muted);
+    text-align: center;
+}

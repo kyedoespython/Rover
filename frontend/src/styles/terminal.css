@@ -1,0 +1,180 @@
+/* Rover and Python terminals. */
+
+.rover-terminal {
+    position: fixed;
+    z-index: 1000;
+    right: 1rem;
+    bottom: 1rem;
+    left: 1rem;
+    display: flex;
+    min-height: 150px;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #ffffff;
+    border-radius: 5px;
+    background: #000000;
+    box-shadow: 0 0 0 1px #333333, 0 8px 24px rgba(0, 0, 0, 0.3);
+    color: #ffffff;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.8rem;
+}
+
+.rover-terminal[hidden] {
+    display: none;
+}
+
+.rover-terminal-resize {
+    height: 9px;
+    flex: 0 0 9px;
+    cursor: ns-resize;
+    touch-action: none;
+}
+
+.rover-terminal-resize::after {
+    display: block;
+    width: 3rem;
+    height: 2px;
+    margin: 3px auto 0;
+    border-radius: 2px;
+    background: #aaaaaa;
+    content: "";
+}
+
+.rover-terminal-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.15rem 0.75rem 0.45rem;
+    border-bottom: 1px solid #555555;
+}
+
+.rover-terminal-header span {
+    overflow: hidden;
+    color: #bbbbbb;
+    font-size: 0.72rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body .builder-page .rover-terminal button {
+    min-height: 1.5rem !important;
+    border: 1px solid #777777 !important;
+    background: #000000 !important;
+    color: #ffffff !important;
+}
+
+body .builder-page .rover-terminal button:hover:not(:disabled) {
+    background: #333333 !important;
+}
+
+.rover-terminal-header button {
+    margin-left: auto;
+}
+
+.rover-terminal-modes {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 0.25rem;
+}
+
+.rover-terminal-header .rover-terminal-modes button {
+    margin-left: 0;
+}
+
+body .builder-page .rover-terminal-modes button[aria-pressed="true"] {
+    border-color: #ffffff !important;
+    background: #333333 !important;
+}
+
+.rover-terminal-output {
+    min-height: 0;
+    flex: 1;
+    overflow: auto;
+    padding: 0.5rem 0.75rem;
+}
+
+.rover-terminal-output pre {
+    margin: 0 0 0.35rem;
+    color: #ffffff;
+    font: inherit;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.rover-terminal-output pre.is-error {
+    color: #ffb1b1;
+}
+
+.rover-terminal-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    border-top: 1px solid #555555;
+}
+
+.rover-terminal-output[hidden],
+.rover-terminal-input[hidden],
+.rover-python[hidden] {
+    display: none;
+}
+
+.rover-python {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+}
+
+.rover-python-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    color: #bbbbbb;
+    font-size: 0.72rem;
+}
+
+.rover-python-toolbar button {
+    flex: 0 0 auto;
+}
+
+.rover-python-status {
+    margin: 0;
+    padding: 0.35rem 0.75rem;
+    color: #dddddd;
+    line-height: 1.4;
+}
+
+.rover-python-status[role="alert"] {
+    color: #ffb1b1;
+}
+
+.rover-python-output {
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
+    padding: 0 0.5rem;
+}
+
+.rover-python-output .xterm {
+    height: 100%;
+}
+
+body .builder-page .rover-terminal-input input {
+    min-width: 0;
+    min-height: 1.5rem;
+    flex: 1;
+    padding: 0.15rem 0 !important;
+    border: 0 !important;
+    background: #000000 !important;
+    color: #ffffff !important;
+    font: inherit;
+    outline: none;
+}
+
+body .builder-page .rover-terminal-input input::placeholder {
+    color: #aaaaaa !important;
+}

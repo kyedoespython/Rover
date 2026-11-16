@@ -1,0 +1,37 @@
+/* Theme tokens and document resets. */
+
+:root {
+    color-scheme: light;
+    --rover-background: #ffffff;
+    --rover-surface: #ffffff;
+    --rover-surface-raised: #f7f7f7;
+    --rover-border: #dddddd;
+    --rover-text: #111111;
+    --rover-muted: #555555;
+    --rover-accent: #111111;
+    --rover-accent-hover: #333333;
+    --rover-control-bg: #ffffff;
+    --rover-control-hover: #f2f2f2;
+    --rover-control-border: #aaaaaa;
+}
+
+body {
+    background: var(--rover-background);
+}
+
+body::before {
+    display: none;
+}
+
+body .app-card,
+body .fastquery-sidebar,
+body .fastquery-lesson,
+body .profile-card,
+body .profile-progress-card {
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+body .app-card {
+    border-radius: 10px;
+}

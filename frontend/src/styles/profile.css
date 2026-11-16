@@ -1,0 +1,70 @@
+/* Account profile. */
+
+.profile-content {
+    display: grid;
+    width: min(100% - 2rem, 56rem);
+    gap: 1rem;
+    margin: 2rem auto;
+}
+
+.profile-card,
+.profile-progress-card {
+    padding: clamp(1.1rem, 3vw, 1.75rem);
+}
+
+.profile-card {
+    display: grid;
+    justify-items: start;
+    gap: 0.75rem;
+}
+
+.profile-card > p:last-child {
+    margin: 0;
+    color: var(--rover-muted);
+}
+
+.profile-progress-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.profile-progress-heading > span {
+    color: var(--rover-muted);
+    font-size: 0.85rem;
+}
+
+.profile-current-stage {
+    margin: 1rem 0;
+}
+
+.profile-section-list {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+}
+
+.profile-section-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--rover-border);
+}
+
+.profile-section-list strong {
+    color: var(--rover-muted);
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.profile-continue-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.5rem;
+}

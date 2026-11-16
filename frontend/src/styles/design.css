@@ -1,0 +1,277 @@
+/* Schema and query editor shared with the builder. */
+
+.design-react-page {
+    min-height: 100vh;
+    color: var(--rover-text);
+}
+
+.design-schema-panel {
+    display: grid;
+    grid-template-columns: minmax(13rem, 18rem) minmax(0, 1fr);
+    gap: 1rem;
+    margin: 1.25rem clamp(1rem, 3vw, 2.5rem) 1rem;
+    padding: 1rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 8px;
+    background: var(--rover-surface);
+}
+
+.design-schema-controls {
+    display: grid;
+    align-content: start;
+    gap: 0.65rem;
+}
+
+.design-schema-controls h2 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.design-schema-controls form {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.design-react-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 70vh;
+    gap: 1.25rem;
+    padding: 0 clamp(1rem, 3vw, 2.5rem) 2rem;
+}
+
+.design-schema-panel,
+.design-editor {
+    min-width: 0;
+}
+
+.design-editor {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.9rem;
+    overflow: auto;
+    padding: clamp(1rem, 2.5vw, 2rem);
+    border: 1px solid var(--rover-border);
+    border-radius: 8px;
+    background: var(--rover-surface);
+}
+
+.design-query-view form {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.design-react-page input:not([type="checkbox"]):not([type="file"]),
+.design-react-page select,
+.design-react-page textarea {
+    min-width: 0;
+    min-height: 2.5rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--rover-control-border);
+    border-radius: 4px;
+    background: var(--rover-control-bg);
+    color: var(--rover-text);
+    font: inherit;
+}
+
+.design-react-page button,
+.design-file-button {
+    min-height: 2.5rem;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--rover-control-border);
+    border-radius: 4px;
+    background: var(--rover-control-hover);
+    color: var(--rover-text);
+    cursor: pointer;
+    font: inherit;
+}
+
+.design-react-page button:hover:not(:disabled),
+.design-file-button:hover {
+    border-color: var(--rover-accent);
+    background: var(--rover-control-hover);
+}
+
+.design-react-page button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.design-file-button {
+    display: block;
+    margin-top: 0.65rem;
+    text-align: center;
+}
+
+.design-status,
+.design-query-view > p {
+    min-height: 1.4rem;
+    color: var(--rover-muted);
+    font-size: 0.88rem;
+}
+
+.design-database-list,
+.design-relationship-view ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.design-database-list li {
+    display: flex;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.design-database-list li > button:first-child {
+    display: grid;
+    flex: 1;
+    gap: 0.25rem;
+    text-align: left;
+}
+
+.design-database-list li > button:first-child span {
+    color: var(--rover-muted);
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+}
+
+.design-database-list .is-selected {
+    border-color: var(--rover-accent);
+}
+
+.design-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--rover-border);
+}
+
+.design-toolbar input {
+    flex: 1;
+}
+
+.design-table-view,
+.design-relationship-view,
+.design-query-view {
+    padding-top: 1rem;
+}
+
+.design-table-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.design-table {
+    display: grid;
+    align-content: start;
+    gap: 0.6rem;
+    padding: 0.85rem;
+    border: 1px solid var(--rover-border);
+    border-radius: 6px;
+    background: var(--rover-surface-raised);
+}
+
+.design-table header,
+.design-column {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.design-table header input,
+.design-column > input {
+    flex: 1;
+}
+
+.design-column select {
+    flex: 1;
+    max-width: 10rem;
+    font-size: 0.85rem !important;
+}
+
+.design-column label {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.8rem;
+}
+
+.design-column input[type="checkbox"] {
+    accent-color: var(--rover-accent);
+}
+
+.design-table button,
+.design-column button,
+.design-relationship-view li button {
+    min-height: 2rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.design-empty {
+    color: var(--rover-muted);
+}
+
+.design-relationship-view form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.design-relationship-view {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.7rem;
+}
+
+.design-relationship-view label {
+    display: grid;
+    flex: 1 1 10rem;
+    gap: 0.3rem;
+    color: var(--rover-muted);
+    font-size: 0.75rem;
+}
+
+.design-relationship-view li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--rover-border);
+}
+
+.design-query-view textarea {
+    min-height: 10rem;
+    resize: vertical;
+    font-family: Consolas, monospace !important;
+}
+
+.design-query-results {
+    overflow: auto;
+    margin-top: 1rem;
+}
+
+.design-query-results table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.design-query-results th,
+.design-query-results td {
+    padding: 0.55rem;
+    border: 1px solid var(--rover-border);
+    overflow-wrap: anywhere;
+}
